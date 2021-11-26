@@ -1,0 +1,26 @@
+{
+	"name": "Getting Started with Chrome Extensions",
+	"description": "trying to build a simple extension",
+	"version": "1.0",
+	"manifest_version": 3,
+	"background": {
+		"service_worker": "sw.js"
+	},
+	"options_page": "./ui/options.html",
+	"permissions": ["storage", "activeTab", "scripting"],
+	"action": {
+		"default_popup": "./ui/popup.html",
+		"default_icon": {
+			"16": "/images/tachometer.png",
+			"32": "/images/tachometer.png",
+			"48": "/images/tachometer.png",
+			"128": "/images/tachometer.png"
+		}
+	},
+	"icons": {
+		"16": "/images/tachometer.png",
+		"32": "/images/tachometer.png",
+		"48": "/images/tachometer.png",
+		"128": "/images/tachometer.png"
+	}
+}
