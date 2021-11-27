@@ -1,4 +1,4 @@
-let popupButton = document.getElementById("changeVideoPlayerSpeed");
+let popupButton = (document.getElementById("changeVideoPlayerSpeed") as HTMLVideoElement) ;
 
 popupButton.addEventListener("click", async () => {
 	let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
