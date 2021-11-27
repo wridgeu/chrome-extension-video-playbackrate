@@ -19,4 +19,6 @@ function setVideoPlayerSpeed(): void {
 			firstVideoElementOfPage.playbackRate = targetSpeed;
 		}
 	});
+
+	//TODO: maybe set 1 on error:  chrome.storage.sync.get({ defaultSpeed }); ...
 }
