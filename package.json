@@ -11,9 +11,10 @@
   "watch": {
     "_watch_build": {
       "patterns": [
-        "src/*"
+        "src/*",
+        "public/*"
       ],
-      "extensions": "ts",
+      "extensions": "ts,json,html,css",
       "quiet": false,
       "verbose": true
     }
