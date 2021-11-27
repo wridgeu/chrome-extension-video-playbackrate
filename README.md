@@ -19,6 +19,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [ ] How is a third party library being added (npm)?
 - [ ] What else could I do with it?
 - [ ] Rethink the folder structure.
+- [ ] Build it in typescript.
 
 # Sources
 
