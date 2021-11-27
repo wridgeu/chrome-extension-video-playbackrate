@@ -16,14 +16,16 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 
 - [ ] Actually implement the core/base functionality.
 - [ ] How is an extension being deployed?
-- [ ] How is a third party library being added (npm)?
+- [X] How is a third party library being added (npm)?
+  - Kind of answered this myself, although not really using a third party library but WebComponents instead
 - [ ] What else could I do with it?
-- [ ] Rethink the folder structure.
-  - -> Configure Rollup to bundle convert TS => JS then BUILD JS + Public => Dist (https://www.npmjs.com/package/rollup-plugin-copy)
-  - https://sap.github.io/ui5-webcomponents/playground/components/Slider/
+  - [ ] Add button for .X speed adjustments
+  - [ ] Rework UI & use ShadowParts (Shadow DOM CSS)
+- [X] Rethink the folder structure.
+- [X] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
+  - TS => JS => bundle/build/merge JS + Public folder => Dist
 
-
-# Sources
+## Sources
 
 - [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Build_a_cross_browser_extension)
 - [Chrome Developers](https://developer.chrome.com/docs/extensions/mv3/getstarted/)
@@ -33,4 +35,3 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [FreeCodeCamp](https://www.freecodecamp.org/news/write-your-own-browser-extensions/)
 - [Chrome Extensions React+TS Starter](https://github.com/chibat/chrome-extension-typescript-starter)
 - [UI5 Web Components - Slider](https://sap.github.io/ui5-webcomponents/playground/components/Slider/)
-
