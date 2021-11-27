@@ -22,6 +22,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - -> Configure Rollup to bundle convert TS => JS then BUILD JS + Public => Dist (https://www.npmjs.com/package/rollup-plugin-copy)
   - https://sap.github.io/ui5-webcomponents/playground/components/Slider/
 
+
 # Sources
 
 - [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Build_a_cross_browser_extension)
@@ -32,3 +33,4 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [FreeCodeCamp](https://www.freecodecamp.org/news/write-your-own-browser-extensions/)
 - [Chrome Extensions React+TS Starter](https://github.com/chibat/chrome-extension-typescript-starter)
 - [UI5 Web Components - Slider](https://sap.github.io/ui5-webcomponents/playground/components/Slider/)
+
