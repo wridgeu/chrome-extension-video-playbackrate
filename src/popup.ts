@@ -1,4 +1,6 @@
-let popupButton = (document.getElementById("changeVideoPlayerSpeed") as HTMLVideoElement) ;
+import "@ui5/webcomponents/dist/Slider";
+
+let popupButton = (document.getElementById("changeVideoPlayerSpeed") as HTMLVideoElement);
 
 popupButton.addEventListener("click", async () => {
 	let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

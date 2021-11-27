@@ -18,7 +18,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [ ] How is an extension being deployed?
 - [ ] How is a third party library being added (npm)?
 - [ ] What else could I do with it?
-- [ ] Rethink the folder structure. 
+- [ ] Rethink the folder structure.
   - -> Configure Rollup to bundle convert TS => JS then BUILD JS + Public => Dist (https://www.npmjs.com/package/rollup-plugin-copy)
   - https://sap.github.io/ui5-webcomponents/playground/components/Slider/
 
@@ -31,3 +31,4 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [Extensions API Reference](https://developer.chrome.com/docs/extensions/reference/)
 - [FreeCodeCamp](https://www.freecodecamp.org/news/write-your-own-browser-extensions/)
 - [Chrome Extensions React+TS Starter](https://github.com/chibat/chrome-extension-typescript-starter)
+- [UI5 Web Components - Slider](https://sap.github.io/ui5-webcomponents/playground/components/Slider/)
