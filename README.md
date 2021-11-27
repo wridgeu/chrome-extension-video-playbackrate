@@ -19,7 +19,9 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [ ] How is a third party library being added (npm)?
 - [ ] What else could I do with it?
 - [ ] Rethink the folder structure.
-- [ ] Build it in typescript.
+  - -> Configure Rollup to bundle convert TS => JS then BUILD JS + Public => Dist (https://www.npmjs.com/package/rollup-plugin-copy)
+  - https://sap.github.io/ui5-webcomponents/playground/components/Slider/
+
 
 # Sources
 
@@ -29,4 +31,6 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [Debugging Extensions](https://developer.chrome.com/docs/extensions/mv3/tut_debugging/)
   - [Extensions API Reference](https://developer.chrome.com/docs/extensions/reference/)
 - [FreeCodeCamp](https://www.freecodecamp.org/news/write-your-own-browser-extensions/)
-- [Audio Slider based on ...](https://codepen.io/emilcarlsson/pen/PPNLPy)
+- [Chrome Extensions React+TS Starter](https://github.com/chibat/chrome-extension-typescript-starter)
+- [UI5 Web Components - Slider](https://sap.github.io/ui5-webcomponents/playground/components/Slider/)
+
