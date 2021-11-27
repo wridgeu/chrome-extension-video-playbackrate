@@ -1,10 +1,11 @@
 import "@ui5/webcomponents/dist/Slider";
 
-let popupButton = (document.getElementById("changeVideoPlayerSpeed") as HTMLVideoElement);
+let sliderComponent = (document.getElementById("sliderWebComponent") as HTMLElement);
 
-popupButton.addEventListener("click", async () => {
+sliderComponent.addEventListener("change", async (e) => {
 	let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  
+	let targetSpeed = (e.target! as any).value;
+	chrome.storage.sync.set({targetSpeed});
 	chrome.scripting.executeScript({
 	  target: { tabId: (tab.id as number) },
 	  func: setVideoPlayerSpeed
@@ -12,10 +13,10 @@ popupButton.addEventListener("click", async () => {
 });
   
 function setVideoPlayerSpeed(): void {
-	chrome.storage.sync.get("defaultSpeed", ({ defaultSpeed }) => {
-		let videoElement = document.getElementsByTagName("video")[0];
-		if(videoElement){
-			videoElement.playbackRate = 2;
+	chrome.storage.sync.get("targetSpeed", ({ targetSpeed }) => {
+		let firstVideoElementOfPage = (document.getElementsByTagName("video")[0] as HTMLVideoElement);
+		if(firstVideoElementOfPage){
+			firstVideoElementOfPage.playbackRate = targetSpeed;
 		}
 	});
 }
