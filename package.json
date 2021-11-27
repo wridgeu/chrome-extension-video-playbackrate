@@ -1,20 +1,33 @@
 {
-  "name": "chromeextension",
+  "name": "be-video-playback-rate",
   "version": "1.0.0",
-  "description": "This extension is primarily for _chrome_ and (so far) mostly based on the getting started tutorial from [Chrome Developers](https://developer.chrome.com/docs/extensions/mv3/getstarted/).",
-  "main": "index.js",
+  "description": "Some experiment with browser extensions.",
   "scripts": {
-    "build": "rollup",
-    "tsc:w": "echo \"Error: no test specified\" && exit 1",
-    "cleanup": "rimraf dist"
+    "build": "rollup -c rollup.config.js",
+    "watch": "npm-watch _watch_build",
+    "cleanup": "rimraf dist",
+    "_watch_build": "npm run cleanup && npm run build"
+  },
+  "watch": {
+    "_watch_build": {
+      "patterns": [
+        "src/*"
+      ],
+      "extensions": "ts",
+      "quiet": false,
+      "verbose": true
+    }
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Marco Beier",
+  "license": "Derived Beerware License",
   "devDependencies": {
+    "@rollup/plugin-typescript": "^8.3.0",
     "@types/chrome": "^0.0.164",
+    "npm-watch": "^0.11.0",
     "rimraf": "^3.0.2",
     "rollup": "^2.60.1",
+    "rollup-plugin-copy": "^3.4.0",
     "typescript": "^4.5.2"
   }
 }
