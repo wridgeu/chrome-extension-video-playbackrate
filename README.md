@@ -21,6 +21,10 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [ ] What else could I do with it?
   - [ ] Add button for .X speed adjustments
   - [ ] Rework UI & use ShadowParts (Shadow DOM CSS)
+  - [ ] Add list of Video-Elements on popup-page so the user can manually switch in case of multiple `video`-tags
+  - [ ] Add proper error-handling
+  - [ ] Rework sync. storage usage of chrome
+  - [ ] Make extension cross-browser compatible
 - [X] Rethink the folder structure.
 - [X] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
   - TS => JS => bundle/build/merge JS + Public folder => Dist
