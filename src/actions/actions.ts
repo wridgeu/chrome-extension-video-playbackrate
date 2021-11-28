@@ -22,12 +22,22 @@
  *	}
  *	console.log(videoElements);
  */
-async function main(){
+export async function adjustPlaybackrate(targetSpeed: number){
 	let firstVideoElementOfPage = (document.getElementsByTagName("video")[0] as HTMLVideoElement)
-	let { targetSpeed } = await chrome.storage.sync.get("targetSpeed")
 	if(firstVideoElementOfPage){
 		firstVideoElementOfPage.playbackRate = targetSpeed
 	}
 }
 
-main(); //TODO: check how to "best" structure the js in here, IIFE - (()=>{})()? export/import functions from other files etc?
+/**
+ * retrieves some information about all available video tags of the current page/tab
+ */
+export async function retrieveVideoElements(){
+	let videoElementsCollection =  (document.getElementsByTagName("video"))	
+	const videoElements: any[] = [];
+	for(let element of videoElementsCollection){
+		videoElements.push({ src: element.src } )
+	}
+	return videoElements
+}
+

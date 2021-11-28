@@ -1,20 +1,39 @@
 import "@ui5/webcomponents/dist/Slider";
-
-let sliderComponent = (document.getElementById("sliderWebComponent") as HTMLElement);
+import {retrieveVideoElements, adjustPlaybackrate} from "./actions/actions";
 
 /**
- * Listen on change of UI5 Slider WebC 
+ * Retrieve video elements from current page/tab
  */
- sliderComponent.addEventListener("change", async (e) => {
+const initializeExtension = async () => {
+
 	let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-	//TODO: exchange any with actual type
-	let targetSpeed = (e.target! as any).value;
+	let sliderComponent = (document.getElementById("sliderWebComponent") as HTMLElement);
 
-	chrome.storage.sync.set({ targetSpeed });
+	let retrievedElements = await chrome.scripting.executeScript({
+		target: { tabId: (tab.id as number) },
+		func: retrieveVideoElements
+	})
 
-	chrome.scripting.executeScript({
-	  target: { tabId: (tab.id as number) },
-	  files: ['./js/playbackrate.js'] //always relative to the extensions root dir
+	/**
+	 * TODO: Build list based on amount of entries/video tags found
+	 * hand the number over to the playbackrate script
+	 */
+	// let retrievedElementsResult = retrievedElements[0].result;	
+
+	/**
+	 * Listen on change of UI5 Slider WebC 
+	 */
+	sliderComponent.addEventListener("change", async (e) => {
+		let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+		let targetSpeed = ((e.target! as any).value as number);
+
+		chrome.scripting.executeScript({
+			target: { tabId: (tab.id as number) },
+			func: adjustPlaybackrate,
+			args: [targetSpeed]
+		});
 	});
 
-});
+} 
+
+initializeExtension()
