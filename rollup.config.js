@@ -1,5 +1,6 @@
 import resolve from 'rollup-plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
+import { terser } from "rollup-plugin-terser";
 import copy from 'rollup-plugin-copy';
 
 export default {
@@ -10,6 +11,7 @@ export default {
   },
   plugins: [
     resolve(),
+    terser(),
     typescript({
       module: "ESNext"
     }),
