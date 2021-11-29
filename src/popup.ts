@@ -8,9 +8,9 @@ import { VideoElementIdentifier } from "../types";
 const initializeExtension = async () => {
 
 	let sliderComponent = (document.getElementById("sliderWebComponent") as HTMLElement);
-	let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+	let [ tab ] = await chrome.tabs.query({ active: true, currentWindow: true });
 	
-	let retrievedResults = await chrome.scripting.executeScript({
+	let [ retrievedResults ] = await chrome.scripting.executeScript({
 		target: { tabId: (tab.id as number) },
 		func: retrieveVideoElements
 	})
@@ -20,7 +20,7 @@ const initializeExtension = async () => {
 	 * Build list based on amount of entries/video tags found
 	 * hand the number over to the playbackrate script
 	 */
-	let videoElementsOnPage = (retrievedResults[0].result as VideoElementIdentifier[])
+	let videoElementsOnPage = (retrievedResults.result as VideoElementIdentifier[])
 	// If user has element selected, use this one instead, default to the first one:
 	let targetVideoElement = (videoElementsOnPage[0] as VideoElementIdentifier)
 	
