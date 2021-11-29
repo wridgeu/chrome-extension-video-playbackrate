@@ -1,25 +1,30 @@
 import "@ui5/webcomponents/dist/Slider";
 import {retrieveVideoElements, adjustPlaybackrate} from "./actions/actions";
+import { VideoElementIdentifier } from "../types";
 
 /**
  * Retrieve video elements from current page/tab
  */
 const initializeExtension = async () => {
 
-	let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 	let sliderComponent = (document.getElementById("sliderWebComponent") as HTMLElement);
-
-	let retrievedElements = await chrome.scripting.executeScript({
+	let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+	
+	let retrievedResults = await chrome.scripting.executeScript({
 		target: { tabId: (tab.id as number) },
 		func: retrieveVideoElements
 	})
-
+	
 	/**
-	 * TODO: Build list based on amount of entries/video tags found
+	 * TODO:
+	 * Build list based on amount of entries/video tags found
 	 * hand the number over to the playbackrate script
 	 */
-	// let retrievedElementsResult = retrievedElements[0].result;	
-
+	let videoElementsOnPage = (retrievedResults[0].result as VideoElementIdentifier[])
+	// If user has element selected, use this one instead, default to the first one:
+	let targetVideoElement = (videoElementsOnPage[0] as VideoElementIdentifier)
+	
+	
 	/**
 	 * Listen on change of UI5 Slider WebC 
 	 */
@@ -30,7 +35,7 @@ const initializeExtension = async () => {
 		chrome.scripting.executeScript({
 			target: { tabId: (tab.id as number) },
 			func: adjustPlaybackrate,
-			args: [targetSpeed]
+			args: [targetSpeed, targetVideoElement]
 		});
 	});
 
