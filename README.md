@@ -25,6 +25,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [ ] Add proper error-handling
   - [ ] Rework sync. storage usage of chrome
   - [ ] Make extension cross-browser compatible
+  - [ ] Learn more about .d.ts files and how to properly declare & add them into the project
 - [X] Rethink the folder structure.
 - [X] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
   - TS => JS => bundle/build/merge JS + Public folder => Dist
