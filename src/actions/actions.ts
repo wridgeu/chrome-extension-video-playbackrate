@@ -11,17 +11,14 @@ export async function adjustPlaybackrate(targetSpeed: number, targetElementSelec
 	// document.querySelector("video[src='blob:https://www.youtube.com/6f41fba5-eb61-4dbe-a636-40257a28d9d0'][class='video-stream html5-main-video']")
 	// TODO: introduce dynamic attribute-query-creation: based on the amount of key fields, create a new query selector statement
 	// alternatively only focus on the `src` attribute as it should be unique enough
-	let videoElementByQuery = (document.querySelector(`video[src='${targetElementSelector}'][class='${targetElementSelector.class.value}']`) as HTMLVideoElement)
+	// let videoElementByQuery = (document.querySelector(`video[src='${targetElementSelector}'][class='${targetElementSelector.class.value}']`) as HTMLVideoElement)
 
-	if(!videoElementByQuery) {
-		let firstVideoElementOfPage = (document.getElementsByTagName("video")[0] as HTMLVideoElement)
+	let selectedVideoElement = (document.querySelector(`video[src='${targetElementSelector}'][class='${targetElementSelector.class.value}']`) as HTMLVideoElement) 
+								|| (document.getElementsByTagName("video")[0] as HTMLVideoElement)
 
-		if(!firstVideoElementOfPage) return
+	if(!selectedVideoElement) return
 
-		firstVideoElementOfPage.playbackRate = targetSpeed
-	} else {
-		videoElementByQuery.playbackRate = targetSpeed
-	}
+	selectedVideoElement.playbackRate = targetSpeed
 }
 
 /**
