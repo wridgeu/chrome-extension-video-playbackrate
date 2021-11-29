@@ -26,6 +26,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [ ] Rework sync. storage usage of chrome
   - [ ] Make extension cross-browser compatible
   - [ ] Learn more about .d.ts files and how to properly declare & add them into the project
+  - [ ] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme)
 - [X] Rethink the folder structure.
 - [X] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
   - TS => JS => bundle/build/merge JS + Public folder => Dist
