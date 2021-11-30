@@ -1,18 +1,16 @@
 {
   "compilerOptions": {
     "strict": true,
-    "target": "ESNext",                                  
-    "module": "commonjs",                                
-    "rootDir": "./src",                                  
+    "target": "ESNext",
+    "module": "commonjs",
+    "rootDir": "./src",
     "outDir": "./dist/js/",
     "importHelpers": true,
-    "esModuleInterop": true,                             
-    "forceConsistentCasingInFileNames": true,            
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "sourceMap": false,
     "noEmitOnError": true,
-    "typeRoots": [
-      "./node_modules/@types"
-    ]                         
+    "typeRoots": ["./node_modules/@types"]
   }
 }

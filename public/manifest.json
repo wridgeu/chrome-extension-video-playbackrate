@@ -1,34 +1,34 @@
 {
-	"manifest_version": 3,
+  "manifest_version": 3,
 
-	"name": "Getting Started with Chrome Extensions",
-	"description": "trying to build a simple extension",
-	"version": "1.0",
+  "name": "Getting Started with Chrome Extensions",
+  "description": "trying to build a simple extension",
+  "version": "1.0",
 
-	"background": {
-		"service_worker": "./js/sw.js"
-	},
+  "background": {
+    "service_worker": "./js/sw.js"
+  },
 
-	"options_ui": {
-		"page": "options.html"
-	},
+  "options_ui": {
+    "page": "options.html"
+  },
 
-	"permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting"],
 
-	"action": {
-		"default_icon": {
-			"16": "icon.png",
-			"32": "icon.png",
-			"48": "icon.png",
-			"128": "icon.png"
-		},
-		"default_popup": "popup.html"
-	},
+  "action": {
+    "default_icon": {
+      "16": "icon.png",
+      "32": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    },
+    "default_popup": "popup.html"
+  },
 
-	"icons": {
-		"16": "icon.png",
-		"32": "icon.png",
-		"48": "icon.png",
-		"128": "icon.png"
-	}
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
 }

@@ -6,7 +6,8 @@
     "build": "rollup -c rollup.config.js",
     "watch": "npm-watch _watch_build",
     "cleanup": "rimraf dist",
-    "_watch_build": "npm run cleanup && npm run build"
+    "_watch_build": "npm run cleanup && npm run build",
+    "prettier": "prettier --write ."
   },
   "watch": {
     "_watch_build": {
@@ -26,7 +27,7 @@
     "@rollup/plugin-typescript": "^8.3.0",
     "@types/chrome": "^0.0.164",
     "npm-watch": "^0.11.0",
-    "prettier": "2.5.0",
+    "prettier": "^2.5.0",
     "rimraf": "^3.0.2",
     "rollup": "^2.60.1",
     "rollup-plugin-copy": "^3.4.0",
