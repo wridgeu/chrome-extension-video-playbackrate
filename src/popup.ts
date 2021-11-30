@@ -46,11 +46,11 @@ const initializePopup = async (): Promise<void> => {
 };
 
 /**
- * This function takes care of initializing the state of the extension.
- * 1. In case we open up a new tab, we want to continue using our previously set speed & apply it to a video element (if exists)
- * 2. We want to have the slider already preconfigured at the current speed
- * 3. TODO: We want to be able to disable this initialization based on plugin-options
- * BIG TODO: pull out in content script to avoid being attached to the popup window
+ * This function takes care of initializing the state of the popup (slider).
+ * 1. We want to have the slider preconfigured at the speed we set the video of the tab already
+ * 2. If the video src but not the tab changes (e.g. youtube): https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
+ * TODO: add types
+ * BIG TODO: check out content scripts to avoid being attached to the popup window
  * see:
  * - https://stackoverflow.com/a/38948149/10323879
  * - https://developer.chrome.com/docs/extensions/mv3/content_scripts/
@@ -61,17 +61,33 @@ const initializePopup = async (): Promise<void> => {
  * @param tabId
  */
 const initializePopupState = async (sliderComponent: UI5Slider, currentTab: number): Promise<void> => {
-    const { test } = await chrome.storage.local.get(currentTab.toString());
-    console.log(test)
-    if (Object.entries.length !== 0) {
-        // sliderComponent.value = currentTabInformation[currentTab];
-    } else {
-        // sliderComponent.value = await chrome.storage.local.get('defaultSpeed');
+    let targetValue;
+    const { sessionTabHistory } = await chrome.storage.local.get('sessionTabHistory');
+
+    try {        
+        targetValue = sessionTabHistory.find((element: any) => { return element.tabId === currentTab }).targetSpeed
+        sliderComponent.value = targetValue;
+    } catch (e) {
+        let { defaultSpeed } = await chrome.storage.local.get('defaultSpeed');
+        sliderComponent.value = defaultSpeed;
     }
 };
 
+/**
+ * TODO: read values of localStorage & add new values in case our current tabId is not yet in the storage
+ * TODO: add types
+ * @param targetSpeed 
+ * @param currentTab 
+ */
 const updateLocalStorage = async (targetSpeed: number, currentTab: number): Promise<void> => {
-    chrome.storage.local.set({ [currentTab]: targetSpeed });
+    chrome.storage.local.set({
+        'sessionTabHistory': [
+            {
+                tabId: currentTab,
+                targetSpeed: targetSpeed
+            }
+        ]
+    });
 };
 
 document.addEventListener('DOMContentLoaded', () => {
