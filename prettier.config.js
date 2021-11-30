@@ -1,7 +1,8 @@
 module.exports = {
+    printWidth: 120,
     trailingComma: 'none',
     tabWidth: 4,
-    semi: false,
+    semi: true,
     singleQuote: true,
     overrides: [
         {
@@ -17,4 +18,4 @@ module.exports = {
             }
         }
     ]
-}
+};

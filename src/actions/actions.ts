@@ -1,4 +1,4 @@
-import { VideoElementIdentifier } from '../../types'
+import { VideoElementIdentifier } from '../../types';
 
 /**
  * Select the specific video element on the page and adjust it's speed.
@@ -18,13 +18,12 @@ export async function adjustPlaybackrate(
     let selectedVideoElement =
         (document.querySelector(
             `video[src='${targetElementSelector}'][class='${targetElementSelector.class.value}']`
-        ) as HTMLVideoElement) ||
-        (document.getElementsByTagName('video')[0] as HTMLVideoElement)
+        ) as HTMLVideoElement) || (document.getElementsByTagName('video')[0] as HTMLVideoElement);
 
-    if (!selectedVideoElement) return
+    if (!selectedVideoElement) return;
 
-    selectedVideoElement.playbackRate = targetSpeed
-    chrome.storage.sync.set({ latestSpeedAdjustment: targetSpeed })
+    selectedVideoElement.playbackRate = targetSpeed;
+    chrome.storage.sync.set({ latestSpeedAdjustment: targetSpeed });
 }
 
 /**
@@ -39,17 +38,15 @@ export async function adjustPlaybackrate(
  * - default: first video element to be found on page
  */
 export function retrieveVideoElements(): VideoElementIdentifier[] {
-    let videoElementsCollection = document.getElementsByTagName(
-        'video'
-    ) as HTMLCollectionOf<HTMLVideoElement>
-    const videoElements: VideoElementIdentifier[] = []
+    let videoElementsCollection = document.getElementsByTagName('video') as HTMLCollectionOf<HTMLVideoElement>;
+    const videoElements: VideoElementIdentifier[] = [];
 
     for (let element of videoElementsCollection) {
         videoElements.push({
             class: element.classList,
             src: element.src
-        })
+        });
     }
 
-    return videoElements
+    return videoElements;
 }
