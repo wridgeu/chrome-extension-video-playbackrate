@@ -14,10 +14,9 @@ export async function adjustPlaybackrate(
         (document.querySelector(`video[src='${targetElementSelector}']`) as HTMLVideoElement) ||
         (document.getElementsByTagName('video')[0] as HTMLVideoElement);
 
-    if (!selectedVideoElement) return;
+    if (!selectedVideoElement) throw new Error('No video element to be adjusted');
 
     selectedVideoElement.playbackRate = targetSpeed;
-    chrome.storage.sync.set({ latestSpeedAdjustment: targetSpeed });
 }
 
 /**

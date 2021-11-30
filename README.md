@@ -14,7 +14,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 
 ## ToDo
 
-- [ ] Actually implement the core/base functionality.
+- [ ] Actually implement the core/base functionality
 - [ ] How is an extension being deployed?
 - [x] How is a third party library being added (npm)?
   - Kind of answered this myself, although not really using a third party library but WebComponents instead
@@ -31,7 +31,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
   - [x] Configure [prettier](https://prettier.io/docs/en/install.html)
   - [x] Add and configure ESLint
-- [x] Rethink the folder structure.
+- [x] Rethink the folder structure
 - [x] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
   - TS => JS => bundle/build/merge JS + Public folder => Dist
 
@@ -42,6 +42,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [What are Extensions?](https://developer.chrome.com/docs/extensions/mv3/overview/)
   - [Debugging Extensions](https://developer.chrome.com/docs/extensions/mv3/tut_debugging/)
   - [Extensions API Reference](https://developer.chrome.com/docs/extensions/reference/)
+  - [Examples](https://github.com/GoogleChrome/chrome-extensions-samples)
 - [FreeCodeCamp](https://www.freecodecamp.org/news/write-your-own-browser-extensions/)
 - [Chrome Extensions React+TS Starter](https://github.com/chibat/chrome-extension-typescript-starter)
 - [UI5 Web Components - Slider](https://sap.github.io/ui5-webcomponents/playground/components/Slider/)

@@ -23,7 +23,7 @@ const initializePopup = async (): Promise<void> => {
     // TODO:If user has element selected, use this one instead, default to the first one:
     const targetVideoElement = videoElementsOnPage[0] as VideoElementIdentifier;
 
-    initializePopupState(sliderComponent, targetVideoElement, tab.id as number);
+    initializePopupState(sliderComponent, tab.id as number);
 
     /**
      * Listen on change of UI5 Slider WebC
@@ -31,11 +31,17 @@ const initializePopup = async (): Promise<void> => {
     sliderComponent.addEventListener('change', async (e): Promise<void> => {
         const targetSpeed = (e.target as UI5Slider).value as number;
 
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id as number },
-            func: adjustPlaybackrate,
-            args: [targetSpeed, targetVideoElement]
-        });
+        try {
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id as number },
+                func: adjustPlaybackrate,
+                args: [targetSpeed, targetVideoElement]
+            });
+
+            updateLocalStorage(targetSpeed, tab.id as number);
+        } catch (error) {
+            console.log(`oops: ${error}`);
+        }
     });
 };
 
@@ -48,25 +54,26 @@ const initializePopup = async (): Promise<void> => {
  * see:
  * - https://stackoverflow.com/a/38948149/10323879
  * - https://developer.chrome.com/docs/extensions/mv3/content_scripts/
+ * - https://stackoverflow.com/questions/55272272/chromeextension-storage-per-tab (tabId needs to be stored aswell)
+ * - https://techinplanet.com/clear-temporary-storage-data-for-a-chrome-extension-when-browser-closes/
  * @param sliderComponent
  * @param targetVideoElement
  * @param tabId
  */
-const initializePopupState = async (
-    sliderComponent: UI5Slider,
-    targetVideoElement: VideoElementIdentifier,
-    tabId: number
-): Promise<void> => {
-    const { latestSpeedAdjustment } = await chrome.storage.sync.get('latestSpeedAdjustment');
-
-    if (latestSpeedAdjustment) {
-        sliderComponent.value = latestSpeedAdjustment;
-        chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            func: adjustPlaybackrate,
-            args: [latestSpeedAdjustment, targetVideoElement]
-        });
+const initializePopupState = async (sliderComponent: UI5Slider, currentTab: number): Promise<void> => {
+    const { test } = await chrome.storage.local.get(currentTab.toString());
+    console.log(test)
+    if (Object.entries.length !== 0) {
+        // sliderComponent.value = currentTabInformation[currentTab];
+    } else {
+        // sliderComponent.value = await chrome.storage.local.get('defaultSpeed');
     }
 };
 
-initializePopup();
+const updateLocalStorage = async (targetSpeed: number, currentTab: number): Promise<void> => {
+    chrome.storage.local.set({ [currentTab]: targetSpeed });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializePopup();
+});
