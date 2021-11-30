@@ -10,7 +10,7 @@ export async function adjustPlaybackrate(
     targetSpeed: number,
     targetElementSelector?: VideoElementIdentifier
 ): Promise<void> {
-    let selectedVideoElement =
+    const selectedVideoElement =
         (document.querySelector(`video[src='${targetElementSelector}']`) as HTMLVideoElement) ||
         (document.getElementsByTagName('video')[0] as HTMLVideoElement);
 
@@ -32,10 +32,10 @@ export async function adjustPlaybackrate(
  * - default: first video element to be found on page
  */
 export function retrieveVideoElements(): VideoElementIdentifier[] {
-    let videoElementsCollection = document.getElementsByTagName('video') as HTMLCollectionOf<HTMLVideoElement>;
+    const videoElementsCollection = document.getElementsByTagName('video') as HTMLCollectionOf<HTMLVideoElement>;
     const videoElements: VideoElementIdentifier[] = [];
 
-    for (let element of videoElementsCollection) {
+    for (const element of videoElementsCollection) {
         videoElements.push({
             src: element.src
         });

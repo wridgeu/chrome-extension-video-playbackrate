@@ -6,10 +6,10 @@ import { VideoElementIdentifier, UI5Slider } from '../types';
  * Retrieve video elements from current page/tab
  */
 const initializePopup = async (): Promise<void> => {
-    let sliderComponent = document.getElementById('sliderWebComponent') as UI5Slider;
-    let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const sliderComponent = document.getElementById('sliderWebComponent') as UI5Slider;
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    let [retrievedResults] = await chrome.scripting.executeScript({
+    const [retrievedResults] = await chrome.scripting.executeScript({
         target: { tabId: tab.id as number },
         func: retrieveVideoElements
     });
@@ -19,9 +19,9 @@ const initializePopup = async (): Promise<void> => {
      * Build list based on amount of entries/video tags found
      * hand the number over to the playbackrate script
      */
-    let videoElementsOnPage = retrievedResults.result as VideoElementIdentifier[];
+    const videoElementsOnPage = retrievedResults.result as VideoElementIdentifier[];
     // TODO:If user has element selected, use this one instead, default to the first one:
-    let targetVideoElement = videoElementsOnPage[0] as VideoElementIdentifier;
+    const targetVideoElement = videoElementsOnPage[0] as VideoElementIdentifier;
 
     initializePopupState(sliderComponent, targetVideoElement, tab.id as number);
 
@@ -29,7 +29,7 @@ const initializePopup = async (): Promise<void> => {
      * Listen on change of UI5 Slider WebC
      */
     sliderComponent.addEventListener('change', async (e): Promise<void> => {
-        let targetSpeed = (e.target as UI5Slider).value as number;
+        const targetSpeed = (e.target as UI5Slider).value as number;
 
         chrome.scripting.executeScript({
             target: { tabId: tab.id as number },
@@ -57,7 +57,7 @@ const initializePopupState = async (
     targetVideoElement: VideoElementIdentifier,
     tabId: number
 ): Promise<void> => {
-    let { latestSpeedAdjustment } = await chrome.storage.sync.get('latestSpeedAdjustment');
+    const { latestSpeedAdjustment } = await chrome.storage.sync.get('latestSpeedAdjustment');
 
     if (latestSpeedAdjustment) {
         sliderComponent.value = latestSpeedAdjustment;
