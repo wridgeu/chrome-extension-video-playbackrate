@@ -29,7 +29,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
     -   [ ] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
     -   [ ] Make extension "save" your latest setting & automatically apply them on new pages (include in options)
     -   [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
-    -   [ ] Configure [prettier](https://prettier.io/docs/en/install.html)
+    -   [x] Configure [prettier](https://prettier.io/docs/en/install.html)
 -   [x] Rethink the folder structure.
 -   [x] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
     -   TS => JS => bundle/build/merge JS + Public folder => Dist
