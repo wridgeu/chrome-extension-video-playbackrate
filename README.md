@@ -26,7 +26,10 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [ ] Rework sync. storage usage of chrome
   - [ ] Make extension cross-browser compatible
   - [ ] Learn more about .d.ts files and how to properly declare & add them into the project
-  - [ ] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme)
+  - [ ] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
+  - [ ] Make extension "save" your latest setting & automatically apply them on new pages (include in options)
+  - [X] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
+  - [ ] Configure [prettier](https://prettier.io/docs/en/install.html)
 - [X] Rethink the folder structure.
 - [X] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
   - TS => JS => bundle/build/merge JS + Public folder => Dist

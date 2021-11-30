@@ -19,6 +19,7 @@ export async function adjustPlaybackrate(targetSpeed: number, targetElementSelec
 	if(!selectedVideoElement) return
 
 	selectedVideoElement.playbackRate = targetSpeed
+	chrome.storage.sync.set({ "latestSpeedAdjustment": targetSpeed })
 }
 
 /**

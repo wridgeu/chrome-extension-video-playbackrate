@@ -1,19 +1,21 @@
 import "@ui5/webcomponents/dist/Slider";
 import {retrieveVideoElements, adjustPlaybackrate} from "./actions/actions";
-import { VideoElementIdentifier } from "../types";
+import { VideoElementIdentifier, UI5Slider } from "../types";
 
 /**
  * Retrieve video elements from current page/tab
  */
-const initializeExtension = async () => {
-
-	let sliderComponent = (document.getElementById("sliderWebComponent") as HTMLElement);
-	let [ tab ] = await chrome.tabs.query({ active: true, currentWindow: true });
+const initializeExtension = async (): Promise<void> => {
 	
+	let sliderComponent = (document.getElementById("sliderWebComponent") as UI5Slider)
+	let [ tab ] = await chrome.tabs.query({ active: true, currentWindow: true })
+
 	let [ retrievedResults ] = await chrome.scripting.executeScript({
 		target: { tabId: (tab.id as number) },
 		func: retrieveVideoElements
 	})
+	
+	initializeSliderComponent(sliderComponent)
 	
 	/**
 	 * TODO:
@@ -40,5 +42,14 @@ const initializeExtension = async () => {
 	});
 
 } 
+
+const initializeSliderComponent = async (sliderComponent: UI5Slider): Promise<void> => {
+	let { latestSpeedAdjustment } = await chrome.storage.sync.get("latestSpeedAdjustment")
+	
+	if (latestSpeedAdjustment) {
+		sliderComponent.value = latestSpeedAdjustment 
+	}
+}
+
 
 initializeExtension()
