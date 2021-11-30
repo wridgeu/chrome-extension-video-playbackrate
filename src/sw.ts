@@ -8,5 +8,3 @@ chrome.runtime.onInstalled.addListener(() => {
  * Clear extensions local storage on browser startup (initial state)
  */
 chrome.storage.local.clear();
-
-

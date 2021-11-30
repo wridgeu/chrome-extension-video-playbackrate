@@ -64,8 +64,10 @@ const initializePopupState = async (sliderComponent: UI5Slider, currentTab: numb
     let targetValue;
     const { sessionTabHistory } = await chrome.storage.local.get('sessionTabHistory');
 
-    try {        
-        targetValue = sessionTabHistory.find((element: any) => { return element.tabId === currentTab }).targetSpeed
+    try {
+        targetValue = sessionTabHistory.find((element: any) => {
+            return element.tabId === currentTab;
+        }).targetSpeed;
         sliderComponent.value = targetValue;
     } catch (e) {
         let { defaultSpeed } = await chrome.storage.local.get('defaultSpeed');
@@ -76,12 +78,12 @@ const initializePopupState = async (sliderComponent: UI5Slider, currentTab: numb
 /**
  * TODO: read values of localStorage & add new values in case our current tabId is not yet in the storage
  * TODO: add types
- * @param targetSpeed 
- * @param currentTab 
+ * @param targetSpeed
+ * @param currentTab
  */
 const updateLocalStorage = async (targetSpeed: number, currentTab: number): Promise<void> => {
     chrome.storage.local.set({
-        'sessionTabHistory': [
+        sessionTabHistory: [
             {
                 tabId: currentTab,
                 targetSpeed: targetSpeed
