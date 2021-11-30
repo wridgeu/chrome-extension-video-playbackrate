@@ -22,18 +22,14 @@ const initializeExtension = async (): Promise<void> => {
      * hand the number over to the playbackrate script
      */
     let videoElementsOnPage = retrievedResults.result as VideoElementIdentifier[];
-    // If user has element selected, use this one instead, default to the first one:
+    // TODO:If user has element selected, use this one instead, default to the first one:
     let targetVideoElement = videoElementsOnPage[0] as VideoElementIdentifier;
 
     /**
      * Listen on change of UI5 Slider WebC
      */
     sliderComponent.addEventListener('change', async (e) => {
-        let [tab] = await chrome.tabs.query({
-            active: true,
-            currentWindow: true
-        });
-        let targetSpeed = (e.target! as any).value as number;
+        let targetSpeed = (e.target as UI5Slider).value as number;
 
         chrome.scripting.executeScript({
             target: { tabId: tab.id as number },
