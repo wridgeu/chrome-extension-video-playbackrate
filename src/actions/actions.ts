@@ -20,6 +20,22 @@ export async function adjustPlaybackrate(
 }
 
 /**
+ * Youtube as example: When you've adjusted the speed once in tab A and then click on
+ * another video, this function takes care of changing the playbackRate on the new video
+ * after being called on URL change of tab A
+ * @param targetSpeed
+ */
+export async function adjustPlaybackrateOnTabChange(targetSpeed: number): Promise<void> {
+    const selectedVideoElement = document.getElementsByTagName('video')[0] as HTMLVideoElement;
+
+    if (!selectedVideoElement) throw new Error('No video element to be adjusted');
+
+    selectedVideoElement.addEventListener('canplay', (e) => {
+        (e.target as HTMLVideoElement).playbackRate = targetSpeed;
+    });
+}
+
+/**
  * retrieves some information about all available video tags of the current page/tab
  *
  * TODO:
