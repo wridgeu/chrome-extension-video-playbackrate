@@ -11,8 +11,8 @@ export async function adjustPlaybackrate(
     targetElementSelector?: VideoElementIdentifier
 ): Promise<void> {
     const selectedVideoElement =
-        (document.querySelector(`video[src='${targetElementSelector}']`) as HTMLVideoElement) ||
-        (document.getElementsByTagName('video')[0] as HTMLVideoElement);
+        <HTMLVideoElement>document.querySelector(`video[src='${targetElementSelector}']`) ||
+        <HTMLVideoElement>document.getElementsByTagName('video')[0];
 
     if (!selectedVideoElement) throw new Error('No video element to be adjusted');
 
@@ -26,7 +26,7 @@ export async function adjustPlaybackrate(
  * @param targetSpeed
  */
 export async function adjustPlaybackrateOnTabChange(targetSpeed: number): Promise<void> {
-    const selectedVideoElement = document.getElementsByTagName('video')[0] as HTMLVideoElement;
+    const selectedVideoElement = <HTMLVideoElement>document.getElementsByTagName('video')[0];
 
     if (!selectedVideoElement) throw new Error('No video element to be adjusted');
 
@@ -47,7 +47,7 @@ export async function adjustPlaybackrateOnTabChange(targetSpeed: number): Promis
  * - default: first video element to be found on page
  */
 export function retrieveVideoElements(): VideoElementIdentifier[] {
-    const videoElementsCollection = document.getElementsByTagName('video') as HTMLCollectionOf<HTMLVideoElement>;
+    const videoElementsCollection = <HTMLCollectionOf<HTMLVideoElement>>document.getElementsByTagName('video');
     const videoElements: VideoElementIdentifier[] = [];
 
     for (const element of videoElementsCollection) {

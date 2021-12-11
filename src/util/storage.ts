@@ -18,11 +18,10 @@ export async function getItemByTabId(tabId: number): Promise<number> {
 
     if (!historyEntry?.targetSpeed) {
         let defaultStorage: Defaults = await chrome.storage.local.get('defaults') as Defaults;
-        console.log(defaultStorage);
         return defaultStorage.defaults.defaultSpeed;
     }
 
-    return historyEntry.targetSpeed as number;
+    return <number>historyEntry.targetSpeed;
 }
 
 /**

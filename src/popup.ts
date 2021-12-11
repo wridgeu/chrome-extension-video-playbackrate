@@ -7,8 +7,8 @@ const initializePopup = async (): Promise<void> => {
     const sliderComponent = document.getElementById('sliderWebComponent') as UI5Slider;
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    const [retrievedResults] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id as number },
+    const [retrievedVideoElements] = await chrome.scripting.executeScript({
+        target: { tabId: <number>tab.id },
         func: retrieveVideoElements
     });
 
@@ -17,26 +17,26 @@ const initializePopup = async (): Promise<void> => {
      * Build list based on amount of entries/video tags found
      * hand the number over to the playbackrate script
      */
-    const videoElementsOnPage = retrievedResults.result as VideoElementIdentifier[];
+    const videoElementsOnPage = retrievedVideoElements.result as VideoElementIdentifier[];
     // TODO:If user has element selected, use this one instead, default to the first one:
     const targetVideoElement = videoElementsOnPage[0] as VideoElementIdentifier;
 
-    initializePopupState(sliderComponent, tab.id as number);
+    initializePopupState(sliderComponent, <number>tab.id);
 
     /**
      * Listen on change of UI5 Slider WebC
      */
     sliderComponent.addEventListener('change', async (e): Promise<void> => {
-        const targetSpeed = (e.target as UI5Slider).value as number;
+        const targetSpeed = <number>(e.target as UI5Slider).value;
 
         try {
             await chrome.scripting.executeScript({
-                target: { tabId: tab.id as number },
+                target: { tabId: <number>tab.id },
                 func: adjustPlaybackrate,
                 args: [targetSpeed, targetVideoElement]
             });
 
-            updateItemByTabId({ tabId: tab.id as number, targetSpeed: targetSpeed });
+            updateItemByTabId({ tabId: <number>tab.id, targetSpeed: targetSpeed });
         } catch (error) {
             console.log(`oops: ${error}`);
         }
@@ -45,7 +45,7 @@ const initializePopup = async (): Promise<void> => {
     /**
      * Listen to changes within the current tab
      * TODO: refactor: only add the listener if the current tab has an entry within the local storage,
-     * this probably requires anothe refactor within the utility file 
+     * this probably requires anothe refactor within the utility file
      */
     chrome.tabs.onUpdated.addListener(async (tabId, _, tab) => {
         if (tabId === tab.id && tab.status == 'complete') {
@@ -64,8 +64,8 @@ const initializePopup = async (): Promise<void> => {
 /**
  * This function takes care of initializing the state of the popup (slider).
  * We want to have the slider preconfigured at the speed we set the video of the tab already
- * @param sliderComponent 
- * @param currentTab 
+ * @param sliderComponent
+ * @param currentTab
  */
 const initializePopupState = async (sliderComponent: UI5Slider, currentTab: number): Promise<void> => {
     const targetSpeed = await getTabSpeedById(currentTab);
