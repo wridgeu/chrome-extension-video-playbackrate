@@ -1,4 +1,4 @@
-import { TabHistoryEntry } from '../../types';
+import { Defaults, TabHistoryEntry } from '../../types';
 
 /**
  * Tries to read the localStorage for the video speed settings of the current tab.
@@ -8,24 +8,28 @@ import { TabHistoryEntry } from '../../types';
  */
 export async function getItemByTabId(tabId: number): Promise<number> {
     const { sessionTabHistory } = await chrome.storage.local.get('sessionTabHistory');
+    let historyEntry: Partial<TabHistoryEntry> = {};
 
-    let { targetSpeed } = sessionTabHistory.find((element: any) => {
-        return element.tabId === tabId;
-    });
-
-    if (targetSpeed === undefined || targetSpeed === null || !targetSpeed) {
-        let { defaultSpeed } = await chrome.storage.local.get('defaultSpeed');
-        targetSpeed = defaultSpeed.targetSpeed;
+    if (sessionTabHistory) {
+        historyEntry = sessionTabHistory.find((element: any) => {
+            return element.tabId === tabId;
+        });
     }
 
-    return targetSpeed;
+    if (!historyEntry?.targetSpeed) {
+        let defaultStorage: Defaults = await chrome.storage.local.get('defaults') as Defaults;
+        console.log(defaultStorage);
+        return defaultStorage.defaults.defaultSpeed;
+    }
+
+    return historyEntry.targetSpeed as number;
 }
 
 /**
- * @param item 
+ * @param item
  */
 export async function updateItemByTabId(item: TabHistoryEntry): Promise<void> {
-	// TODO: read values of localStorage & add new values in case our current tabId is not yet in the storage
+    // TODO: read values of localStorage & add new values in case our current tabId is not yet in the storage
     // 1. get all information
     // 2. look for current tab
     // 3. update or insert

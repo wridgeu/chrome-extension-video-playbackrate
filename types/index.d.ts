@@ -3,9 +3,15 @@ export type VideoElementIdentifier = {
 };
 
 export type TabHistoryEntry = {
-    tabId: number,
-    targetSpeed: number
-}
+    tabId: number;
+    targetSpeed: number;
+};
+
+export type Defaults = {
+    defaults: {
+        defaultSpeed: number;
+    };
+};
 
 /**
  * rudimentary type with only added what I currently "need"
