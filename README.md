@@ -14,7 +14,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 
 ## ToDo
 
-- [ ] Actually implement the core/base functionality
+- [ ] Actually implement the core/base functionality (KISS)
 - [ ] How is an extension being deployed?
 - [x] How is a third party library being added (npm)?
   - Kind of answered this myself, although not really using a third party library but WebComponents instead
@@ -23,11 +23,9 @@ Due to limited time and some irl wrist issues I'm just getting started with this
   - [ ] Rework UI & use ShadowParts (Shadow DOM CSS)
   - [ ] Add list of Video-Elements on popup-page so the user can manually switch in case of multiple `video`-tags
   - [ ] Add proper error-handling
-  - [ ] Rework sync. storage usage of chrome
   - [ ] Make extension cross-browser compatible
   - [ ] Learn more about .d.ts files and how to properly declare & add them into the project
   - [ ] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
-  - [ ] Make extension "save" your latest setting & automatically apply them on new pages (include in options)
   - [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
   - [x] Configure [prettier](https://prettier.io/docs/en/install.html)
   - [x] Add and configure ESLint
