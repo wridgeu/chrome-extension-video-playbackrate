@@ -9,7 +9,11 @@
   "options_ui": {
     "page": "options.html"
   },
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
   "action": {
     "default_icon": {
       "16": "icon.png",

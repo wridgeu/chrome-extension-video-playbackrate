@@ -1,7 +1,7 @@
 {
   "name": "be-video-playback-rate",
   "version": "1.0.0",
-  "description": "Some experiment with browser extensions.",  
+  "description": "Some experiment with browser extensions.",
   "repository": {
     "type": "git",
     "url": "https://github.com/wridgeu/chrome-extension-video-playbackrate.git",

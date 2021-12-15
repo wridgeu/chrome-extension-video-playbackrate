@@ -1,0 +1,21 @@
+.mb-tiny {
+	margin-bottom: 2vh;
+}
+
+.mb-medium {
+	margin-bottom: 5vh;
+}
+
+.options-container {
+	display: flex;
+	flex-flow: column;
+	align-items: flex-start;
+	flex-direction: column;
+	margin-bottom: 12vh;
+}
+
+.speed-setting-selector {
+	display: flex;
+	flex-flow: column;
+	padding-left: 3vw;
+}
