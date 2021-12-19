@@ -12,6 +12,10 @@ Why does this repository/extension exist? Well ... quite simple:
 
 Due to limited time and some irl wrist issues I'm just getting started with this and build it in public in order to hold myself accountable and actually pull through. 🪅
 
+## ToDo high prio
+- two options for settings -> always apply or not and set default speed
+- popup only sets speed, gets its display value from current displayed video
+
 ## ToDo
 
 - [ ] Actually implement the core/base functionality (KISS)
@@ -47,3 +51,4 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [TS: Typescript Type Declaration Files](https://medium.com/jspoint/typescript-type-declaration-files-4b29077c43)
 - [TS: Namespaces](https://medium.com/jspoint/typescript-namespaces-f43cd002c08c)
 - [TS: Udemy Course](https://www.udemy.com/course/understanding-typescript)
+- [Background Script M3](https://youtu.be/29dmxQ9QQ4o?t=416)
