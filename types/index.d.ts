@@ -12,7 +12,7 @@ export type ChromeMessagingResponse = {
     playbackRate: number;
 };
 
-export enum ChromeMessagingRequestAction {
+export const enum ChromeMessagingRequestAction {
     'SET',
     'RETRIEVE'
 }
