@@ -18,14 +18,13 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 
 ## ToDo
 
-- [ ] Actually implement the core/base functionality (KISS)
+- [X] Actually implement the core/base functionality (KISS)
 - [ ] How is an extension being deployed?
 - [x] How is a third party library being added (npm)?
   - Kind of answered this myself, although not really using a third party library but WebComponents instead
 - [ ] What else could I do with it?
   - [ ] Add button for .X speed adjustments
   - [ ] Rework UI & use ShadowParts (Shadow DOM CSS)
-  - [ ] Add list of Video-Elements on popup-page so the user can manually switch in case of multiple `video`-tags
   - [ ] Add proper error-handling
   - [ ] Make extension cross-browser compatible
   - [ ] Learn more about .d.ts files and how to properly declare & add them into the project
