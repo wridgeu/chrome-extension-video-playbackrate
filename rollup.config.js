@@ -7,8 +7,8 @@ import copy from 'rollup-plugin-copy';
 export default {
     input: ['src/*.ts'],
     output: {
-        dir: 'dist/js/',
-        format: 'es'
+        format: 'esm',
+        dir: 'dist/js/'
     },
     plugins: [
         resolve(),
