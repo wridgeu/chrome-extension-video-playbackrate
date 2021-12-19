@@ -1,5 +1,5 @@
+import resolve from "@rollup/plugin-node-resolve";
 import typescript from '@rollup/plugin-typescript';
-import resolve from 'rollup-plugin-node-resolve';
 import { terser } from 'rollup-plugin-terser';
 import multiInput from 'rollup-plugin-multi-input';
 import copy from 'rollup-plugin-copy';
@@ -11,12 +11,14 @@ export default {
         format: 'es'
     },
     plugins: [
-        resolve(),
-        terser(),
-        multiInput(),
+        resolve({
+            browser: true
+        }),
         typescript({
             module: 'ESNext'
         }),
+        terser(),
+        multiInput(),
         copy({
             targets: [
                 {

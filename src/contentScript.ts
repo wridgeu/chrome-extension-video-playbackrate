@@ -1,3 +1,5 @@
+import { ChromeMessagingRequest, ChromeMessagingRequestAction } from '../types';
+
 // Set playbackrate defaults
 (async () => {
     const { defaults } = await chrome.storage.sync.get('defaults');
@@ -21,12 +23,12 @@
 })();
 
 // https://developer.chrome.com/docs/extensions/mv3/messaging/
-chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((request: ChromeMessagingRequest, _, sendResponse) => {
     switch (request.action) {
-        case 'SET':
-            document.querySelectorAll('video')[0].playbackRate = request.playbackRate;
+        case ChromeMessagingRequestAction.SET:
+            document.querySelectorAll('video')[0].playbackRate = request.playbackRate!;
             break;
-        case 'RETRIEVE':
+        case ChromeMessagingRequestAction.RETRIEVE:
             sendResponse({ playbackRate: document.querySelectorAll('video')[0].playbackRate });
             break;
         default:

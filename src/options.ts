@@ -2,6 +2,7 @@ import '@ui5/webcomponents/dist/CheckBox';
 import '@ui5/webcomponents/dist/Select';
 import '@ui5/webcomponents/dist/Option';
 import '@ui5/webcomponents/dist/Label';
+import { Defaults } from '../types';
 
 /**
  * @todo add types, refactor saving mechanism -> central save (shaking of data)
@@ -11,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const defaultSpeedSelector = <any>document.getElementById('defaultSpeedSelector')!;
 
     // @todo refactor
-    const { defaults } = await chrome.storage.sync.get('defaults');
+    const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
     defaultsEnabledCheckbox.checked = defaults?.enabled || false;
     if (defaultsEnabledCheckbox.checked) {
         defaultSpeedSelector.disabled = false;
