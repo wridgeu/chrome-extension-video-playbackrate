@@ -9,15 +9,8 @@
   "options_ui": {
     "page": "options.html"
   },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "http://*/*",
-    "https://*/*"
-  ],
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "action": {
     "default_icon": {
       "16": "icon.png",

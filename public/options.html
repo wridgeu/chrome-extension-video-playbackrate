@@ -1,28 +1,26 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
+    <head>
+        <title>Video Speed Controller Settings</title>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="./styles/options.css" />
+    </head>
 
-<head>
-    <title>Video Speed Controller Settings</title>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="./styles/options.css">
-</head>
-
-<body>
-    <h1>Options</h1>
-    <div class="options-container" title="options">
-        <ui5-checkbox id="defaultsEnabledCheckbox" class="mb-medium" text="Enable Defaults"></ui5-checkbox>
-        <div class="speed-setting-selector" title="defaultSpeed">
-            <ui5-label class="mb-tiny" id="selectorLabel" for="defaultSpeedSelector">Default Speed</ui5-label>
-            <ui5-select id="defaultSpeedSelector" disabled>
-                <ui5-option id="option-1" selected>1</ui5-option>
-                <ui5-option id="option-2">2</ui5-option>
-                <ui5-option id="option-3">3</ui5-option>
-                <ui5-option id="option-4">4</ui5-option>
-            </ui5-select>
+    <body>
+        <h1>Options</h1>
+        <div class="options-container" title="options">
+            <ui5-checkbox id="defaultsEnabledCheckbox" class="mb-medium" text="Enable Defaults"></ui5-checkbox>
+            <div class="speed-setting-selector" title="defaultSpeed">
+                <ui5-label class="mb-tiny" id="selectorLabel" for="defaultSpeedSelector">Default Speed</ui5-label>
+                <ui5-select id="defaultSpeedSelector" disabled>
+                    <ui5-option id="option-1" selected>1</ui5-option>
+                    <ui5-option id="option-2">2</ui5-option>
+                    <ui5-option id="option-3">3</ui5-option>
+                    <ui5-option id="option-4">4</ui5-option>
+                </ui5-select>
+            </div>
         </div>
-    </div>
-    <script type="module" src="./js/options.js" defer></script>
-</body>
-
+        <script type="module" src="./js/options.js" defer></script>
+    </body>
 </html>
