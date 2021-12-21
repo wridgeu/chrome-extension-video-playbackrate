@@ -14,7 +14,8 @@
     "cleanup": "rimraf dist",
     "_watch_build": "npm run cleanup && npm run build",
     "prettier": "prettier --write .",
-    "eslint": "eslint"
+    "eslint": "eslint",
+    "prepare": "husky install"
   },
   "watch": {
     "_watch_build": {
@@ -39,6 +40,7 @@
     "eslint": "^8.5.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^8.3.0",
+    "husky": "^7.0.4",
     "npm-watch": "^0.11.0",
     "prettier": "^2.5.1",
     "rimraf": "^3.0.2",

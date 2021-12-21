@@ -1,17 +1,17 @@
 body {
-	margin-left: 27px;
+    margin-left: 27px;
     margin-right: 27px;
 }
 
 ui5-slider {
-	height: auto;
-	width: auto;
-	outline: none;
-	padding: 1vh;
+    height: auto;
+    width: auto;
+    outline: none;
+    padding: 1vh;
 }
 
 /* ui5-slider::part(handle){ sylte CSS within the shadow DOM using wthe exposed "parts" of WebC - shadowCSS
 	height: 10px;
 	width: 10px;
 	vertical-align: middle;
-}
+} */
