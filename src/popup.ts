@@ -1,5 +1,5 @@
-import '@ui5/webcomponents/dist/Slider';
 import { ChromeMessagingRequestAction, ChromeMessagingResponse, UI5Slider } from '../types';
+import '@ui5/webcomponents/dist/Slider';
 
 document.addEventListener('DOMContentLoaded', () => {
     (async (): Promise<void> => {
