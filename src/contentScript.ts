@@ -1,6 +1,6 @@
 import { ChromeMessagingRequest, ChromeMessagingRequestAction } from '../types';
 
-// Set playbackrate defaults test
+// Set playbackrate defaults
 (async () => {
     const { defaults } = await chrome.storage.sync.get('defaults');
     if (defaults?.enabled) {
