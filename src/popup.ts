@@ -1,4 +1,4 @@
-import '@ui5/webcomponents/dist/Slider.js';
+import '@ui5/webcomponents/dist/Slider';
 import { ChromeMessagingRequestAction, ChromeMessagingResponse, UI5Slider } from '../types';
 
 document.addEventListener('DOMContentLoaded', () => {
