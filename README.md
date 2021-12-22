@@ -15,7 +15,7 @@ I'm just getting started with this and build it in public in order to hold mysel
 ## ToDo
 
 - [X] Actually implement the core/base functionality (KISS)
-- [ ] How is an extension being deployed?
+- [X] How is an extension being deployed?
 - [x] How is a third party library being added (npm)?
   - Kind of answered this myself, although not really using a third party library but WebComponents instead
 
@@ -24,9 +24,9 @@ What else could I do with it?
   - [ ] Rework UI & use ShadowParts (Shadow DOM CSS)
   - [ ] Add proper error-handling
   - [ ] Make extension cross-browser compatible
-  - [ ] Learn more about .d.ts files and how to properly declare & add them into the project
   - [ ] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
   - [ ] Contribution Guidelines (templates?)
+  - [X] Learn more about .d.ts files and how to declare & add them into the project
   - [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
   - [x] Configure [prettier](https://prettier.io/docs/en/install.html)
   - [x] Add and configure ESLint
