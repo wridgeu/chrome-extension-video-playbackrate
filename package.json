@@ -11,7 +11,7 @@
   "scripts": {
     "build": "rollup -c rollup.config.js ",
     "watch": "npm-watch _watch_build",
-    "cleanup": "rimraf dist",
+    "cleanup": "rimraf dist *.dist.zip",
     "_watch_build": "npm run cleanup && npm run build",
     "prettier": "prettier --write .",
     "eslint": "eslint",
