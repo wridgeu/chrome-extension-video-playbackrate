@@ -1,4 +1,4 @@
-name: build & create release
+name: create release
 
 on: 
   push:
@@ -12,12 +12,12 @@ jobs:
         node-version: [16.x]
 
     steps:
-    - name: Checkout repository
     - uses: actions/checkout@v2
-    - name: Build extension source => dist => zip | use node ${{ matrix.node-version }}
-    - uses: actions/setup-node@v1
+    - name: use node ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+    - name: build extension source => dist => zip 
       run: |
         npm i
         npm run cleanup
@@ -25,7 +25,6 @@ jobs:
         npm run zip
       env:
         CI: true
-    - name: Create release
     - uses: ncipollo/release-action@v1
       with:
         artifacts: "*.dist.zip"
