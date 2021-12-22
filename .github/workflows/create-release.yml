@@ -3,8 +3,6 @@ name: create release
 
 on: 
   push:
-    branches:
-      - "master"
     tags:
     - '*'
 jobs:
