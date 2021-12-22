@@ -14,10 +14,11 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
-    - name: Build extension source => dist => zip | use node ${{ matrix.node-version }}
+    - name: use node ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+    - name: Build extension source => dist => zip
       run: |
         npm i
         npm run cleanup
