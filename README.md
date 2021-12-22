@@ -51,3 +51,7 @@ Due to limited time and some irl wrist issues I'm just getting started with this
 - [TS: Namespaces](https://medium.com/jspoint/typescript-namespaces-f43cd002c08c)
 - [TS: Udemy Course](https://www.udemy.com/course/understanding-typescript)
 - [Background Script M3](https://youtu.be/29dmxQ9QQ4o?t=416)
+- [Github Release Action](https://github.com/ncipollo/release-action)
+  - [GH Marketplace](https://github.com/marketplace/actions/create-release)
+  - [alternative1](https://github.com/softprops/action-gh-release)
+  - [alternative2](https://github.com/marketplace/actions/automatic-releases)
