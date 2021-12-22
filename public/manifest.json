@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Getting Started with Chrome Extensions",
-  "description": "trying to build a simple extension",
+  "name": "Video Speed Regulator",
+  "description": "Adjust your video playback rate",
   "version": "1.0",
   "background": {
     "service_worker": "./js/sw.js"
