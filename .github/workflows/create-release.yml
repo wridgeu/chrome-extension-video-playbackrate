@@ -26,6 +26,7 @@ jobs:
         npm run zip
       env:
         CI: true
+    - name: create release and attach extension .zip
     - uses: ncipollo/release-action@v1
       with:
         artifacts: "*.dist.zip"
