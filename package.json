@@ -29,7 +29,11 @@
       "verbose": true
     }
   },
-  "keywords": [],
+  "keywords": [
+    "Chrome Extension",
+    "Video Speed Adjustments",
+    "Browser Extension"
+  ],
   "author": "Marco Beier",
   "license": "Derived Beerware License",
   "devDependencies": {
