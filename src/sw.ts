@@ -9,5 +9,5 @@ try {
         }
     });
 } catch (e) {
-    console.error(`ERROR: Servie Worker - ${e}`);
+    console.error(`ERROR: Service Worker - ${e}`);
 }
