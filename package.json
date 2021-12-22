@@ -1,6 +1,6 @@
 {
   "name": "be-video-playback-rate",
-  "version": "1.0.2",
+  "version": "1.0.0",
   "description": "Some experiment with browser extensions.",
   "repository": {
     "type": "git",
