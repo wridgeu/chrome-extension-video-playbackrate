@@ -30,4 +30,3 @@ jobs:
       with:
         artifacts: "*.dist.zip"
         token: ${{ secrets.GITHUB_TOKEN }}
-    - name: create release and attach extension .zip
