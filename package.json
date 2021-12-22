@@ -16,7 +16,7 @@
     "prettier": "prettier --write .",
     "eslint": "eslint",
     "prepare": "husky install",
-    "zip": "npm-build-zip --name=dist"
+    "zip": "npm-build-zip --name=dist --source=./dist"
   },
   "watch": {
     "_watch_build": {
