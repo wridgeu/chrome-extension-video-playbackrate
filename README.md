@@ -34,6 +34,24 @@ What else could I do with it?
   - [x] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
     - TS => JS => bundle/build/merge JS + Public folder => Dist
 
+## Architectural _Overview_ of an Extension
+
+The full and official introduction (from Chrome) can be found [here](https://developer.chrome.com/docs/extensions/mv3/architecture-overview/).
+
+_Note:_ With Manifest V3 the "background page" is now using a [Service Worker](https://developer.chrome.com/docs/extensions/mv3/service_workers/).
+
+### High-Level Overview
+
+![](./docs/img/ui-elements.png)
+### Content scripts
+
+More details on content scripts can be found [here](https://developer.chrome.com/docs/extensions/mv3/content_scripts/).
+
+![](./docs/img/content-scripts_1.png)
+
+Communication between the content script and the parent extension is done either by using the [storage API](https://developer.chrome.com/docs/extensions/reference/storage/) or using [messages](https://developer.chrome.com/docs/extensions/mv3/messaging/).
+
+![](./docs/img/content-scripts_2.png)
 ## Sources
 
 - [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Build_a_cross_browser_extension)
