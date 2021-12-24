@@ -4,7 +4,7 @@ try {
         if (changeInfo.status == 'complete') {
             chrome.scripting.executeScript({
                 target: { tabId: tabId },
-                files: ['/js/contentScript.js'] //works on root dir
+                files: ['/js/contentscript.js'] //works on root dir
             });
         }
     });
