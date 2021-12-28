@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((request: ChromeMessagingRequest, _, sendRe
     switch (request.action) {
         case ChromeMessagingRequestAction.SET:
             document.querySelectorAll('video')[0].playbackRate = request.playbackRate!;
-            break;
+            return true;
         case ChromeMessagingRequestAction.RETRIEVE:
             sendResponse({ playbackRate: document.querySelectorAll('video')[0].playbackRate });
             break;
