@@ -10,8 +10,10 @@ ui5-slider {
     padding: 1vh;
 }
 
-/* ui5-slider::part(handle){ sylte CSS within the shadow DOM using wthe exposed "parts" of WebC - shadowCSS
-	height: 10px;
-	width: 10px;
-	vertical-align: middle;
-} */
+ui5-slider::part(handle) {
+    height: 15px;
+    width: 15px;
+    margin-left: -6px;
+    margin-top: 6px;
+    outline-offset: 0.045rem;
+}
