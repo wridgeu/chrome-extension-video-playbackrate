@@ -6,11 +6,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const sliderComponent = <UI5Slider>document.getElementById('sliderWebComponent');
         const [{ id }] = await chrome.tabs.query({ active: true, currentWindow: true });
 
+        /**
+         * Initialize state
+         */
         chrome.tabs.sendMessage(
             <number>id,
             { action: ChromeMessagingRequestAction.RETRIEVE },
             (response: ChromeMessagingResponse) => {
-                sliderComponent.value = response.playbackRate || 1;
+                if (!chrome.runtime.lastError && response) {
+                    sliderComponent.value = response.playbackRate;
+                } else {
+                    sliderComponent.value = 1;
+                }
             }
         );
 
