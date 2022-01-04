@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Video Speed Regulator",
   "description": "Adjust your video playback rate",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "background": {
     "service_worker": "./js/sw.js"
   },
@@ -13,17 +13,17 @@
   "host_permissions": ["http://*/*", "https://*/*"],
   "action": {
     "default_icon": {
-      "16": "icon.png",
-      "32": "icon.png",
-      "48": "icon.png",
-      "128": "icon.png"
+      "16": "./img/icon_16.png",
+      "32": "./img/icon_32.png",
+      "48": "./img/icon_64.png",
+      "128": "./img/icon_128.png"
     },
     "default_popup": "popup.html"
   },
   "icons": {
-    "16": "icon.png",
-    "32": "icon.png",
-    "48": "icon.png",
-    "128": "icon.png"
+    "16": "./img/icon_16.png",
+    "32": "./img/icon_32.png",
+    "48": "./img/icon_64.png",
+    "128": "./img/icon_128.png"
   }
 }

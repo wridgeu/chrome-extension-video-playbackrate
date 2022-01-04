@@ -1,3 +1,5 @@
+<p align=center><a href="https://www.flaticon.com/premium-icon/fast-forward_5148595?term=fast%20forward&related_id=5148595" target="_blank" rel="noopener noreferrer"><img width="100" src="./docs/img/icon_512.png"></a></p>
+
 # Chrome Browser Extension - Video Playback Rate
 
 This extension is primarily for _chrome_ and (so far) mostly based on the getting started tutorial from [Chrome Developers](https://developer.chrome.com/docs/extensions/mv3/getstarted/).
@@ -71,3 +73,4 @@ Communication between the content script and the parent extension is done either
   - [GH Marketplace](https://github.com/marketplace/actions/create-release)
   - [alternative1](https://github.com/softprops/action-gh-release)
   - [alternative2](https://github.com/marketplace/actions/automatic-releases)
+- [Icon by Flaticon](https://www.flaticon.com/premium-icon/fast-forward_5148595?term=fast%20forward&related_id=5148595)
