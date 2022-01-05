@@ -95,7 +95,7 @@ try {
         if (menuItem) {
             chrome.tabs.sendMessage(<number>tab?.id, {
                 action: ChromeMessagingRequestAction.SETSPECIFIC,
-                videoElementIdentifier: itemData.srcUrl,
+                videoElementSrcAttributeValue: itemData.srcUrl,
                 playbackRate: menuItem.playbackRate
             });
         }
