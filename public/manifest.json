@@ -9,7 +9,7 @@
   "options_ui": {
     "page": "options.html"
   },
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "action": {
     "default_icon": {

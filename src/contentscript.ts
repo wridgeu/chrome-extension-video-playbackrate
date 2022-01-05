@@ -26,13 +26,18 @@ import { ChromeMessagingRequest, ChromeMessagingRequestAction } from '../types';
 chrome.runtime.onMessage.addListener((request: ChromeMessagingRequest, _, sendResponse) => {
     let [videoElement] = document.querySelectorAll('video');
 
-    if (!videoElement) {
+    if (!videoElement && request.action !== ChromeMessagingRequestAction.SETSPECIFIC) {
         return true;
     }
 
     switch (request.action) {
         case ChromeMessagingRequestAction.SET:
             videoElement.playbackRate = request.playbackRate!;
+            break;
+        case ChromeMessagingRequestAction.SETSPECIFIC:
+            (
+                document.querySelector(`video[src='${request.videoElementSrcAttributeValue!}']`)! as HTMLVideoElement
+            ).playbackRate = request.playbackRate!;
             break;
         case ChromeMessagingRequestAction.RETRIEVE:
             sendResponse({ playbackRate: videoElement.playbackRate });

@@ -14,12 +14,25 @@ export type ChromeMessagingResponse = {
 
 export const enum ChromeMessagingRequestAction {
     'SET',
+    'SETSPECIFIC',
     'RETRIEVE'
 }
 
 export type ChromeMessagingRequest = {
     action: ChromeMessagingRequestAction;
     playbackRate?: number;
+    videoElementSrcAttributeValue?: string;
+};
+
+export type ContextMenuStorage = {
+    contextMenuOptions: ContextMenuOption[];
+};
+
+export type ContextMenuOption = {
+    id: number;
+    title: string;
+    playbackRate: number;
+    default: boolean;
 };
 
 /**
