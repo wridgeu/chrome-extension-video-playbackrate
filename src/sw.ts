@@ -47,7 +47,7 @@ try {
             },
             {
                 id: '7',
-                title: 'Ludicrous Speed (2x)',
+                title: 'Ludicrous Speed (2.25x)',
                 playbackRate: 2.25
             },
             {
