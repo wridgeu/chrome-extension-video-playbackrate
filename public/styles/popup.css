@@ -1,13 +1,7 @@
 body {
-    margin-left: 27px;
-    margin-right: 27px;
-}
-
-ui5-slider {
-    height: auto;
-    width: auto;
-    outline: none;
-    padding: 1vh;
+    width: 450px;
+    margin-left: 3vw;
+    margin-right: 3vw;
 }
 
 ui5-slider::part(handle) {
