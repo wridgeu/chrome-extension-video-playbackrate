@@ -22,12 +22,10 @@ I'm just getting started with this and build it in public in order to hold mysel
   - Kind of answered this myself, although not really using a third party library but WebComponents instead
 
 What else could I do with it?
-  - [ ] Add button for .X speed adjustments
-  - [ ] Rework UI & use ShadowParts (Shadow DOM CSS)
-  - [ ] Add proper error-handling
-  - [ ] Make extension cross-browser compatible
+  - [x] Rework UI & use ShadowParts (Shadow DOM CSS)
+  - [x] Add proper error-handling
+  - [ ] Make extension cross-browser compatible(?)
   - [ ] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
-  - [ ] Contribution Guidelines (templates?)
   - [X] Learn more about .d.ts files and how to declare & add them into the project
   - [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
   - [x] Configure [prettier](https://prettier.io/docs/en/install.html)
