@@ -37,8 +37,8 @@
   "author": "Marco Beier",
   "license": "Derived Beerware License",
   "devDependencies": {
+    "@rollup/plugin-typescript": "^8.3.2",
     "@rollup/plugin-node-resolve": "^13.2.1",
-    "@rollup/plugin-typescript": "^8.3.1",
     "@types/chrome": "^0.0.180",
     "@typescript-eslint/eslint-plugin": "^5.17.0",
     "@typescript-eslint/parser": "^5.17.0",
