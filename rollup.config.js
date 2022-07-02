@@ -5,25 +5,25 @@ import multiInput from 'rollup-plugin-multi-input';
 import copy from 'rollup-plugin-copy';
 
 export default {
-    input: ['src/*.ts'],
-    output: {
-        format: 'esm',
-        dir: 'dist/js/'
-    },
-    plugins: [
-        multiInput(),
-        typescript({
-            module: 'ESNext'
-        }),
-        nodeResolve(),
-        terser(),
-        copy({
-            targets: [
-                {
-                    src: 'public/*',
-                    dest: 'dist'
-                }
-            ]
-        })
-    ]
+  input: ['src/*.ts', '!src/*.d.ts'],
+  output: {
+    format: 'esm',
+    dir: 'dist/js/',
+  },
+  plugins: [
+    nodeResolve(),
+    typescript({      
+      module: 'ESNext',      
+    }),
+    multiInput(),
+    terser(),
+    copy({
+      targets: [
+        {
+          src: 'public/*',
+          dest: 'dist',
+        },
+      ],
+    }),
+  ],
 };

@@ -10,8 +10,10 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "sourceMap": false,
-    "noEmitOnError": true,
     "moduleResolution": "Node",
-    "typeRoots": ["./node_modules/@types", "./types/index.d.ts"]
+    "typeRoots": [
+      "./node_modules/@types",
+      "src/types.d.ts"
+    ]
   }
 }

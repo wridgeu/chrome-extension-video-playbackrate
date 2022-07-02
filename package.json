@@ -1,20 +1,19 @@
 {
   "name": "cbe-vpr",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Some experiment with browser extensions.",
   "repository": {
     "type": "git",
     "url": "https://github.com/wridgeu/chrome-extension-video-playbackrate.git",
     "directory": "src"
   },
-  "types": "./types/index.d.ts",
   "scripts": {
     "build": "rollup -c rollup.config.js ",
     "watch": "npm-watch _watch_build",
     "cleanup": "rimraf dist *.dist.zip",
     "_watch_build": "npm run cleanup && npm run build",
-    "prettier": "prettier --write .",
-    "eslint": "eslint",
+    "lint": "eslint && prettier --check src",
+    "lint:fix": "eslint  --fix && prettier --write src",
     "prepare": "husky install",
     "zip": "npm-build-zip --name=dist --source=./dist"
   },
@@ -37,12 +36,12 @@
   "author": "Marco Beier",
   "license": "Derived Beerware License",
   "devDependencies": {
-    "@rollup/plugin-typescript": "^8.3.3",
     "@rollup/plugin-node-resolve": "^13.3.0",
+    "@rollup/plugin-typescript": "^8.3.3",
     "@types/chrome": "^0.0.191",
     "@typescript-eslint/eslint-plugin": "^5.30.3",
     "@typescript-eslint/parser": "^5.30.3",
-    "eslint": "^8.18.0",
+    "eslint": "^8.19.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^8.5.0",
     "husky": "^8.0.1",
