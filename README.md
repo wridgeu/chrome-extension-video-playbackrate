@@ -24,7 +24,6 @@ I'm just getting started with this and build it in public in order to hold mysel
 What else could I do with it?
   - [x] Rework UI & use ShadowParts (Shadow DOM CSS)
   - [x] Add proper error-handling
-  - [?] Make extension cross-browser compatible
   - [X] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
   - [X] Learn more about .d.ts files and how to declare & add them into the project
   - [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
@@ -33,6 +32,8 @@ What else could I do with it?
   - [x] Rethink the folder structure
   - [x] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
     - TS => JS => bundle/build/merge JS + Public folder => Dist
+  - [?] Make extension cross-browser compatible
+  - [?] Refactoring & Creation of Types 
 
 ## Architectural _Overview_ of an Extension
 

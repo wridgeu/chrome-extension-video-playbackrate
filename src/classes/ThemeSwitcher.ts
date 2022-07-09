@@ -44,7 +44,7 @@ export class ThemeSwitcher {
 	}
 
 	/**
-	 *
+	 * @method
 	 * @return {boolean}
 	 */
 	public async getIsDarkMode(): Promise<boolean> {
@@ -52,7 +52,7 @@ export class ThemeSwitcher {
 	}
 
 	/**
-	 *
+	 * @method
 	 * @return {boolean}
 	 */
 	private async isCurrentModeDarkMode(): Promise<boolean> {
@@ -78,6 +78,7 @@ export class ThemeSwitcher {
 
 	/**
 	 * Write currently set theme into memory
+	 * @method
 	 */
 	private async getLatestTheme(): Promise<string> {
 		const { theme } = await chrome.storage.sync.get('theme');

@@ -11,12 +11,12 @@ import { ThemeSwitcher } from './classes/ThemeSwitcher';
  * @todo add types, refactor saving mechanism -> central save (shaking of data)
  */
 document.addEventListener('DOMContentLoaded', async () => {
-	const ts = new ThemeSwitcher();
+	const themeSwitcher = new ThemeSwitcher();
 	const themeToggle = <any>document.getElementById('themeToggle')!;
 	const defaultsEnabledCheckbox = <any>document.getElementById('defaultsEnabledCheckbox')!;
 	const defaultSpeedSelector = <any>document.getElementById('defaultSpeedSelector')!;
 
-	ts.init();
+	themeSwitcher.init();
 	themeToggle.checked = await ts.getIsDarkMode();
 
 	// @todo refactor
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	}
 
 	themeToggle.addEventListener('change', async (event: any) => {
-		ts.toggle();
+		themeSwitcher.toggle();
 	});
 
 	defaultsEnabledCheckbox.addEventListener('change', async (event: any) => {

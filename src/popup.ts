@@ -3,8 +3,8 @@ import '@ui5/webcomponents/dist/Slider';
 import { ThemeSwitcher } from './classes/ThemeSwitcher';
 
 document.addEventListener('DOMContentLoaded', async () => {
-	const ts = new ThemeSwitcher();
-	ts.init();
+	const themeSwitcher = new ThemeSwitcher();
+	themeSwitcher.init();
 	const sliderComponent = <IUi5Slider>document.getElementById('sliderWebComponent');
 	const [{ id }] = await chrome.tabs.query({ active: true, currentWindow: true });
 
