@@ -14,7 +14,7 @@
     margin-bottom: 12vh;
 }
 
-.speed-setting-selector {
+.input-group {
     display: flex;
     flex-flow: column;
     padding-left: 3vw;

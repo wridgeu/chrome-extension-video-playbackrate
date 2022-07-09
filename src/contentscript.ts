@@ -24,7 +24,7 @@ import { ChromeMessagingRequest, ChromeMessagingRequestAction } from './types';
 
 // https://developer.chrome.com/docs/extensions/mv3/messaging/
 chrome.runtime.onMessage.addListener((request: ChromeMessagingRequest, _, sendResponse) => {
-	let [videoElement] = document.querySelectorAll('video');
+	const [videoElement] = document.querySelectorAll('video');
 
 	if (!videoElement && request.action !== ChromeMessagingRequestAction.SETSPECIFIC) {
 		return true;

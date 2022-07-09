@@ -3,11 +3,3 @@ body {
     margin-left: 3vw;
     margin-right: 3vw;
 }
-
-ui5-slider::part(handle) {
-    height: 15px;
-    width: 15px;
-    margin-left: -9px;
-    margin-top: 6px;
-    outline-offset: 0.045rem;
-}

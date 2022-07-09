@@ -1,15 +1,23 @@
+import { Defaults } from './types';
+import '@ui5/webcomponents/dist/Switch';
 import '@ui5/webcomponents/dist/CheckBox';
 import '@ui5/webcomponents/dist/Select';
 import '@ui5/webcomponents/dist/Option';
 import '@ui5/webcomponents/dist/Label';
-import { Defaults } from './types';
+import '@ui5/webcomponents/dist/Title';
+import { ThemeSwitcher } from './classes/ThemeSwitcher';
 
 /**
  * @todo add types, refactor saving mechanism -> central save (shaking of data)
  */
 document.addEventListener('DOMContentLoaded', async () => {
+	const ts = new ThemeSwitcher();
+	const themeToggle = <any>document.getElementById('themeToggle')!;
 	const defaultsEnabledCheckbox = <any>document.getElementById('defaultsEnabledCheckbox')!;
 	const defaultSpeedSelector = <any>document.getElementById('defaultSpeedSelector')!;
+
+	ts.init();
+	themeToggle.checked = await ts.getIsDarkMode();
 
 	// @todo refactor
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
@@ -20,6 +28,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 	if (defaults?.playbackRate) {
 		document.getElementById(`option-${defaults.playbackRate}`)?.setAttribute('selected', '');
 	}
+
+	themeToggle.addEventListener('change', async (event: any) => {
+		ts.toggle();
+	});
 
 	defaultsEnabledCheckbox.addEventListener('change', async (event: any) => {
 		if (event.target.checked === true) {
