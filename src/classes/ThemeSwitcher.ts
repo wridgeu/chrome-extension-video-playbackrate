@@ -17,7 +17,7 @@ export class ThemeSwitcher {
 	 * In case we have one already saved (so set previously), use this one.
 	 * If we don't have one saved, use and set one based on preference.
 	 */
-	public async init() {
+	public async init(): Promise<void> {
 		const currentActiveTheme = await this.getLatestTheme();
 		if (!currentActiveTheme) {
 			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -99,10 +99,11 @@ export class ThemeSwitcher {
 	}
 
 	/**
+	 * @todo could be merged with setLightTheme
 	 * @method
 	 * @private
 	 */
-	private setDarkTheme() {
+	private setDarkTheme(): void {
 		setTheme(this.#darkTheme);
 		this.adjustBackgroundColor(this.#darkThemeBackgroundColor);
 		this.storeLatestTheme(this.#darkTheme);
@@ -112,7 +113,7 @@ export class ThemeSwitcher {
 	 * @method
 	 * @private
 	 */
-	private setLightTheme() {
+	private setLightTheme(): void {
 		setTheme(this.#lightTheme);
 		this.adjustBackgroundColor(this.#lightThemeBackgroundColor);
 		this.storeLatestTheme(this.#lightTheme);
