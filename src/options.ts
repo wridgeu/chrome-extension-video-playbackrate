@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const defaultSpeedSelector = <any>document.getElementById('defaultSpeedSelector')!;
 
 	themeSwitcher.init();
-	themeToggle.checked = await ts.getIsDarkMode();
+	themeToggle.checked = await themeSwitcher.getIsDarkMode();
 
 	// @todo refactor
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
