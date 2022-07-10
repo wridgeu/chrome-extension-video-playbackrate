@@ -6,10 +6,10 @@ import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js
  * @class
  */
 export class ThemeSwitcher {
-	private darkThemeBackgroundColor = '#1d232a';
-	private lightThemeBackgroundColor = '#fff';
-	private darkTheme = 'sap_horizon_dark';
-	private lightTheme = 'sap_horizon';
+	#darkThemeBackgroundColor = '#1d232a';
+	#lightThemeBackgroundColor = '#fff';
+	#darkTheme = 'sap_horizon_dark';
+	#lightTheme = 'sap_horizon';
 
 	/**
 	 * Initialize the currently active theme.
@@ -25,7 +25,7 @@ export class ThemeSwitcher {
 			} else {
 				this.setLightTheme();
 			}
-		} else if (currentActiveTheme === this.darkTheme) {
+		} else if (currentActiveTheme === this.#darkTheme) {
 			this.setDarkTheme();
 		} else {
 			this.setLightTheme();
@@ -57,7 +57,7 @@ export class ThemeSwitcher {
 	 */
 	private async isCurrentModeDarkMode(): Promise<boolean> {
 		const currentActiveTheme = (await this.getLatestTheme()) || getTheme();
-		if (currentActiveTheme === this.darkTheme) {
+		if (currentActiveTheme === this.#darkTheme) {
 			return true;
 		} else {
 			return false;
@@ -103,9 +103,9 @@ export class ThemeSwitcher {
 	 * @private
 	 */
 	private setDarkTheme() {
-		setTheme(this.darkTheme);
-		this.adjustBackgroundColor(this.darkThemeBackgroundColor);
-		this.storeLatestTheme(this.darkTheme);
+		setTheme(this.#darkTheme);
+		this.adjustBackgroundColor(this.#darkThemeBackgroundColor);
+		this.storeLatestTheme(this.#darkTheme);
 	}
 
 	/**
@@ -113,8 +113,8 @@ export class ThemeSwitcher {
 	 * @private
 	 */
 	private setLightTheme() {
-		setTheme(this.lightTheme);
-		this.adjustBackgroundColor(this.lightThemeBackgroundColor);
-		this.storeLatestTheme(this.lightTheme);
+		setTheme(this.#lightTheme);
+		this.adjustBackgroundColor(this.#lightThemeBackgroundColor);
+		this.storeLatestTheme(this.#lightTheme);
 	}
 }
