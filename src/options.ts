@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const defaultsEnabledCheckbox = <any>document.getElementById('defaultsEnabledCheckbox')!;
 	const defaultSpeedSelector = <any>document.getElementById('defaultSpeedSelector')!;
 
-	themeSwitcher.init();
 	themeToggle.checked = await themeSwitcher.getIsDarkMode();
 
 	// @todo refactor
@@ -29,19 +28,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 		document.getElementById(`option-${defaults.playbackRate}`)?.setAttribute('selected', '');
 	}
 
-	themeToggle.addEventListener('change', async (event: any) => {
-		themeSwitcher.toggle();
-	});
+	themeToggle.addEventListener('change', async () => themeSwitcher.toggle());
 
-	defaultsEnabledCheckbox.addEventListener('change', async (event: any) => {
-		if (event.target.checked === true) {
+	defaultsEnabledCheckbox.addEventListener('change', async (event: Event) => {
+		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
+		if (checkboxIsChecked === true) {
 			defaultSpeedSelector.disabled = false;
 		} else {
 			defaultSpeedSelector.disabled = true;
 		}
 		await chrome.storage.sync.set({
 			defaults: {
-				enabled: event.target.checked,
+				enabled: checkboxIsChecked,
 				playbackRate: defaultSpeedSelector.selectedOption.getInnerHTML()
 			}
 		});

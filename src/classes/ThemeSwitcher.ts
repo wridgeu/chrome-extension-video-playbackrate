@@ -1,50 +1,63 @@
 import '@ui5/webcomponents/dist/Assets.js';
 import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js';
 
+enum Theme {
+	dark = 'sap_horizon_dark',
+	light = 'sap_horizon'
+}
+
+enum ThemeBackgroundColor {
+	dark = '#1d232a',
+	light = '#fff'
+}
+
 /**
  * Class responsible for switching themes and adjusting the body (background color).
  * @class
  */
 export class ThemeSwitcher {
-	#darkThemeBackgroundColor = '#1d232a';
-	#lightThemeBackgroundColor = '#fff';
-	#darkTheme = 'sap_horizon_dark';
-	#lightTheme = 'sap_horizon';
-
 	/**
 	 * Initialize the currently active theme.
 	 *
 	 * In case we have one already saved (so set previously), use this one.
 	 * If we don't have one saved, use and set one based on preference.
+	 * @constructor
 	 */
-	public async init(): Promise<void> {
-		const currentActiveTheme = await this.getLatestTheme();
-		if (!currentActiveTheme) {
-			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-				this.setDarkTheme();
-			} else {
-				this.setLightTheme();
-			}
-		} else if (currentActiveTheme === this.#darkTheme) {
-			this.setDarkTheme();
-		} else {
-			this.setLightTheme();
-		}
+	constructor() {
+		this.getLatestTheme()
+			.then((currentActiveTheme) => {
+				if (!currentActiveTheme) {
+					if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+						this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
+					} else {
+						this.setTheme(Theme.light, ThemeBackgroundColor.light);
+					}
+				} else {
+					this.setTheme(
+						currentActiveTheme,
+						currentActiveTheme === Theme.dark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light
+					);
+				}
+			})
+			.catch((e) => {
+				console.log(e);
+			});
 	}
 
 	/**
 	 * Toggle between the themes!
+	 * @public
 	 */
 	public async toggle(): Promise<void> {
 		if (await this.isCurrentModeDarkMode()) {
-			this.setLightTheme();
+			this.setTheme(Theme.light, ThemeBackgroundColor.light);
 		} else {
-			this.setDarkTheme();
+			this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
 		}
 	}
 
 	/**
-	 * @method
+	 * @public
 	 * @return {boolean}
 	 */
 	public async getIsDarkMode(): Promise<boolean> {
@@ -52,12 +65,12 @@ export class ThemeSwitcher {
 	}
 
 	/**
-	 * @method
+	 * @private
 	 * @return {boolean}
 	 */
 	private async isCurrentModeDarkMode(): Promise<boolean> {
 		const currentActiveTheme = (await this.getLatestTheme()) || getTheme();
-		if (currentActiveTheme === this.#darkTheme) {
+		if (currentActiveTheme === Theme.dark) {
 			return true;
 		} else {
 			return false;
@@ -67,7 +80,6 @@ export class ThemeSwitcher {
 	/**
 	 * Write currently set theme into memory
 	 * @private
-	 * @method
 	 * @param {string} currentTheme
 	 */
 	private async storeLatestTheme(currentTheme: string): Promise<void> {
@@ -78,7 +90,7 @@ export class ThemeSwitcher {
 
 	/**
 	 * Write currently set theme into memory
-	 * @method
+	 * @private
 	 */
 	private async getLatestTheme(): Promise<string> {
 		const { theme } = await chrome.storage.sync.get('theme');
@@ -88,34 +100,23 @@ export class ThemeSwitcher {
 	/**
 	 * In addition to setting the theme, we have to adjust the
 	 * background of the body as it has no connection to UI5/Fiori
-	 * @method
 	 * @private
 	 * @param {string} color
 	 */
-	private adjustBackgroundColor(color: string): void {
+	private setBackgroundColor(color: string): void {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const currentHtmlBody = <HTMLBodyElement>document.querySelector('body')!;
 		currentHtmlBody.style.backgroundColor = color;
 	}
 
 	/**
-	 * @todo could be merged with setLightTheme
-	 * @method
 	 * @private
+	 * @param {Theme} themeName
+	 * @param {string} backgroundColor
 	 */
-	private setDarkTheme(): void {
-		setTheme(this.#darkTheme);
-		this.adjustBackgroundColor(this.#darkThemeBackgroundColor);
-		this.storeLatestTheme(this.#darkTheme);
-	}
-
-	/**
-	 * @method
-	 * @private
-	 */
-	private setLightTheme(): void {
-		setTheme(this.#lightTheme);
-		this.adjustBackgroundColor(this.#lightThemeBackgroundColor);
-		this.storeLatestTheme(this.#lightTheme);
+	private setTheme(themeName: string, backgroundColor: string): void {
+		setTheme(themeName);
+		this.setBackgroundColor(backgroundColor);
+		this.storeLatestTheme(themeName);
 	}
 }

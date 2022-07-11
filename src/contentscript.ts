@@ -4,7 +4,7 @@ import { ChromeMessagingRequest, ChromeMessagingRequestAction } from './types';
 (async () => {
 	const { defaults } = await chrome.storage.sync.get('defaults');
 	if (defaults?.enabled) {
-		const videoElement = <HTMLVideoElement>document.querySelectorAll('video')[0];
+		const [videoElement] = document.querySelectorAll('video');
 		if (!videoElement) return;
 		videoElement.playbackRate = defaults.playbackRate;
 		const observer = new MutationObserver((mutationList: MutationRecord[]) => {
