@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 			} else {
 				sliderComponent.value = 1;
 			}
+
+			chrome.action.setBadgeText({
+				text: `${sliderComponent.value}`,
+				tabId: id
+			});
 		}
 	);
 
@@ -30,6 +35,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		chrome.tabs.sendMessage(<number>id, {
 			action: ChromeMessagingRequestAction.SET,
 			playbackRate: targetSpeed
+		});
+		chrome.action.setBadgeText({
+			text: `${targetSpeed}`,
+			tabId: id
 		});
 	});
 });
