@@ -1,12 +1,14 @@
-import { ChromeMessagingRequest, ChromeMessagingRequestAction } from './types';
+import { ChromeMessagingRequest, ChromeMessagingRequestAction, Defaults } from './types';
 
 // Set playbackrate defaults
 (async () => {
-	const { defaults } = await chrome.storage.sync.get('defaults');
+	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
 	if (defaults?.enabled) {
 		const [videoElement] = document.querySelectorAll('video');
+
 		if (!videoElement) return;
 		videoElement.playbackRate = defaults.playbackRate;
+
 		const observer = new MutationObserver((mutationList: MutationRecord[]) => {
 			for (const mutation of mutationList) {
 				if (mutation.type === 'attributes' && mutation.attributeName === 'src') {

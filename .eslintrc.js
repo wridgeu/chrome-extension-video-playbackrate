@@ -18,6 +18,8 @@ module.exports = {
         }],
         'linebreak-style': 0,
         "no-unused-vars": "off",
-        "@typescript-eslint/no-unused-vars": "error"
+        "require-jsdoc": "off",
+        "@typescript-eslint/no-unused-vars": "error",
+        "@typescript-eslint/no-non-null-assertion": "off"
     },
 };

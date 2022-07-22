@@ -29,10 +29,10 @@ export type ContextMenuStorage = {
 };
 
 export type ContextMenuOption = {
-	id: number;
+	id: string;
 	title: string;
 	playbackRate: number;
-	default: boolean;
+	default?: boolean;
 };
 
 /**
@@ -48,4 +48,9 @@ export interface IUi5Slider extends HTMLElement {
 	showTickmarks: boolean;
 	showTooltip: boolean;
 	step: boolean;
+}
+
+export interface IUi5Select extends HTMLSelectElement {
+	disabled: boolean;
+	selectedOption: HTMLOptionElement;
 }

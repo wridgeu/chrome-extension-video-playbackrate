@@ -1,4 +1,4 @@
-import { Defaults } from './types';
+import { Defaults, IUi5Select } from './types';
 import '@ui5/webcomponents/dist/Switch';
 import '@ui5/webcomponents/dist/CheckBox';
 import '@ui5/webcomponents/dist/Select';
@@ -7,50 +7,62 @@ import '@ui5/webcomponents/dist/Label';
 import '@ui5/webcomponents/dist/Title';
 import { ThemeSwitcher } from './classes/ThemeSwitcher';
 
-/**
- * @todo add types, refactor saving mechanism -> central save (shaking of data)
- */
 document.addEventListener('DOMContentLoaded', async () => {
 	const themeSwitcher = new ThemeSwitcher();
-	const themeToggle = <any>document.getElementById('themeToggle')!;
-	const defaultsEnabledCheckbox = <any>document.getElementById('defaultsEnabledCheckbox')!;
-	const defaultSpeedSelector = <any>document.getElementById('defaultSpeedSelector')!;
+	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
+	const themeToggle = <HTMLInputElement>document.getElementById('themeToggle')!;
+	const defaultsCheckbox = <HTMLInputElement>document.getElementById('defaultsEnabledCheckbox')!;
+	const defaultSpeedSelector = <IUi5Select>document.getElementById('defaultSpeedSelector')!;
 
 	themeToggle.checked = await themeSwitcher.getIsDarkMode();
-
-	// @todo refactor
-	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
-	defaultsEnabledCheckbox.checked = defaults?.enabled || false;
-	if (defaultsEnabledCheckbox.checked) {
-		defaultSpeedSelector.disabled = false;
-	}
-	if (defaults?.playbackRate) {
-		document.getElementById(`option-${defaults.playbackRate}`)?.setAttribute('selected', '');
-	}
+	initDefaults(defaults, defaultsCheckbox, defaultSpeedSelector);
 
 	themeToggle.addEventListener('change', async () => themeSwitcher.toggle());
 
-	defaultsEnabledCheckbox.addEventListener('change', async (event: Event) => {
+	defaultsCheckbox.addEventListener('change', async (event: Event) => {
 		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
 		if (checkboxIsChecked === true) {
 			defaultSpeedSelector.disabled = false;
 		} else {
 			defaultSpeedSelector.disabled = true;
 		}
-		await chrome.storage.sync.set({
-			defaults: {
-				enabled: checkboxIsChecked,
-				playbackRate: defaultSpeedSelector.selectedOption.getInnerHTML()
-			}
-		});
+
+		await saveDefaults(checkboxIsChecked, defaultSpeedSelector.selectedOption.innerText);
 	});
 
 	defaultSpeedSelector.addEventListener('change', async () => {
-		await chrome.storage.sync.set({
-			defaults: {
-				enabled: defaultsEnabledCheckbox.checked,
-				playbackRate: defaultSpeedSelector.selectedOption.getInnerHTML()
-			}
-		});
+		await saveDefaults(defaultsCheckbox.checked, defaultSpeedSelector.selectedOption.innerText);
 	});
 });
+
+/**
+ * Wrapper for the chrome.storage.sync for default settings.
+ *
+ * @param {boolean} checkBoxState
+ * @param {string} playbackRate
+ */
+async function saveDefaults(checkBoxState: boolean, playbackRate: string) {
+	await chrome.storage.sync.set({
+		defaults: {
+			enabled: checkBoxState,
+			playbackRate: parseInt(playbackRate) // parse our string to a number
+		}
+	});
+}
+
+function initDefaults(
+	defaults: {
+		enabled?: boolean | undefined;
+		playbackRate?: number | undefined;
+	},
+	defaultsCheckbox: HTMLInputElement,
+	defaultSpeedSelector: IUi5Select
+): void {
+	defaultsCheckbox.checked = defaults?.enabled || false;
+	if (defaultsCheckbox.checked) {
+		defaultSpeedSelector.disabled = false;
+	}
+	if (defaults?.playbackRate) {
+		document.getElementById(`option-${defaults.playbackRate}`)?.setAttribute('selected', '');
+	}
+}
