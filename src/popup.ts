@@ -2,7 +2,7 @@ import { ChromeMessagingRequestAction, ChromeMessagingResponse, IUi5Slider } fro
 import '@ui5/webcomponents/dist/Slider';
 import { ThemeSwitcher } from './classes/ThemeSwitcher';
 
-document.addEventListener('DOMContentLoaded', async () => {
+(async () => {
 	new ThemeSwitcher(); // Initialize
 	const sliderComponent = <IUi5Slider>document.getElementById('sliderWebComponent');
 	const [{ id }] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -41,4 +41,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 			tabId: id
 		});
 	});
-});
+})();
