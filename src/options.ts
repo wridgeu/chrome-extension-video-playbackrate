@@ -7,7 +7,7 @@ import '@ui5/webcomponents/dist/Label';
 import '@ui5/webcomponents/dist/Title';
 import { ThemeSwitcher } from './classes/ThemeSwitcher';
 
-document.addEventListener('DOMContentLoaded', async () => {
+(async () => {
 	const themeSwitcher = new ThemeSwitcher();
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
 	const themeToggle = <HTMLInputElement>document.getElementById('themeToggle')!;
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 	defaultSpeedSelector.addEventListener('change', async () => {
 		await saveDefaults(defaultsCheckbox.checked, defaultSpeedSelector.selectedOption.innerText);
 	});
-});
+})();
 
 /**
  * Wrapper for the chrome.storage.sync for default settings.
