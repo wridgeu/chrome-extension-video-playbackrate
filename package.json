@@ -43,7 +43,7 @@
     "@types/chrome": "^0.0.193",
     "@typescript-eslint/eslint-plugin": "^5.32.0",
     "@typescript-eslint/parser": "^5.32.0",
-    "eslint": "^8.21.0",
+    "eslint": "^8.23.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^8.5.0",
     "husky": "^8.0.1",
