@@ -20,10 +20,10 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - name: Build extension source => dist => zip
       run: |
-        npm i
-        npm run cleanup
-        npm run build
-        npm run zip
+        yarn install
+        yarn cleanup
+        yarn build
+        yarn zip
       env:
         CI: true
     - name: Create release
