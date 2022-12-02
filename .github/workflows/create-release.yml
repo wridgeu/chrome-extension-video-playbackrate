@@ -12,13 +12,13 @@ jobs:
         node-version: [16.x]
 
     steps:
-    - name: Checkout repository
+    - name: checkout repository
       uses: actions/checkout@v2
     - name: use node ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - name: Build extension source => dist => zip
+    - name: build extension source => dist => zip
       run: |
         yarn install
         yarn cleanup
@@ -26,7 +26,7 @@ jobs:
         yarn zip
       env:
         CI: true
-    - name: Create release
+    - name: create release
       uses: ncipollo/release-action@v1
       with:
         artifacts: "*.dist.zip"
