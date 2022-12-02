@@ -7,12 +7,12 @@ import { ChromeMessagingRequest, ChromeMessagingRequestAction, Defaults } from '
 		const [videoElement] = document.querySelectorAll('video');
 
 		if (!videoElement) return;
-		videoElement.playbackRate = defaults.playbackRate;
+		videoElement.playbackRate = defaults.playbackRate || 1;
 
 		const observer = new MutationObserver((mutationList: MutationRecord[]) => {
 			for (const mutation of mutationList) {
 				if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-					videoElement.playbackRate = defaults.playbackRate;
+					videoElement.playbackRate = defaults.playbackRate || 1;
 				}
 			}
 			videoElement.addEventListener('ratechange', () => observer.disconnect());
