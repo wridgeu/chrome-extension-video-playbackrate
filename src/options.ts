@@ -10,14 +10,14 @@ import { ThemeSwitcher } from './classes/ThemeSwitcher';
 (async () => {
 	const themeSwitcher = new ThemeSwitcher();
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
-	const themeToggle = <HTMLInputElement>document.getElementById('themeToggle')!;
+	const themeToggleCheckbox = <HTMLInputElement>document.getElementById('themeToggle')!;
 	const defaultsCheckbox = <HTMLInputElement>document.getElementById('defaultsEnabledCheckbox')!;
 	const defaultSpeedSelector = <IUi5Select>document.getElementById('defaultSpeedSelector')!;
 
-	themeToggle.checked = await themeSwitcher.getIsDarkMode();
+	themeToggleCheckbox.checked = await themeSwitcher.isDarkModeActive();
 	initDefaults(defaults, defaultsCheckbox, defaultSpeedSelector);
 
-	themeToggle.addEventListener('change', async () => themeSwitcher.toggle());
+	themeToggleCheckbox.addEventListener('change', async () => themeSwitcher.toggle());
 
 	defaultsCheckbox.addEventListener('change', async (event: Event) => {
 		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;

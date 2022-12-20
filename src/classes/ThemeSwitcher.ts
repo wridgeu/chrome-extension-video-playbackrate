@@ -22,7 +22,7 @@ export class ThemeSwitcher {
 	 * Initialize the currently active theme.
 	 *
 	 * In case we have one already saved (so set previously), use this one.
-	 * If we don't have one saved, use and set one based on preference.
+	 * If we don't have one saved, set based on preference.
 	 * @constructor
 	 */
 	constructor() {
@@ -51,7 +51,7 @@ export class ThemeSwitcher {
 	 * @public
 	 */
 	public async toggle(): Promise<void> {
-		if (await this.isCurrentModeDarkMode()) {
+		if (await this.isDarkModeActive()) {
 			this.setTheme(Theme.light, ThemeBackgroundColor.light);
 		} else {
 			this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
@@ -62,15 +62,7 @@ export class ThemeSwitcher {
 	 * @public
 	 * @return {boolean}
 	 */
-	public async getIsDarkMode(): Promise<boolean> {
-		return this.isCurrentModeDarkMode();
-	}
-
-	/**
-	 * @private
-	 * @return {boolean}
-	 */
-	private async isCurrentModeDarkMode(): Promise<boolean> {
+	public async isDarkModeActive(): Promise<boolean> {
 		const currentActiveTheme = (await this.getLatestTheme()) || getTheme();
 		if (currentActiveTheme === Theme.dark) {
 			return true;
