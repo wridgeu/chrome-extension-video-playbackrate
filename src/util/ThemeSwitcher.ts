@@ -19,31 +19,26 @@ enum ThemeBackgroundColor {
  */
 export class ThemeSwitcher {
 	/**
-	 * Initialize the currently active theme.
+	 * Initialize (set) the currently active theme.
 	 *
 	 * In case we have one already saved (so set previously), use this one.
 	 * If we don't have one saved, set based on preference.
-	 * @constructor
 	 */
-	constructor() {
-		this.getLatestTheme()
-			.then((currentActiveTheme) => {
-				if (!currentActiveTheme) {
-					if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-						this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
-					} else {
-						this.setTheme(Theme.light, ThemeBackgroundColor.light);
-					}
-				} else {
-					this.setTheme(
-						currentActiveTheme,
-						currentActiveTheme === Theme.dark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light
-					);
-				}
-			})
-			.catch((e) => {
-				console.log(e);
-			});
+	public async init(): Promise<ThemeSwitcher> {
+		const activeTheme = await this.getLatestTheme();
+		if (!activeTheme) {
+			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+				this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
+			} else {
+				this.setTheme(Theme.light, ThemeBackgroundColor.light);
+			}
+		} else {
+			this.setTheme(
+				activeTheme,
+				activeTheme === Theme.dark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light
+			);
+		}
+		return this;
 	}
 
 	/**
@@ -72,23 +67,24 @@ export class ThemeSwitcher {
 	}
 
 	/**
-	 * Write currently set theme into memory
+	 * Retrieve last set theme from stroage
 	 * @private
 	 * @param {string} currentTheme
-	 */
-	private async storeLatestTheme(currentTheme: string): Promise<void> {
-		await chrome.storage.sync.set({
-			theme: currentTheme
-		});
-	}
-
-	/**
-	 * Write currently set theme into memory
-	 * @private
 	 */
 	private async getLatestTheme(): Promise<string> {
 		const { theme } = await chrome.storage.sync.get('theme');
 		return theme;
+	}
+
+	/**
+	 * Write currently set theme into storage
+	 * @private
+	 * @param {string} currentTheme
+	 */
+	private async setLatestTheme(currentTheme: string): Promise<void> {
+		await chrome.storage.sync.set({
+			theme: currentTheme
+		});
 	}
 
 	/**
@@ -111,6 +107,6 @@ export class ThemeSwitcher {
 	private setTheme(themeName: string, backgroundColor: string): void {
 		setTheme(themeName);
 		this.setBackgroundColor(backgroundColor);
-		this.storeLatestTheme(themeName);
+		this.setLatestTheme(themeName);
 	}
 }

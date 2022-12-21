@@ -5,19 +5,14 @@ import '@ui5/webcomponents/dist/Select';
 import '@ui5/webcomponents/dist/Option';
 import '@ui5/webcomponents/dist/Label';
 import '@ui5/webcomponents/dist/Title';
-import { ThemeSwitcher } from './classes/ThemeSwitcher';
+import { ThemeSwitcher } from './util/ThemeSwitcher';
 
 (async () => {
-	const themeSwitcher = new ThemeSwitcher();
-	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
-	const themeToggleCheckbox = <HTMLInputElement>document.getElementById('themeToggle')!;
 	const defaultsCheckbox = <HTMLInputElement>document.getElementById('defaultsEnabledCheckbox')!;
 	const defaultSpeedSelector = <IUi5Select>document.getElementById('defaultSpeedSelector')!;
 
-	themeToggleCheckbox.checked = await themeSwitcher.isDarkModeActive();
-	initDefaults(defaults, defaultsCheckbox, defaultSpeedSelector);
-
-	themeToggleCheckbox.addEventListener('change', async () => themeSwitcher.toggle());
+	await initDefaults(defaultsCheckbox, defaultSpeedSelector);
+	await initThemeToggle();
 
 	defaultsCheckbox.addEventListener('change', async (event: Event) => {
 		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
@@ -50,14 +45,8 @@ async function saveDefaults(checkBoxState: boolean, playbackRate: string) {
 	});
 }
 
-function initDefaults(
-	defaults: {
-		enabled?: boolean | undefined;
-		playbackRate?: number | undefined;
-	},
-	defaultsCheckbox: HTMLInputElement,
-	defaultSpeedSelector: IUi5Select
-): void {
+async function initDefaults(defaultsCheckbox: HTMLInputElement, defaultSpeedSelector: IUi5Select): Promise<void> {
+	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
 	defaultsCheckbox.checked = defaults?.enabled || false;
 	if (defaultsCheckbox.checked) {
 		defaultSpeedSelector.disabled = false;
@@ -65,4 +54,13 @@ function initDefaults(
 	if (defaults?.playbackRate) {
 		document.getElementById(`option-${defaults.playbackRate}`)?.setAttribute('selected', '');
 	}
+}
+
+async function initThemeToggle() {
+	const themeSwitcher = await new ThemeSwitcher().init();
+	const themeToggleCheckbox = <HTMLInputElement>document.getElementById('themeToggle')!;
+	themeToggleCheckbox.checked = await themeSwitcher.isDarkModeActive();
+	themeToggleCheckbox.addEventListener('change', async () => {
+		await themeSwitcher.toggle();
+	});
 }
