@@ -1,10 +1,10 @@
-import { ChromeMessagingRequestAction, ChromeMessagingResponse, IUi5Slider } from './types';
+import { ChromeMessagingRequestAction, ChromeMessagingResponse, IUI5Slider } from './types';
 import '@ui5/webcomponents/dist/Slider';
 import { ThemeSwitcher } from './util/ThemeSwitcher';
 
 (async () => {
 	await new ThemeSwitcher().init(); // Initialize
-	const sliderComponent = <IUi5Slider>document.getElementById('sliderWebComponent');
+	const sliderComponent = <IUI5Slider>document.getElementById('sliderWebComponent');
 	const [{ id }] = await chrome.tabs.query({ active: true, currentWindow: true });
 
 	/**
@@ -26,7 +26,7 @@ import { ThemeSwitcher } from './util/ThemeSwitcher';
 	 * Listen on change of UI5 Slider WebC
 	 */
 	sliderComponent.addEventListener('change', async (e: Event): Promise<void> => {
-		const targetSpeed = <number>(e.target as IUi5Slider).value;
+		const targetSpeed = <number>(e.target as IUI5Slider).value;
 		chrome.tabs.sendMessage(<number>id, {
 			action: ChromeMessagingRequestAction.SET,
 			playbackRate: targetSpeed

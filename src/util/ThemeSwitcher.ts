@@ -77,7 +77,7 @@ export class ThemeSwitcher {
 	}
 
 	/**
-	 * Write currently set theme into storage
+	 * Write current theme into storage
 	 * @private
 	 * @param {string} currentTheme
 	 */
