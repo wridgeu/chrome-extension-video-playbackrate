@@ -1,35 +1,27 @@
 import { ChromeMessagingRequestAction, ChromeMessagingResponse, IUI5Slider } from './types';
-import '@ui5/webcomponents/dist/Slider';
 import { ThemeSwitcher } from './util/ThemeSwitcher';
+import '@ui5/webcomponents/dist/Slider';
 
 (async () => {
-	await new ThemeSwitcher().init(); // Initialize
-	const sliderComponent = <IUI5Slider>document.getElementById('sliderWebComponent');
-	const [{ id }] = await chrome.tabs.query({ active: true, currentWindow: true });
+	await new ThemeSwitcher().init(); // Initialize/Set current theme
+	const slider = <IUI5Slider>document.getElementById('slider');
+	const [{ id: currentActiveTabId }] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-	/**
-	 * Initialize state
-	 */
-	chrome.tabs.sendMessage(
-		<number>id,
-		{ action: ChromeMessagingRequestAction.RETRIEVE },
-		(response: ChromeMessagingResponse) => {
-			if (!chrome.runtime.lastError && response) {
-				sliderComponent.value = response.playbackRate;
-			} else {
-				sliderComponent.value = 1;
-			}
-		}
-	);
+	// retrieve current video playbackrate && initialize slider state
+	const { playbackRate } = await (<Promise<ChromeMessagingResponse>>(
+		chrome.tabs.sendMessage(<number>currentActiveTabId, { action: ChromeMessagingRequestAction.RETRIEVE })
+	));
+	if (chrome.runtime.lastError || !playbackRate) {
+		slider.value = 1;
+	} else {
+		slider.value = playbackRate;
+	}
 
-	/**
-	 * Listen on change of UI5 Slider WebC
-	 */
-	sliderComponent.addEventListener('change', async (e: Event): Promise<void> => {
-		const targetSpeed = <number>(e.target as IUI5Slider).value;
-		chrome.tabs.sendMessage(<number>id, {
+	// listen on changes of slider component
+	slider.addEventListener('change', async (event: Event): Promise<void> => {
+		chrome.tabs.sendMessage(<number>currentActiveTabId, {
 			action: ChromeMessagingRequestAction.SET,
-			playbackRate: targetSpeed
+			playbackRate: <number>(event.target as IUI5Slider).value
 		});
 	});
 })();
