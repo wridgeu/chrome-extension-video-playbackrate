@@ -41,7 +41,7 @@
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@types/chrome": "^0.0.203",
     "@rollup/plugin-typescript": "^10.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/eslint-plugin": "^5.47.1",
     "@typescript-eslint/parser": "^5.45.0",
     "eslint": "^8.28.0",
     "eslint-config-google": "^0.14.0",
