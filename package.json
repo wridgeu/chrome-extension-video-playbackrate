@@ -37,27 +37,27 @@
   "author": "Marco Beier",
   "license": "Derived Beerware License",
   "devDependencies": {
-    "@rollup/plugin-json": "^5.0.2",
+    "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.0.1",
-    "@types/chrome": "^0.0.203",
+    "@types/chrome": "^0.0.206",
     "@rollup/plugin-typescript": "^10.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.45.0",
-    "@typescript-eslint/parser": "^5.45.0",
-    "eslint": "^8.28.0",
+    "@typescript-eslint/eslint-plugin": "^5.47.1",
+    "@typescript-eslint/parser": "^5.47.1",
+    "eslint": "^8.31.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^8.5.0",
     "husky": "^8.0.2",
     "npm-build-zip": "^1.0.3",
     "npm-watch": "^0.11.0",
-    "prettier": "^2.8.0",
+    "prettier": "^2.8.1",
     "rimraf": "^3.0.2",
-    "rollup": "^3.5.1",
+    "rollup": "^3.9.0",
     "rollup-plugin-copy": "^3.4.0",
     "rollup-plugin-multi-input": "^1.3.1",
     "rollup-plugin-terser": "^7.0.2",
-    "typescript": "^4.9.3"
+    "typescript": "^4.9.4"
   },
   "dependencies": {
-    "@ui5/webcomponents": "^1.9.1"
+    "@ui5/webcomponents": "^1.9.3"
   }
 }
