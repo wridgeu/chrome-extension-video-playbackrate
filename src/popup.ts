@@ -1,4 +1,4 @@
-import { ChromeMessagingRequestAction, ChromeMessagingResponse, IUI5Slider } from './types';
+import { ChromeMessagingRequestAction } from './contentscript';
 import { ThemeSwitcher } from './util/ThemeSwitcher';
 import '@ui5/webcomponents/dist/Slider';
 

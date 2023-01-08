@@ -1,6 +1,4 @@
 import '@ui5/webcomponents/dist/Assets.js';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js';
 
 enum Theme {

@@ -1,4 +1,3 @@
-import { Defaults, IUI5Select } from './types';
 import '@ui5/webcomponents/dist/Switch';
 import '@ui5/webcomponents/dist/CheckBox';
 import '@ui5/webcomponents/dist/Select';

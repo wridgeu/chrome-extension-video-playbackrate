@@ -1,5 +1,5 @@
-import { ChromeMessagingRequestAction, ContextMenuOption, ContextMenuStorage } from './types';
 import { default as contextMenuOptions } from './ContextMenuOptions';
+import { ChromeMessagingRequestAction } from './contentscript';
 
 /**
  * Initalize the context menu & fill it with data

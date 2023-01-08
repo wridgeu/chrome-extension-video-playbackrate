@@ -1,37 +1,36 @@
+// Thanks to O'Reillys Programming Typescript
+// Used for ambient type declarations (available everywhere in the project without importing)
+
+// Fix:
+// "Could not find a declaration file for module '@ui5/webcomponents-base/dist/config/Theme.js'.
+// implicitly has an 'any' type."
+declare module '@ui5/webcomponents-base/dist/config/Theme.js';
+
 /**
  * Default configuration
  */
-export type Defaults = {
+type Defaults = {
 	defaults: {
 		enabled?: boolean;
 		playbackRate?: number;
 	};
 };
 
-export type ChromeMessagingResponse = {
+type ChromeMessagingResponse = {
 	playbackRate: number;
 };
 
-// needs to remain a 'cosnt enum'
-// to prevent -- [!] RollupError: Could not resolve "./types" from "src/contentscript.ts"
-// @todo for another day
-export const enum ChromeMessagingRequestAction {
-	'SET',
-	'SETSPECIFIC',
-	'RETRIEVE'
-}
-
-export type ChromeMessagingRequest = {
+type ChromeMessagingRequest = {
 	action: ChromeMessagingRequestAction;
 	playbackRate?: number;
 	videoElementSrcAttributeValue?: string;
 };
 
-export type ContextMenuStorage = {
+type ContextMenuStorage = {
 	contextMenuOptions: ContextMenuOption[];
 };
 
-export type ContextMenuOption = {
+type ContextMenuOption = {
 	id: string;
 	title: string;
 	playbackRate: number;
@@ -42,7 +41,7 @@ export type ContextMenuOption = {
  * rudimentary type including only properties of the Slider slider Component
  * https://sap.github.io/ui5-webcomponents/playground/components/Slider/
  */
-export interface IUI5Slider extends HTMLElement {
+interface IUI5Slider extends HTMLElement {
 	value: number;
 	disabled: boolean;
 	labelInterval: number;
@@ -53,7 +52,7 @@ export interface IUI5Slider extends HTMLElement {
 	step: boolean;
 }
 
-export interface IUI5Select extends HTMLSelectElement {
+interface IUI5Select extends HTMLSelectElement {
 	disabled: boolean;
 	selectedOption: HTMLOptionElement;
 }

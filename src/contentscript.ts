@@ -1,4 +1,10 @@
-import { ChromeMessagingRequest, ChromeMessagingRequestAction, Defaults } from './types';
+// export const, to prevent code generation and directly replace enum usage with it's value (0,1,2)
+// dynamic import of enum causes some issues
+export const enum ChromeMessagingRequestAction {
+	SET,
+	SETSPECIFIC,
+	RETRIEVE
+}
 
 // Set playbackrate defaults
 (async () => {
@@ -27,7 +33,7 @@ import { ChromeMessagingRequest, ChromeMessagingRequestAction, Defaults } from '
 // https://developer.chrome.com/docs/extensions/mv3/messaging/
 chrome.runtime.onMessage.addListener((request: ChromeMessagingRequest, _, sendResponse) => {
 	const [videoElement] = document.querySelectorAll('video');
-
+	console.log(ChromeMessagingRequestAction.SETSPECIFIC)
 	if (!videoElement && request.action !== ChromeMessagingRequestAction.SETSPECIFIC) {
 		return true;
 	}
