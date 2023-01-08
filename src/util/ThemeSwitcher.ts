@@ -1,5 +1,5 @@
 import '@ui5/webcomponents/dist/Assets';
-import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme';
+import { setTheme, getTheme, type ThemeId } from '@ui5/webcomponents-base/dist/config/Theme';
 
 enum Theme {
 	dark = 'sap_horizon_dark',
@@ -77,9 +77,9 @@ export class ThemeSwitcher {
 	/**
 	 * Write current theme into storage
 	 * @private
-	 * @param {string} currentTheme
+	 * @param {ThemeId} currentTheme
 	 */
-	private async setLatestTheme(currentTheme: string): Promise<void> {
+	private async setLatestTheme(currentTheme: ThemeId): Promise<void> {
 		await chrome.storage.sync.set({
 			theme: currentTheme
 		});
@@ -99,10 +99,10 @@ export class ThemeSwitcher {
 
 	/**
 	 * @private
-	 * @param {Theme} themeName
+	 * @param {ThemeId} themeName
 	 * @param {string} backgroundColor
 	 */
-	private setTheme(themeName: string, backgroundColor: string): void {
+	private setTheme(themeName: ThemeId, backgroundColor: string): void {
 		setTheme(themeName);
 		this.setBackgroundColor(backgroundColor);
 		this.setLatestTheme(themeName);

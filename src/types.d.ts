@@ -15,6 +15,8 @@ declare module '@ui5/webcomponents-base/dist/config/Theme' {
 		| 'sap_belize_hcw'
 		| 'sap_fiori_3_hcb'
 		| 'sap_fiori_3_hcw'
+		| 'sap_horizon_dark'
+		| 'sap_horizon'
 		| string;
 
 	/**
