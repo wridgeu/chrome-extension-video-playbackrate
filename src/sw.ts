@@ -36,7 +36,6 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
  * Execute our contentscript whenever the page within a tab changes
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-	console.log(tab.url);
 	if (changeInfo.status == 'complete') {
 		chrome.scripting.executeScript(
 			{

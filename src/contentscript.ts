@@ -33,7 +33,6 @@ export const enum ChromeMessagingRequestAction {
 // https://developer.chrome.com/docs/extensions/mv3/messaging/
 chrome.runtime.onMessage.addListener((request: ChromeMessagingRequest, _, sendResponse) => {
 	const [videoElement] = document.querySelectorAll('video');
-	console.log(ChromeMessagingRequestAction.SETSPECIFIC)
 	if (!videoElement && request.action !== ChromeMessagingRequestAction.SETSPECIFIC) {
 		return true;
 	}
