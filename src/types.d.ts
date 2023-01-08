@@ -6,7 +6,7 @@
 // Copy from UI5 WebC for react:
 // eslint-disable-next-line max-len
 // https://github.com/SAP/ui5-webcomponents-react/blob/5e7c990046fb1b8f356803307fe20bc7e1bc2ccf/packages/base/types/Theme.d.ts
-declare module '@ui5/webcomponents-base/dist/config/Theme' {
+declare module '@ui5/webcomponents-base/dist/config/Theme*' {
 	export type ThemeId =
 		| 'sap_fiori_3'
 		| 'sap_fiori_3_dark'

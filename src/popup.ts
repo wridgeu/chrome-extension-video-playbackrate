@@ -1,6 +1,6 @@
 import { ChromeMessagingRequestAction } from './contentscript';
 import { ThemeSwitcher } from './util/ThemeSwitcher';
-import '@ui5/webcomponents/dist/Slider';
+import '@ui5/webcomponents/dist/Slider.js';
 
 (async () => {
 	await new ThemeSwitcher().init(); // Initialize/Set current theme
