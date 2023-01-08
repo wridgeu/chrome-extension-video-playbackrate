@@ -3,7 +3,7 @@
     "strict": true,
     "target": "ESNext",
     "module": "ESNext",
-    "rootDir": "./src",
+    "rootDir": "./",
     "outDir": "./dist/js/",
     "importHelpers": true,
     "esModuleInterop": true,

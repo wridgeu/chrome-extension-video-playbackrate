@@ -16,9 +16,7 @@ export default {
   plugins: [
     json(),
     nodeResolve(),
-    typescript({
-      module: 'ESNext'
-    }),
+    typescript(),
     multiInput.default(),
     terser(),
     copy({
