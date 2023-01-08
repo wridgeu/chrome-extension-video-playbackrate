@@ -1,10 +1,32 @@
 // Thanks to O'Reillys Programming Typescript
 // Used for ambient type declarations (available everywhere in the project without importing)
 
-// Fix:
-// "Could not find a declaration file for module '@ui5/webcomponents-base/dist/config/Theme.js'.
-// implicitly has an 'any' type."
-declare module '@ui5/webcomponents-base/dist/config/Theme.js';
+// eslint-disable-next-line max-len
+// Fix: "Could not find a declaration file for module '@ui5/webcomponents-base/dist/config/Theme.js'. implicitly has an 'any' type."
+// Copy from UI5 WebC for react:
+// eslint-disable-next-line max-len
+// https://github.com/SAP/ui5-webcomponents-react/blob/5e7c990046fb1b8f356803307fe20bc7e1bc2ccf/packages/base/types/Theme.d.ts
+declare module '@ui5/webcomponents-base/dist/config/Theme' {
+	export type ThemeId =
+		| 'sap_fiori_3'
+		| 'sap_fiori_3_dark'
+		| 'sap_belize'
+		| 'sap_belize_hcb'
+		| 'sap_belize_hcw'
+		| 'sap_fiori_3_hcb'
+		| 'sap_fiori_3_hcw'
+		| string;
+
+	/**
+	 * Getter for the currenty applied theme.
+	 */
+	export function getTheme(): ThemeId;
+
+	/**
+	 * Apply a new theme to the application.
+	 */
+	export function setTheme(theme: ThemeId): Promise<void>;
+}
 
 /**
  * Default configuration
