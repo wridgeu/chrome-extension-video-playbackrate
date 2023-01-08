@@ -10,10 +10,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "sourceMap": false,
-    "moduleResolution": "Node",
-    "typeRoots": [
-      "./node_modules/@types",
-      "src/types.d.ts"
-    ]
+    "moduleResolution": "Node"
   }
 }
