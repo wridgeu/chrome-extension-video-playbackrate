@@ -8,9 +8,10 @@ import '@ui5/webcomponents/dist/Slider.js';
 	const [{ id: currentActiveTabId }] = await chrome.tabs.query({ active: true, currentWindow: true });
 
 	// retrieve current video playbackrate && initialize slider state
-	const { playbackRate } = await (<Promise<ChromeMessagingResponse>>(
-		chrome.tabs.sendMessage(<number>currentActiveTabId, { action: ChromeMessagingRequestAction.RETRIEVE })
-	));
+	const { playbackRate } =
+		(await (<Promise<ChromeMessagingResponse>>(
+			chrome.tabs.sendMessage(<number>currentActiveTabId, { action: ChromeMessagingRequestAction.RETRIEVE })
+		))) || {};
 	if (chrome.runtime.lastError || !playbackRate) {
 		slider.value = 1;
 	} else {
