@@ -22,8 +22,17 @@ export default {
     copy({
       targets: [
         {
-          src: 'public/*',
+          src: ['public/*', 'public/!(manifest.json)',],
           dest: 'dist',
+        },
+        {
+          src: 'public/manifest.json',
+          dest: 'dist',
+          transform: (fileBuffer) => {
+            const chromeExtensionManifest = JSON.parse(fileBuffer.toString())
+            chromeExtensionManifest.version = process.env.npm_package_version
+            return JSON.stringify(chromeExtensionManifest, null, 2)
+          }
         },
       ],
     }),
