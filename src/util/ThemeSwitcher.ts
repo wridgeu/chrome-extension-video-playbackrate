@@ -1,5 +1,5 @@
 import '@ui5/webcomponents/dist/Assets.js';
-import { setTheme, getTheme, type ThemeId } from '@ui5/webcomponents-base/dist/config/Theme.js';
+import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js';
 
 enum Theme {
 	dark = 'sap_horizon_dark',
