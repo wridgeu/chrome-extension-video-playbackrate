@@ -1,14 +1,17 @@
-import '@ui5/webcomponents/dist/Assets.js';
-import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js';
+import "@ui5/webcomponents/dist/Assets.js";
+import {
+	setTheme,
+	getTheme,
+} from "@ui5/webcomponents-base/dist/config/Theme.js";
 
 enum Theme {
-	dark = 'sap_horizon_dark',
-	light = 'sap_horizon'
+	dark = "sap_horizon_dark",
+	light = "sap_horizon",
 }
 
 enum ThemeBackgroundColor {
-	dark = '#1d232a',
-	light = '#fff'
+	dark = "#1d232a",
+	light = "#fff",
 }
 
 /**
@@ -25,7 +28,7 @@ export class ThemeSwitcher {
 	public async init(): Promise<ThemeSwitcher> {
 		const activeTheme = await this.getLatestTheme();
 		if (!activeTheme) {
-			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+			if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
 				this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
 			} else {
 				this.setTheme(Theme.light, ThemeBackgroundColor.light);
@@ -33,7 +36,9 @@ export class ThemeSwitcher {
 		} else {
 			this.setTheme(
 				activeTheme,
-				activeTheme === Theme.dark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light
+				activeTheme === Theme.dark
+					? ThemeBackgroundColor.dark
+					: ThemeBackgroundColor.light
 			);
 		}
 		return this;
@@ -70,7 +75,7 @@ export class ThemeSwitcher {
 	 * @param {string} currentTheme
 	 */
 	private async getLatestTheme(): Promise<string> {
-		const { theme } = await chrome.storage.sync.get('theme');
+		const { theme } = await chrome.storage.sync.get("theme");
 		return theme;
 	}
 
@@ -81,7 +86,7 @@ export class ThemeSwitcher {
 	 */
 	private async setLatestTheme(currentTheme: ThemeId): Promise<void> {
 		await chrome.storage.sync.set({
-			theme: currentTheme
+			theme: currentTheme,
 		});
 	}
 
@@ -93,7 +98,7 @@ export class ThemeSwitcher {
 	 */
 	private setBackgroundColor(color: string): void {
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const currentHtmlBody = <HTMLBodyElement>document.querySelector('body')!;
+		const currentHtmlBody = <HTMLBodyElement>document.querySelector("body")!;
 		currentHtmlBody.style.backgroundColor = color;
 	}
 
