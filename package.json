@@ -59,6 +59,6 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
-    "@ui5/webcomponents": "1.12.2"
+    "@ui5/webcomponents": "1.13.3"
   }
 }
