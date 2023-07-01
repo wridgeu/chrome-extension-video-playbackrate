@@ -181,10 +181,10 @@
   resolved "https://registry.yarnpkg.com/@sap-theming/theming-base-content/-/theming-base-content-11.2.1.tgz#ee2e4c6cb3fc709bebcc9b344eed769deff574cf"
   integrity sha512-8BF0ZXxIuLO5+Gv+6bKFl/wnakBZKJ6AwRL0lNgC7v/6eA4G0yvhyvG+VPcF4XJAArzsvlIZzi5cYMh9USuI8Q==
 
-"@types/chrome@^0.0.234":
-  version "0.0.234"
-  resolved "https://registry.yarnpkg.com/@types/chrome/-/chrome-0.0.234.tgz#29e5278c655e385c6e3b1b76093aaef7bfbf6def"
-  integrity sha512-4JofeJBUPFf8Qy9ZiOif5jp5V4tG/WaFVPyb11E6Zmvx1q5j+X7LR/zWmj3lhbliaFxTMY/51GjMdpZOiUWjqQ==
+"@types/chrome@^0.0.239":
+  version "0.0.239"
+  resolved "https://registry.yarnpkg.com/@types/chrome/-/chrome-0.0.239.tgz#aa78dffec5ef292bf687ee46c6dce1bceff3c47b"
+  integrity sha512-s/v0pAdpjqfYdwYPDIRiIQDyXfaLi5u+OyHW2NexhqoTm/KZVqKqS1isK11DVu/iUrAUULtbfKtzLKt3+kHgXQ==
   dependencies:
     "@types/filesystem" "*"
     "@types/har-format" "*"
