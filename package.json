@@ -46,7 +46,7 @@
     "@typescript-eslint/parser": "^5.60.1",
     "eslint": "^8.44.0",
     "eslint-config-google": "^0.14.0",
-    "eslint-config-prettier": "^8.8.0",
+    "eslint-config-prettier": "^8.9.0",
     "husky": "^8.0.3",
     "npm-build-zip": "^1.0.4",
     "npm-watch": "^0.11.0",
