@@ -29,7 +29,7 @@ export default {
           src: 'public/manifest.json',
           dest: 'dist',
           transform: (fileBuffer) => {
-            const chromeExtensionManifest = JSON.parse(fileBuffer.toString())
+            let chromeExtensionManifest = JSON.parse(fileBuffer.toString())
             chromeExtensionManifest.version = process.env.npm_package_version
             return JSON.stringify(chromeExtensionManifest, null, 2)
           }
