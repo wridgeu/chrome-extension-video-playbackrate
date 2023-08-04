@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Video Speed Regulator",
   "description": "Adjust your video playback rate",
-  "version": "1.4.0",
+  "version": "X.X.X",
   "background": {
     "service_worker": "./js/sw.js",
     "type": "module"
