@@ -23,8 +23,6 @@ jobs:
         yarn install
         yarn build
         yarn zip
-      env:
-        CI: true
     - name: create release
       uses: ncipollo/release-action@v1
       with:
