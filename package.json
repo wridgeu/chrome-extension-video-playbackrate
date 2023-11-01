@@ -60,6 +60,6 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
-    "@ui5/webcomponents": "1.16.0"
+    "@ui5/webcomponents": "1.18.0"
   }
 }
