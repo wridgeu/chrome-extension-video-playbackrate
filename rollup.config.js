@@ -31,6 +31,7 @@ export default {
           transform: (fileBuffer) => {
             const chromeExtensionManifest = JSON.parse(fileBuffer.toString());
             chromeExtensionManifest.version = process.env.npm_package_version;
+            delete chromeExtensionManifest.$schema; // not supported in dist, helps during development
             return JSON.stringify(chromeExtensionManifest, null, 2);
           }
         },
