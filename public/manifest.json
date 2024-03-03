@@ -1,8 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/chrome-manifest",
   "manifest_version": 3,
   "name": "Video Speed Regulator",
   "description": "Adjust your video playback rate",
-  "version": "X.X.X",
+  "version": "0.0.0",
   "background": {
     "service_worker": "./js/sw.js",
     "type": "module"
