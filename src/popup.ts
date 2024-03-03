@@ -1,21 +1,7 @@
-import { ChromeMessagingRequestAction } from './contentscript';
-import { ThemeSwitcher } from './util/ThemeSwitcher';
+import Slider from '@ui5/webcomponents/dist/Slider.js';
+import { ChromeMessagingRequestAction } from './contentscript.js';
+import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
-
-/**
- * rudimentary type including only properties of the Slider slider Component
- * https://sap.github.io/ui5-webcomponents/playground/components/Slider/
- */
-interface IUI5Slider extends HTMLElement {
-	value: number;
-	disabled: boolean;
-	labelInterval: number;
-	max: number;
-	min: number;
-	showTickmarks: boolean;
-	showTooltip: boolean;
-	step: boolean;
-}
 
 type ChromeMessagingResponse = {
 	playbackRate: number;
@@ -23,7 +9,7 @@ type ChromeMessagingResponse = {
 
 (async () => {
 	await new ThemeSwitcher().init(); // Initialize/Set current theme
-	const slider = <IUI5Slider>document.getElementById('slider');
+	const slider = <Slider>document.getElementById('slider');
 	const [{ id: currentActiveTabId }] = await chrome.tabs.query({
 		active: true,
 		currentWindow: true
@@ -46,7 +32,7 @@ type ChromeMessagingResponse = {
 	slider.addEventListener('change', async (event: Event): Promise<void> => {
 		chrome.tabs.sendMessage(<number>currentActiveTabId, {
 			action: ChromeMessagingRequestAction.SET,
-			playbackRate: <number>(event.target as IUI5Slider).value
+			playbackRate: <number>(event.target as Slider).value
 		});
 	});
 })();
