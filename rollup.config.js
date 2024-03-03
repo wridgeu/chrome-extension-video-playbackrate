@@ -8,7 +8,7 @@ import copy from 'rollup-plugin-copy';
 import json from '@rollup/plugin-json';
 
 export default {
-  input: ['src/*.ts', '!src/*.d.ts'],
+  input: ['src/*.ts'],
   output: {
     format: 'esm',
     dir: 'dist/js/',
@@ -29,9 +29,9 @@ export default {
           src: 'public/manifest.json',
           dest: 'dist',
           transform: (fileBuffer) => {
-            let chromeExtensionManifest = JSON.parse(fileBuffer.toString())
-            chromeExtensionManifest.version = process.env.npm_package_version
-            return JSON.stringify(chromeExtensionManifest, null, 2)
+            const chromeExtensionManifest = JSON.parse(fileBuffer.toString());
+            chromeExtensionManifest.version = process.env.npm_package_version;
+            return JSON.stringify(chromeExtensionManifest, null, 2);
           }
         },
       ],
