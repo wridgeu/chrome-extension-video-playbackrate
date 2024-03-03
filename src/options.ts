@@ -4,8 +4,8 @@ import '@ui5/webcomponents/dist/Select.js';
 import '@ui5/webcomponents/dist/Option.js';
 import '@ui5/webcomponents/dist/Label.js';
 import '@ui5/webcomponents/dist/Title.js';
-import { ThemeSwitcher } from './util/ThemeSwitcher';
-import { Defaults } from './contentscript';
+import { ThemeSwitcher } from './util/ThemeSwitcher.js';
+import { Defaults } from './contentscript.js';
 
 interface IUI5Select extends HTMLSelectElement {
 	disabled: boolean;

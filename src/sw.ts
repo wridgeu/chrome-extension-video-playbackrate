@@ -1,5 +1,5 @@
-import { default as contextMenuOptions } from './ContextMenuOptions';
-import { ChromeMessagingRequestAction } from './contentscript';
+import { default as contextMenuOptions } from './ContextMenuOptions.js';
+import { ChromeMessagingRequestAction } from './contentscript.js';
 
 type ContextMenuStorage = {
 	contextMenuOptions: ContextMenuOption[];

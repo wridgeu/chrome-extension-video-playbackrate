@@ -31,7 +31,7 @@ export class ThemeSwitcher {
 	/**
 	 * Initialize (set) the currently active theme.
 	 *
-	 * In case we have one already saved (so set previously), use this one.
+	 * In case we have one already saved (user already set  previously), use this one.
 	 * If we don't have one saved, set based on preference.
 	 */
 	public async init(): Promise<ThemeSwitcher> {
