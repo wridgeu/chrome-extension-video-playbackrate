@@ -1,16 +1,34 @@
 // export const, to prevent code generation and directly replace enum usage with it's value (0,1,2)
 // dynamic import of enum causes some issues
 // https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension
-export const enum ChromeMessagingRequestAction {
+export const enum MessagingAction {
 	SET,
 	SETSPECIFIC,
 	RETRIEVE
 }
 
-export type ChromeMessagingRequest = {
-	action: ChromeMessagingRequestAction;
-	playbackRate?: number;
-	videoElementSrcAttributeValue?: string;
+type SetSpecificActionPayload = {
+	action: MessagingAction.SETSPECIFIC;
+	playbackRate: number;
+	videoElementSrcAttributeValue: string;
+};
+
+type SetActionPayload = {
+	action: MessagingAction.SET;
+	playbackRate: number;
+};
+
+type RetrieveActionPayload = {
+	action: MessagingAction.RETRIEVE;
+};
+
+/**
+ * Discriminated Union, discriminator: action
+ */
+export type MessagingRequestPayload = SetSpecificActionPayload | SetActionPayload | RetrieveActionPayload;
+
+export type RetrieveResponse = {
+	playbackRate: number;
 };
 
 /**
@@ -52,22 +70,22 @@ export type Defaults = {
 })();
 
 // https://developer.chrome.com/docs/extensions/mv3/messaging/
-chrome.runtime.onMessage.addListener((request: ChromeMessagingRequest, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, _, sendResponse) => {
 	const [videoElement] = document.querySelectorAll('video');
-	if (!videoElement && request.action !== ChromeMessagingRequestAction.SETSPECIFIC) {
+	if (!videoElement && request.action !== MessagingAction.SETSPECIFIC) {
 		return true;
 	}
 
 	switch (request.action) {
-		case ChromeMessagingRequestAction.SET:
+		case MessagingAction.SET:
 			videoElement.playbackRate = request.playbackRate!;
 			break;
-		case ChromeMessagingRequestAction.SETSPECIFIC:
+		case MessagingAction.SETSPECIFIC:
 			(
 				document.querySelector(`video[src='${request.videoElementSrcAttributeValue!}']`)! as HTMLVideoElement
 			).playbackRate = request.playbackRate!;
 			break;
-		case ChromeMessagingRequestAction.RETRIEVE:
+		case MessagingAction.RETRIEVE:
 			sendResponse({ playbackRate: videoElement.playbackRate });
 			break;
 		default:

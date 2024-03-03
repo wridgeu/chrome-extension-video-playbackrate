@@ -1,5 +1,5 @@
 import { default as contextMenuOptions } from './ContextMenuOptions.js';
-import { ChromeMessagingRequestAction } from './contentscript.js';
+import { MessagingAction, MessagingRequestPayload } from './contentscript.js';
 
 type ContextMenuStorage = {
 	contextMenuOptions: ContextMenuOption[];
@@ -35,11 +35,14 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 	const { contextMenuOptions } = <ContextMenuStorage>await chrome.storage.local.get(['contextMenuOptions']);
 	const menuItem = contextMenuOptions.find((item: ContextMenuOption) => item.id === itemData.menuItemId);
 	if (menuItem) {
-		chrome.tabs.sendMessage(<number>tab?.id, {
-			action: ChromeMessagingRequestAction.SETSPECIFIC,
-			videoElementSrcAttributeValue: itemData.srcUrl,
-			playbackRate: menuItem.playbackRate
-		});
+		chrome.tabs.sendMessage(
+			<number>tab?.id,
+			<MessagingRequestPayload>{
+				action: MessagingAction.SETSPECIFIC,
+				videoElementSrcAttributeValue: itemData.srcUrl,
+				playbackRate: menuItem.playbackRate
+			}
+		);
 	}
 });
 

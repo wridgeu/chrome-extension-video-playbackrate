@@ -1,11 +1,7 @@
 import Slider from '@ui5/webcomponents/dist/Slider.js';
-import { ChromeMessagingRequestAction } from './contentscript.js';
+import { MessagingAction, MessagingRequestPayload, RetrieveResponse } from './contentscript.js';
 import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
-
-type ChromeMessagingResponse = {
-	playbackRate: number;
-};
 
 (async () => {
 	await new ThemeSwitcher().init(); // Initialize/Set current theme
@@ -16,12 +12,13 @@ type ChromeMessagingResponse = {
 	});
 
 	// retrieve current video playbackrate && initialize slider state
-	const { playbackRate } = (await (<Promise<ChromeMessagingResponse>>chrome.tabs.sendMessage(
+	const { playbackRate } = (await (<Promise<RetrieveResponse>>chrome.tabs.sendMessage(
 			<number>currentActiveTabId,
-			{
-				action: ChromeMessagingRequestAction.RETRIEVE
+			<MessagingRequestPayload>{
+				action: MessagingAction.RETRIEVE
 			}
 		))) || {};
+
 	if (chrome.runtime.lastError || !playbackRate) {
 		slider.value = 1;
 	} else {
@@ -30,9 +27,12 @@ type ChromeMessagingResponse = {
 
 	// listen on changes of slider component
 	slider.addEventListener('change', async (event: Event): Promise<void> => {
-		chrome.tabs.sendMessage(<number>currentActiveTabId, {
-			action: ChromeMessagingRequestAction.SET,
-			playbackRate: <number>(event.target as Slider).value
-		});
+		chrome.tabs.sendMessage(
+			<number>currentActiveTabId,
+			<MessagingRequestPayload>{
+				action: MessagingAction.SET,
+				playbackRate: <number>(event.target as Slider).value
+			}
+		);
 	});
 })();
