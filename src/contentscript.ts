@@ -23,28 +23,32 @@ export type Defaults = {
 	};
 };
 
-// Set playbackrate defaults
+// set playbackrate defaults
 (async () => {
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
-	if (defaults?.enabled) {
-		const [videoElement] = document.querySelectorAll('video');
+	if (!defaults?.enabled) return;
 
-		if (!videoElement) return;
-		videoElement.playbackRate = defaults.playbackRate || 1;
+	const playbackRate = defaults.playbackRate || 1;
 
-		const observer = new MutationObserver((mutationList: MutationRecord[]) => {
-			for (const mutation of mutationList) {
-				if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-					videoElement.playbackRate = defaults.playbackRate || 1;
-				}
+	const [videoElement] = document.querySelectorAll('video');
+	if (!videoElement) return;
+
+	videoElement.playbackRate = playbackRate;
+
+	const mutObserver = new MutationObserver((mutationList: MutationRecord[]) => {
+		for (const mutation of mutationList) {
+			if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+				videoElement.playbackRate = playbackRate;
 			}
-			videoElement.addEventListener('ratechange', () => observer.disconnect());
-		});
-		observer.observe(videoElement, {
-			attributes: true,
-			attributeFilter: ['src']
-		});
-	}
+		}
+
+		videoElement.addEventListener('ratechange', () => mutObserver.disconnect());
+	});
+
+	mutObserver.observe(videoElement, {
+		attributes: true,
+		attributeFilter: ['src']
+	});
 })();
 
 // https://developer.chrome.com/docs/extensions/mv3/messaging/
