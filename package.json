@@ -36,30 +36,30 @@
     "Extension"
   ],
   "author": "Marco Beier",
-  "license": "Derived Beerware License",
+  "license": "Beerware",
   "devDependencies": {
-    "@rollup/plugin-json": "^6.0.0",
-    "@rollup/plugin-node-resolve": "^15.1.0",
-    "@rollup/plugin-typescript": "^11.1.2",
-    "@types/chrome": "^0.0.243",
-    "@typescript-eslint/eslint-plugin": "^6.2.1",
-    "@typescript-eslint/parser": "^6.2.1",
-    "eslint": "^8.46.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/chrome": "^0.0.262",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "eslint": "^8.57.0",
     "eslint-config-google": "^0.14.0",
-    "eslint-config-prettier": "^8.10.0",
-    "husky": "^8.0.3",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.0.11",
     "npm-build-zip": "^1.0.4",
     "npm-watch": "^0.11.0",
-    "prettier": "^3.0.1",
-    "rimraf": "^5.0.1",
-    "rollup": "^3.27.2",
-    "rollup-plugin-copy": "^3.4.0",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.12.0",
+    "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-multi-input": "^1.4.1",
     "rollup-plugin-terser": "^7.0.2",
-    "tslib": "^2.6.1",
-    "typescript": "^5.1.6"
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@ui5/webcomponents": "1.16.0"
+    "@ui5/webcomponents": "1.22.0"
   }
 }
