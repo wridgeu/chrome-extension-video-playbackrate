@@ -277,10 +277,10 @@
   resolved "https://registry.yarnpkg.com/@sap-theming/theming-base-content/-/theming-base-content-11.10.0.tgz#214c5a4886149c6e9f9faa880c4a1ed101d51531"
   integrity sha512-MPGq5pivR+MLzchyZTXwu+VM6ZAekaPxiMnEHYHTG3uorTpBzaW+JhP8mqV+yGD3mpIUuomjbBeWbedTHnB2nw==
 
-"@types/chrome@^0.0.262":
-  version "0.0.262"
-  resolved "https://registry.yarnpkg.com/@types/chrome/-/chrome-0.0.262.tgz#7c188d946da51216a558342637393c998bb85dd2"
-  integrity sha512-TOoj3dqSYE13PD2fRuMQ6X6pggEvL9rRk/yOYOyWE6sfqRWxsJm4VoVm+wr9pkr4Sht/M5t7FFL4vXato8d1gA==
+"@types/chrome@^0.0.263":
+  version "0.0.263"
+  resolved "https://registry.yarnpkg.com/@types/chrome/-/chrome-0.0.263.tgz#b629fb3ae67d55eb722decbef656f685cf23d5c8"
+  integrity sha512-As0vzv99ov3M6ZR7R6VzhMWFZXkPMrFrCEXXVrMN576Cm70fTkj7Df2CF+qEo170JepX50pd11cX6O4DSAtl2Q==
   dependencies:
     "@types/filesystem" "*"
     "@types/har-format" "*"
@@ -2017,6 +2017,7 @@ source-map@^0.6.0:
   integrity sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==
 
 "string-width-cjs@npm:string-width@^4.2.0", string-width@^4.1.0:
+  name string-width-cjs
   version "4.2.3"
   resolved "https://registry.yarnpkg.com/string-width/-/string-width-4.2.3.tgz#269c7117d27b05ad2e536830a8ec895ef9c6d010"
   integrity sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==
