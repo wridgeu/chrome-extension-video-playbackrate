@@ -51,7 +51,7 @@
     "npm-build-zip": "^1.0.4",
     "npm-watch": "^0.11.0",
     "prettier": "^3.2.5",
-    "rimraf": "^5.0.5",
+    "rimraf": "^5.0.7",
     "rollup": "^4.12.0",
     "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-multi-input": "^1.4.1",
