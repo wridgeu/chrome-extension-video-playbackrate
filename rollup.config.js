@@ -1,9 +1,7 @@
-'use strict';
-
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import { terser } from 'rollup-plugin-terser';
-import multiInput from 'rollup-plugin-multi-input'; // @see https://github.com/alfredosalzillo/rollup-plugin-multi-input/issues/61
+import multiInput from 'rollup-plugin-multi-input';
 import copy from 'rollup-plugin-copy';
 import json from '@rollup/plugin-json';
 
@@ -17,7 +15,7 @@ export default {
     json(),
     nodeResolve(),
     typescript(),
-    multiInput.default(),
+    multiInput(),
     terser(),
     copy({
       targets: [
