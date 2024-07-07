@@ -1,4 +1,7 @@
-export enum MessagingAction {
+// export const, to prevent code generation and directly replace enum usage with it's value (0,1,2)
+// dynamic import of enum causes some issues
+// https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension
+export const enum MessagingAction {
 	SET = 0,
 	SETSPECIFIC = 1,
 	RETRIEVE = 2
