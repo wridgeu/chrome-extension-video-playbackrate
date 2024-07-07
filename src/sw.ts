@@ -1,8 +1,5 @@
-import { default as contextMenuOptions } from "./ContextMenuOptions.js";
-import {
-	MessagingAction,
-	type MessagingRequestPayload,
-} from "./contentscript.js";
+import { default as contextMenuOptions } from './ContextMenuOptions.js';
+import { MessagingAction, type MessagingRequestPayload } from './contentscript.js';
 
 type ContextMenuStorage = {
 	contextMenuOptions: ContextMenuOption[];
@@ -22,10 +19,10 @@ chrome.runtime.onInstalled.addListener(() => {
 	contextMenuOptions.forEach((option) => {
 		chrome.contextMenus.create({
 			id: option.id,
-			type: "radio",
+			type: 'radio',
 			title: option.title,
-			contexts: ["video"],
-			checked: !!option.default,
+			contexts: ['video'],
+			checked: !!option.default
 		});
 	});
 	chrome.storage.local.set({ contextMenuOptions: contextMenuOptions });
@@ -35,20 +32,16 @@ chrome.runtime.onInstalled.addListener(() => {
  * Handle context menu clicks
  */
 chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
-	const { contextMenuOptions } = <ContextMenuStorage>(
-		await chrome.storage.local.get(["contextMenuOptions"])
-	);
-	const menuItem = contextMenuOptions.find(
-		(item: ContextMenuOption) => item.id === itemData.menuItemId,
-	);
+	const { contextMenuOptions } = <ContextMenuStorage>await chrome.storage.local.get(['contextMenuOptions']);
+	const menuItem = contextMenuOptions.find((item: ContextMenuOption) => item.id === itemData.menuItemId);
 	if (menuItem) {
 		chrome.tabs.sendMessage(
 			<number>tab?.id,
 			<MessagingRequestPayload>{
 				action: MessagingAction.SETSPECIFIC,
 				videoElementSrcAttributeValue: itemData.srcUrl,
-				playbackRate: menuItem.playbackRate,
-			},
+				playbackRate: menuItem.playbackRate
+			}
 		);
 	}
 });
@@ -57,20 +50,19 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
  * Execute our contentscript whenever the page within a tab changes
  */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-	if (changeInfo.status === "complete") {
+	if (changeInfo.status === 'complete') {
 		chrome.scripting.executeScript(
 			{
 				target: { tabId: tabId },
-				files: ["/js/contentscript.js"],
+				files: ['/js/contentscript.js']
 			},
 			() => {
 				if (chrome.runtime.lastError) {
-					console.warn(
-						"Error occured when trying to insert/execute the contentscript!",
-						[chrome.runtime.lastError?.message],
-					);
+					console.warn('Error occured when trying to insert/execute the contentscript!', [
+						chrome.runtime.lastError?.message
+					]);
 				}
-			},
+			}
 		);
 	}
 });

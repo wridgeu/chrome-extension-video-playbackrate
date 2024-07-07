@@ -1,26 +1,23 @@
-import "@ui5/webcomponents/dist/Assets.js";
-import {
-	setTheme,
-	getTheme,
-} from "@ui5/webcomponents-base/dist/config/Theme.js";
+import '@ui5/webcomponents/dist/Assets.js';
+import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js';
 
 enum Theme {
-	dark = "sap_horizon_dark",
-	light = "sap_horizon",
+	dark = 'sap_horizon_dark',
+	light = 'sap_horizon'
 }
 
 enum ThemeBackgroundColor {
-	dark = "#1d232a",
-	light = "#fff",
+	dark = '#1d232a',
+	light = '#fff'
 }
 
 type ThemeId =
-	| "sap_fiori_3"
-	| "sap_fiori_3_dark"
-	| "sap_fiori_3_hcb"
-	| "sap_fiori_3_hcw"
-	| "sap_horizon_dark"
-	| "sap_horizon"
+	| 'sap_fiori_3'
+	| 'sap_fiori_3_dark'
+	| 'sap_fiori_3_hcb'
+	| 'sap_fiori_3_hcw'
+	| 'sap_horizon_dark'
+	| 'sap_horizon'
 	| string;
 
 /**
@@ -37,7 +34,7 @@ export class ThemeSwitcher {
 	public async init(): Promise<ThemeSwitcher> {
 		const activeTheme = await this.getLatestTheme();
 		if (!activeTheme) {
-			if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
 				this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
 			} else {
 				this.setTheme(Theme.light, ThemeBackgroundColor.light);
@@ -45,9 +42,7 @@ export class ThemeSwitcher {
 		} else {
 			this.setTheme(
 				activeTheme,
-				activeTheme === Theme.dark
-					? ThemeBackgroundColor.dark
-					: ThemeBackgroundColor.light,
+				activeTheme === Theme.dark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light
 			);
 		}
 		return this;
@@ -79,7 +74,7 @@ export class ThemeSwitcher {
 	 * @private
 	 */
 	private async getLatestTheme(): Promise<string> {
-		const { theme } = await chrome.storage.sync.get("theme");
+		const { theme } = await chrome.storage.sync.get('theme');
 		return theme;
 	}
 
@@ -90,7 +85,7 @@ export class ThemeSwitcher {
 	 */
 	private async setLatestTheme(currentTheme: ThemeId): Promise<void> {
 		await chrome.storage.sync.set({
-			theme: currentTheme,
+			theme: currentTheme
 		});
 	}
 
@@ -101,8 +96,7 @@ export class ThemeSwitcher {
 	 * @param {string} color
 	 */
 	private setBackgroundColor(color: string): void {
-		 
-		const currentHtmlBody = <HTMLBodyElement>document.querySelector("body")!;
+		const currentHtmlBody = <HTMLBodyElement>document.querySelector('body')!;
 		currentHtmlBody.style.backgroundColor = color;
 	}
 
