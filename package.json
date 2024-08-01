@@ -52,7 +52,7 @@
     "husky": "^9.0.11",
     "npm-build-zip": "^1.0.4",
     "npm-watch": "^0.13.0",
-    "prettier": "^3.3.2",
+    "prettier": "^3.3.3",
     "rimraf": "^5.0.8",
     "rollup": "^4.18.0",
     "rollup-plugin-copy": "^3.5.0",
