@@ -38,7 +38,7 @@
   "author": "Marco Beier",
   "license": "Beerware",
   "devDependencies": {
-    "@eslint/js": "^9.6.0",
+    "@eslint/js": "^9.8.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
