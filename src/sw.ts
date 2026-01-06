@@ -1,5 +1,5 @@
 import { default as contextMenuOptions } from './ContextMenuOptions.js';
-import { MessagingAction, type MessagingRequestPayload } from './contentscript.js';
+import { MessagingAction, type MessagingRequestPayload } from './types';
 
 /** Badge background color - matches the icon's golden yellow */
 const BADGE_BACKGROUND_COLOR = '#F7B731';

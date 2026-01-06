@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { chromeTabsMock, resetChromeMocks } from './setup';
-import { MessagingAction } from '@src/contentscript';
+import { MessagingAction } from '@src/types';
 
 describe('Popup', () => {
 	let slider: HTMLInputElement;
