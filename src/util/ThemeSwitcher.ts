@@ -74,8 +74,8 @@ export class ThemeSwitcher {
 	 * @private
 	 */
 	private async getLatestTheme(): Promise<string> {
-		const { theme } = await chrome.storage.sync.get('theme');
-		return theme;
+		const { theme } = (await chrome.storage.sync.get('theme')) as { theme?: string };
+		return theme ?? '';
 	}
 
 	/**
