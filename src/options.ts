@@ -6,7 +6,7 @@ import '@ui5/webcomponents/dist/Label.js';
 import '@ui5/webcomponents/dist/Title.js';
 import type Select from '@ui5/webcomponents/dist/Select.js';
 import { ThemeSwitcher } from './util/ThemeSwitcher.js';
-import type { Defaults } from './contentscript.js';
+import type { Defaults } from './types';
 import type CheckBox from '@ui5/webcomponents/dist/CheckBox.js';
 import type Switch from '@ui5/webcomponents/dist/Switch.js';
 

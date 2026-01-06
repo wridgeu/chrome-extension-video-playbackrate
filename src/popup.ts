@@ -1,5 +1,5 @@
 import type Slider from '@ui5/webcomponents/dist/Slider.js';
-import { MessagingAction, type MessagingRequestPayload, type RetrieveResponse } from './contentscript.js';
+import { MessagingAction, type MessagingRequestPayload, type RetrieveResponse } from './types';
 import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
 import '@ui5/webcomponents/dist/Text.js';

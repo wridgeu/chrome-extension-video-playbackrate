@@ -8,7 +8,7 @@ import {
 	resetChromeMocks
 } from './setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
-import { MessagingAction } from '@src/contentscript';
+import { MessagingAction } from '@src/types';
 import { findClosestOption, formatBadgeText, type ContextMenuOption } from '@src/sw';
 
 describe('Service Worker', () => {
