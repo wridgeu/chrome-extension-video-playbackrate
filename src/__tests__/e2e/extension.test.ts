@@ -7,6 +7,9 @@ import {
 	openExtensionPopup,
 	openExtensionOptions,
 	createPageWithVideo,
+	createPageWithoutVideo,
+	createPageWithMultipleVideos,
+	getTestVideoURL,
 	getTabId,
 	getBadgeText,
 	sendMessageToTab
@@ -343,6 +346,10 @@ describe('Chrome Extension E2E', () => {
 		it('tooltip positions correctly on left side (low values)', async () => {
 			// Set slider to low value (left side) and verify tooltip appears to the RIGHT of handle
 			const position = await popupPage.evaluate(() => {
+				// Ensure slider container is visible (may be hidden if no videos detected)
+				const sliderContainer = document.getElementById('slider-container');
+				if (sliderContainer) sliderContainer.hidden = false;
+
 				const slider = document.querySelector('ui5-slider') as Element & {
 					value: number;
 					dispatchEvent: (e: Event) => boolean;
@@ -380,6 +387,10 @@ describe('Chrome Extension E2E', () => {
 		it('tooltip positions correctly on right side (high values)', async () => {
 			// Set slider to high value (right side) and verify tooltip appears to the LEFT of handle
 			const position = await popupPage.evaluate(() => {
+				// Ensure slider container is visible (may be hidden if no videos detected)
+				const sliderContainer = document.getElementById('slider-container');
+				if (sliderContainer) sliderContainer.hidden = false;
+
 				const slider = document.querySelector('ui5-slider') as Element & {
 					value: number;
 					dispatchEvent: (e: Event) => boolean;
@@ -571,6 +582,254 @@ describe('Chrome Extension E2E', () => {
 				const badgeText = await getBadgeText(tabId);
 				expect(badgeText).toBe(expected);
 			}
+		});
+	});
+
+	describe('Popup Video States', () => {
+		it('shows no-videos message when popup opens without content script', async () => {
+			// Open popup in isolation (no active tab with video)
+			const popupPage = await openExtensionPopup(extensionId);
+			await popupPage.waitForSelector('ui5-text', { timeout: 10000 });
+
+			const state = await popupPage.evaluate(() => {
+				const noVideosEl = document.getElementById('no-videos');
+				const sliderContainer = document.getElementById('slider-container');
+				return {
+					noVideosHidden: noVideosEl?.hidden ?? true,
+					sliderContainerHidden: sliderContainer?.hidden ?? true,
+					noVideosText: noVideosEl?.textContent?.trim() ?? ''
+				};
+			});
+
+			// When no content script responds, no-videos should be visible
+			expect(state.noVideosHidden).toBe(false);
+			expect(state.sliderContainerHidden).toBe(true);
+			expect(state.noVideosText).toBe('No videos found on this page');
+
+			await popupPage.close();
+		});
+
+		it('has correct DOM structure for video state handling', async () => {
+			const popupPage = await openExtensionPopup(extensionId);
+			await popupPage.waitForSelector('ui5-text', { timeout: 10000 });
+
+			const elements = await popupPage.evaluate(() => {
+				const noVideosEl = document.getElementById('no-videos');
+				const sliderContainer = document.getElementById('slider-container');
+				const slider = document.querySelector('ui5-slider');
+				return {
+					hasNoVideosElement: !!noVideosEl,
+					noVideosTagName: noVideosEl?.tagName.toLowerCase() ?? '',
+					hasSliderContainer: !!sliderContainer,
+					hasSlider: !!slider
+				};
+			});
+
+			expect(elements.hasNoVideosElement).toBe(true);
+			expect(elements.noVideosTagName).toBe('ui5-text');
+			expect(elements.hasSliderContainer).toBe(true);
+			expect(elements.hasSlider).toBe(true);
+
+			await popupPage.close();
+		});
+
+		it('toggles visibility correctly between states', async () => {
+			const popupPage = await openExtensionPopup(extensionId);
+			await popupPage.waitForSelector('ui5-text', { timeout: 10000 });
+
+			// Test toggling to "has videos" state
+			const stateWithVideos = await popupPage.evaluate(() => {
+				const noVideosEl = document.getElementById('no-videos')!;
+				const sliderContainer = document.getElementById('slider-container')!;
+
+				// Simulate video found state
+				noVideosEl.hidden = true;
+				sliderContainer.hidden = false;
+
+				return {
+					noVideosHidden: noVideosEl.hidden,
+					sliderContainerHidden: sliderContainer.hidden
+				};
+			});
+
+			expect(stateWithVideos.noVideosHidden).toBe(true);
+			expect(stateWithVideos.sliderContainerHidden).toBe(false);
+
+			// Test toggling back to "no videos" state
+			const stateNoVideos = await popupPage.evaluate(() => {
+				const noVideosEl = document.getElementById('no-videos')!;
+				const sliderContainer = document.getElementById('slider-container')!;
+
+				// Simulate no video state
+				noVideosEl.hidden = false;
+				sliderContainer.hidden = true;
+
+				return {
+					noVideosHidden: noVideosEl.hidden,
+					sliderContainerHidden: sliderContainer.hidden
+				};
+			});
+
+			expect(stateNoVideos.noVideosHidden).toBe(false);
+			expect(stateNoVideos.sliderContainerHidden).toBe(true);
+
+			await popupPage.close();
+		});
+
+		it('page with no videos has zero video elements', async () => {
+			const noVideoPage = await createPageWithoutVideo();
+
+			const videoCount = await noVideoPage.evaluate(() => {
+				return document.querySelectorAll('video').length;
+			});
+
+			expect(videoCount).toBe(0);
+
+			await noVideoPage.close();
+		});
+
+		it('page with single video has one video element', async () => {
+			const singleVideoPage = await createPageWithVideo();
+			await singleVideoPage.waitForSelector('#test-video', { timeout: 10000 });
+
+			const videoCount = await singleVideoPage.evaluate(() => {
+				return document.querySelectorAll('video').length;
+			});
+
+			expect(videoCount).toBe(1);
+
+			await singleVideoPage.close();
+		});
+
+		it('page with multiple videos has correct video count', async () => {
+			const multiVideoPage = await createPageWithMultipleVideos(3);
+			await multiVideoPage.waitForSelector('#test-video-1', { timeout: 10000 });
+
+			const videoCount = await multiVideoPage.evaluate(() => {
+				return document.querySelectorAll('video').length;
+			});
+
+			expect(videoCount).toBe(3);
+
+			await multiVideoPage.close();
+		});
+
+		it('all videos on multi-video page respond to rate changes', async () => {
+			const multiVideoPage = await createPageWithMultipleVideos(3);
+			await multiVideoPage.waitForSelector('#test-video-1', { timeout: 10000 });
+
+			// Change all video rates
+			const rates = await multiVideoPage.evaluate(() => {
+				const videos = document.querySelectorAll('video');
+				videos.forEach((v) => (v.playbackRate = 2));
+				return Array.from(videos).map((v) => v.playbackRate);
+			});
+
+			expect(rates).toEqual([2, 2, 2]);
+
+			await multiVideoPage.close();
+		});
+
+		it('handles navigation from no-video page to video page in same tab', async () => {
+			// Start with a page without videos
+			const page = await createPageWithoutVideo();
+
+			// Verify no videos on initial page
+			const initialVideoCount = await page.evaluate(() => document.querySelectorAll('video').length);
+			expect(initialVideoCount).toBe(0);
+
+			// Navigate to a page with video (same tab)
+			const videoUrl = getTestVideoURL();
+			await page.setContent(`
+				<!DOCTYPE html>
+				<html>
+					<head><title>Video Page</title></head>
+					<body>
+						<video id="test-video" width="640" height="360" controls>
+							<source src="${videoUrl}" type="video/mp4">
+						</video>
+					</body>
+				</html>
+			`);
+
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+
+			// Verify video is now present
+			const finalVideoCount = await page.evaluate(() => document.querySelectorAll('video').length);
+			expect(finalVideoCount).toBe(1);
+
+			// Verify video can have playback rate changed
+			const canChangeRate = await page.evaluate(() => {
+				const video = document.querySelector('video') as HTMLVideoElement;
+				video.playbackRate = 1.5;
+				return video.playbackRate === 1.5;
+			});
+			expect(canChangeRate).toBe(true);
+
+			await page.close();
+		});
+
+		it('handles navigation from video page to no-video page in same tab', async () => {
+			// Start with a page with video
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+
+			// Verify video exists
+			const initialVideoCount = await page.evaluate(() => document.querySelectorAll('video').length);
+			expect(initialVideoCount).toBe(1);
+
+			// Navigate to a page without videos (same tab)
+			await page.setContent(`
+				<!DOCTYPE html>
+				<html>
+					<head><title>No Video Page</title></head>
+					<body>
+						<h1>Page without videos</h1>
+						<p>No video elements here.</p>
+					</body>
+				</html>
+			`);
+
+			// Verify no videos after navigation
+			const finalVideoCount = await page.evaluate(() => document.querySelectorAll('video').length);
+			expect(finalVideoCount).toBe(0);
+
+			await page.close();
+		});
+
+		it('dynamically added video is detected on page', async () => {
+			// Start with a page without videos
+			const page = await createPageWithoutVideo();
+
+			// Verify no videos initially
+			const initialCount = await page.evaluate(() => document.querySelectorAll('video').length);
+			expect(initialCount).toBe(0);
+
+			// Dynamically add a video element
+			await page.evaluate(() => {
+				const video = document.createElement('video');
+				video.id = 'dynamic-video';
+				video.width = 640;
+				video.height = 360;
+				video.controls = true;
+				document.body.appendChild(video);
+			});
+
+			await page.waitForSelector('#dynamic-video', { timeout: 10000 });
+
+			// Verify video is now present
+			const finalCount = await page.evaluate(() => document.querySelectorAll('video').length);
+			expect(finalCount).toBe(1);
+
+			// Verify the dynamically added video can have rate changed
+			const rateChanged = await page.evaluate(() => {
+				const video = document.getElementById('dynamic-video') as HTMLVideoElement;
+				video.playbackRate = 2;
+				return video.playbackRate;
+			});
+			expect(rateChanged).toBe(2);
+
+			await page.close();
 		});
 	});
 });

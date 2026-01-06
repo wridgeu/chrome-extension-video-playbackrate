@@ -4,6 +4,14 @@ body {
     margin-right: 3vw;
 }
 
+.no-videos {
+    padding: 16px 8px;
+    text-align: center;
+    color: var(--sapTextColor, #32363a);
+    font-size: var(--sapFontSize, 14px);
+    font-family: var(--sapFontFamily, sans-serif);
+}
+
 .slider-container {
     position: relative;
 }

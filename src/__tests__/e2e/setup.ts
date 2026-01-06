@@ -8,6 +8,9 @@ const __dirname = path.dirname(__filename);
 // Path to the built extension
 const EXTENSION_PATH = path.resolve(__dirname, '../../../dist');
 
+// Test video URL (file:// URL for browser access, resolved relative to this module)
+const TEST_VIDEO_URL = new URL('../fixtures/test-video.mp4', import.meta.url).href;
+
 let browser: Browser | null = null;
 
 /** Launch a browser instance with the extension loaded. */
@@ -100,7 +103,7 @@ export async function createPageWithVideo(): Promise<Page> {
 
 	const page = await browser.newPage();
 
-	// Create a simple page with a video element
+	// Create a page with a video element using local test video
 	await page.setContent(`
     <!DOCTYPE html>
     <html>
@@ -109,10 +112,9 @@ export async function createPageWithVideo(): Promise<Page> {
       </head>
       <body>
         <video id="test-video" width="640" height="360" controls>
-          <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+          <source src="${TEST_VIDEO_URL}" type="video/mp4">
         </video>
         <script>
-          // Make video element accessible
           window.testVideo = document.getElementById('test-video');
         </script>
       </body>
@@ -120,6 +122,70 @@ export async function createPageWithVideo(): Promise<Page> {
   `);
 
 	return page;
+}
+
+/** Create a test page without any video elements. */
+export async function createPageWithoutVideo(): Promise<Page> {
+	if (!browser) {
+		throw new Error('Browser not launched');
+	}
+
+	const page = await browser.newPage();
+
+	await page.setContent(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>No Video Test Page</title>
+      </head>
+      <body>
+        <h1>Page without videos</h1>
+        <p>This page has no video elements.</p>
+      </body>
+    </html>
+  `);
+
+	return page;
+}
+
+/** Create a test page with multiple video elements. */
+export async function createPageWithMultipleVideos(count: number = 3): Promise<Page> {
+	if (!browser) {
+		throw new Error('Browser not launched');
+	}
+
+	const page = await browser.newPage();
+
+	const videoElements = Array.from(
+		{ length: count },
+		(_, i) => `
+        <video id="test-video-${i + 1}" width="320" height="180" controls>
+          <source src="${TEST_VIDEO_URL}" type="video/mp4">
+        </video>`
+	).join('\n');
+
+	await page.setContent(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Multiple Videos Test Page</title>
+      </head>
+      <body>
+        <h1>Page with ${count} videos</h1>
+        ${videoElements}
+        <script>
+          window.testVideos = document.querySelectorAll('video');
+        </script>
+      </body>
+    </html>
+  `);
+
+	return page;
+}
+
+/** Get the test video URL for use in inline HTML */
+export function getTestVideoURL(): string {
+	return TEST_VIDEO_URL;
 }
 
 /** Get the service worker target for the extension. */

@@ -2,6 +2,7 @@ import type Slider from '@ui5/webcomponents/dist/Slider.js';
 import { MessagingAction, type MessagingRequestPayload, type RetrieveResponse } from './contentscript.js';
 import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
+import '@ui5/webcomponents/dist/Text.js';
 
 /**
  * Positions tooltip relative to slider handle.
@@ -41,29 +42,42 @@ function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 	}
 }
 
+/** Shows or hides elements based on whether videos are present on the page. */
+function updateVisibility(hasVideos: boolean, noVideosEl: HTMLElement, sliderContainer: HTMLElement) {
+	noVideosEl.hidden = hasVideos;
+	sliderContainer.hidden = !hasVideos;
+}
+
 /** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
 const popup = async () => {
 	await new ThemeSwitcher().init();
 	const slider = <Slider>document.getElementById('slider');
 	const tooltip = document.getElementById('tooltip') as HTMLElement;
+	const noVideosEl = document.getElementById('no-videos') as HTMLElement;
+	const sliderContainer = document.getElementById('slider-container') as HTMLElement;
 	const [{ id: currentActiveTabId }] = await chrome.tabs.query({
 		active: true,
 		currentWindow: true
 	});
 
 	let playbackRate: number | undefined;
+	let hasVideos = false;
 	try {
 		if (currentActiveTabId) {
 			const response = await chrome.tabs.sendMessage(currentActiveTabId, <MessagingRequestPayload>{
 				action: MessagingAction.RETRIEVE
 			});
-			playbackRate = (response as RetrieveResponse)?.playbackRate;
+			const retrieveResponse = response as RetrieveResponse;
+			playbackRate = retrieveResponse?.playbackRate;
+			hasVideos = (retrieveResponse?.videoCount ?? 0) > 0;
 		}
 	} catch {
 		// Content script not available or tab doesn't support messaging
 		playbackRate = undefined;
+		hasVideos = false;
 	}
 
+	updateVisibility(hasVideos, noVideosEl, sliderContainer);
 	slider.value = playbackRate ?? 1;
 
 	/** Shows the tooltip and positions it relative to the slider handle */
