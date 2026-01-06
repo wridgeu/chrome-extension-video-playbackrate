@@ -5,7 +5,8 @@ export const enum MessagingAction {
 	SET = 0,
 	SETSPECIFIC = 1,
 	RETRIEVE = 2,
-	UPDATE_CONTEXT_MENU = 3
+	UPDATE_CONTEXT_MENU = 3,
+	UPDATE_BADGE = 4
 }
 
 type SetSpecificActionPayload = {
@@ -28,22 +29,24 @@ type UpdateContextMenuPayload = {
 	playbackRate: number;
 };
 
-/**
- * Discriminated Union, discriminator: action
- */
+type UpdateBadgePayload = {
+	action: MessagingAction.UPDATE_BADGE;
+	playbackRate: number;
+};
+
+/** Discriminated union for messaging between popup/service worker and content script. */
 export type MessagingRequestPayload =
 	| SetSpecificActionPayload
 	| SetActionPayload
 	| RetrieveActionPayload
-	| UpdateContextMenuPayload;
+	| UpdateContextMenuPayload
+	| UpdateBadgePayload;
 
 export type RetrieveResponse = {
 	playbackRate: number;
 };
 
-/**
- * Default configuration
- */
+/** User's default playback rate configuration stored in sync storage. */
 export type Defaults = {
 	defaults: {
 		enabled?: boolean;
@@ -83,12 +86,7 @@ export type Defaults = {
 	});
 })();
 
-/**
- * Find a video element by its src attribute.
- * Uses CSS.escape() to sanitize the input for use in a CSS selector.
- * @param {string} srcUrl - The src URL to match against video elements
- * @returns {HTMLVideoElement | null} The matching video element or null if not found
- */
+/** Find a video element by its src attribute. Uses CSS.escape() to sanitize the selector. */
 function findVideoElementBySrc(srcUrl: string): HTMLVideoElement | null {
 	return document.querySelector(`video[src='${CSS.escape(srcUrl)}']`);
 }
@@ -125,9 +123,7 @@ chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, _, sendR
 	}
 });
 
-/**
- * Updates context menu checked state when right-clicking on a video.
- */
+/** Sync context menu checked state when right-clicking on a video. */
 document.addEventListener('contextmenu', (event) => {
 	const target = event.target as HTMLElement;
 	const video = target.closest('video') || (target.tagName === 'VIDEO' ? target : null);
@@ -142,9 +138,8 @@ document.addEventListener('contextmenu', (event) => {
 });
 
 /**
- * Listens for playback rate changes on video elements and stores the current rate
- * with the tab ID. This allows the popup slider to stay in sync when the rate
- * changes via native video controls or context menu.
+ * Sets up a listener for playback rate changes on a video element.
+ * Stores the rate in storage (for popup sync) and updates the extension badge.
  */
 function setupRateChangeListener(video: HTMLVideoElement) {
 	video.addEventListener('ratechange', async () => {
@@ -152,15 +147,17 @@ function setupRateChangeListener(video: HTMLVideoElement) {
 		if (tabId !== undefined) {
 			chrome.storage.local.set({ [`playbackRate_${tabId}`]: video.playbackRate });
 		}
+		chrome.runtime.sendMessage({
+			action: MessagingAction.UPDATE_BADGE,
+			playbackRate: video.playbackRate
+		});
 	});
 }
 
 /** Cache the tab ID to avoid repeated async calls */
 let cachedTabId: number | undefined;
 
-/**
- * Gets the current tab ID from the service worker.
- */
+/** Gets the current tab ID from the service worker. */
 async function getTabId(): Promise<number | undefined> {
 	if (cachedTabId !== undefined) return cachedTabId;
 	try {
@@ -172,8 +169,17 @@ async function getTabId(): Promise<number | undefined> {
 	}
 }
 
-// Set up ratechange listeners for existing videos
-document.querySelectorAll('video').forEach(setupRateChangeListener);
+// Set up ratechange listeners for existing videos and update badge with initial rate
+const existingVideos = document.querySelectorAll('video');
+existingVideos.forEach(setupRateChangeListener);
+
+// Send initial badge update if there are videos on the page
+if (existingVideos.length > 0) {
+	chrome.runtime.sendMessage({
+		action: MessagingAction.UPDATE_BADGE,
+		playbackRate: existingVideos[0].playbackRate
+	});
+}
 
 // Observe for dynamically added videos
 const videoObserver = new MutationObserver((mutations) => {

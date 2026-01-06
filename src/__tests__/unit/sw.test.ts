@@ -8,7 +8,7 @@ import {
 } from './setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
 import { MessagingAction } from '@src/contentscript';
-import { findClosestOption, type ContextMenuOption } from '@src/sw';
+import { findClosestOption, formatBadgeText, type ContextMenuOption } from '@src/sw';
 
 describe('Service Worker', () => {
 	let onInstalledCallback: ((details: { reason: string }) => void) | undefined;
@@ -202,5 +202,28 @@ describe('findClosestOption', () => {
 		const result = findClosestOption(1.8, contextMenuOptions);
 		// 1.8 is between 1.5 and 2, closer to 2
 		expect(result?.playbackRate).toBe(2);
+	});
+});
+
+describe('formatBadgeText', () => {
+	it('formats integer rates without decimals', () => {
+		expect(formatBadgeText(1)).toBe('1');
+		expect(formatBadgeText(2)).toBe('2');
+		expect(formatBadgeText(4)).toBe('4');
+	});
+
+	it('formats decimal rates with one decimal place', () => {
+		expect(formatBadgeText(1.5)).toBe('1.5');
+		expect(formatBadgeText(0.5)).toBe('0.5');
+		expect(formatBadgeText(2.25)).toBe('2.3'); // toFixed rounds
+	});
+
+	it('handles zero', () => {
+		expect(formatBadgeText(0)).toBe('0');
+	});
+
+	it('handles edge case decimal values', () => {
+		expect(formatBadgeText(0.25)).toBe('0.3'); // toFixed rounds
+		expect(formatBadgeText(3.5)).toBe('3.5');
 	});
 });

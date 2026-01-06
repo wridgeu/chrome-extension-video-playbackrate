@@ -10,11 +10,7 @@ import type { Defaults } from './contentscript.js';
 import type CheckBox from '@ui5/webcomponents/dist/CheckBox.js';
 import type Switch from '@ui5/webcomponents/dist/Switch.js';
 
-/**
- * Wrapper for the chrome.storage.sync for default settings.
- * @param {boolean} checkBoxState - Whether defaults are enabled
- * @param {string} playbackRate - The playback rate value as string
- */
+/** Save default playback settings to sync storage. */
 async function saveDefaults(checkBoxState: boolean, playbackRate: string) {
 	await chrome.storage.sync.set({
 		defaults: {
@@ -24,12 +20,19 @@ async function saveDefaults(checkBoxState: boolean, playbackRate: string) {
 	});
 }
 
-/**
- * Initialize the defaults from storage and populate UI elements.
- * @param {CheckBox} defaultsCheckbox - The checkbox for enabling defaults
- * @param {Select} defaultSpeedSelector - The dropdown for selecting default speed
- * @returns {Promise<void>}
- */
+/** Save badge visibility preference to sync storage. */
+async function saveBadgePreference(enabled: boolean) {
+	await chrome.storage.sync.set({ badgeEnabled: enabled });
+}
+
+/** Initialize badge checkbox from storage. Defaults to enabled if not set. */
+async function initBadgePreference(badgeCheckbox: CheckBox): Promise<void> {
+	const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
+	// Default to true if not set
+	badgeCheckbox.checked = badgeEnabled !== false;
+}
+
+/** Initialize default settings UI from storage. */
 async function initDefaults(defaultsCheckbox: CheckBox, defaultSpeedSelector: Select): Promise<void> {
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
 	defaultsCheckbox.checked = defaults?.enabled || false;
@@ -41,9 +44,7 @@ async function initDefaults(defaultsCheckbox: CheckBox, defaultSpeedSelector: Se
 	}
 }
 
-/**
- *
- */
+/** Initialize theme toggle switch from storage and system preference. */
 async function initThemeToggle() {
 	const themeSwitcher = await new ThemeSwitcher().init();
 	const themeToggleCheckbox = <Switch>document.getElementById('themeToggle')!;
@@ -56,8 +57,10 @@ async function initThemeToggle() {
 (async () => {
 	const defaultsCheckbox = <CheckBox>document.getElementById('defaultsEnabledCheckbox')!;
 	const defaultSpeedSelector = <Select>document.getElementById('defaultSpeedSelector')!;
+	const badgeCheckbox = <CheckBox>document.getElementById('badgeEnabledCheckbox')!;
 
 	await initDefaults(defaultsCheckbox, defaultSpeedSelector);
+	await initBadgePreference(badgeCheckbox);
 	await initThemeToggle();
 
 	defaultsCheckbox.addEventListener('change', async (event: Event) => {
@@ -73,5 +76,10 @@ async function initThemeToggle() {
 
 	defaultSpeedSelector.addEventListener('change', async () => {
 		await saveDefaults(defaultsCheckbox.checked, defaultSpeedSelector.selectedOption!.innerText);
+	});
+
+	badgeCheckbox.addEventListener('change', async (event: Event) => {
+		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
+		await saveBadgePreference(checkboxIsChecked);
 	});
 })();

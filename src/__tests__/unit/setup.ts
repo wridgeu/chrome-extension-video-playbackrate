@@ -55,6 +55,11 @@ const chromeStorageMock = {
 		set: vi.fn().mockResolvedValue(undefined),
 		remove: vi.fn().mockResolvedValue(undefined),
 		clear: vi.fn().mockResolvedValue(undefined)
+	},
+	onChanged: {
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		hasListener: vi.fn()
 	}
 };
 
@@ -119,6 +124,15 @@ const chromeContextMenusMock = {
 	}
 };
 
+// Mock Chrome Action API
+const chromeActionMock = {
+	setBadgeText: vi.fn(),
+	setBadgeBackgroundColor: vi.fn(),
+	setBadgeTextColor: vi.fn(),
+	setIcon: vi.fn(),
+	setTitle: vi.fn()
+};
+
 // Assemble the chrome mock object
 const chromeMock = {
 	storage: chromeStorageMock,
@@ -126,7 +140,8 @@ const chromeMock = {
 	tabs: chromeTabsMock,
 	scripting: chromeScriptingMock,
 	contextMenus: chromeContextMenusMock,
-	webNavigation: chromeWebNavigationMock
+	webNavigation: chromeWebNavigationMock,
+	action: chromeActionMock
 };
 
 // Set chrome as a global
@@ -156,6 +171,7 @@ export {
 	chromeScriptingMock,
 	chromeContextMenusMock,
 	chromeWebNavigationMock,
+	chromeActionMock,
 	mockStorage
 };
 

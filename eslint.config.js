@@ -29,7 +29,7 @@ export default tseslint.config(
       sourceType: 'module',
       globals: {
         ...globals.browser,
-        ...globals.es2022,
+        ...globals.es2020,
         chrome: 'readonly',
       },
       parserOptions: {
@@ -51,16 +51,20 @@ export default tseslint.config(
       // Allow non-null assertions in this project (Chrome extension types often need them)
       '@typescript-eslint/no-non-null-assertion': 'off',
 
-      // JSDoc rules (relaxed for test files)
+      // JSDoc rules - TypeScript provides types, so disable redundant type annotations
       'jsdoc/require-jsdoc': ['warn', { publicOnly: true }],
-      'jsdoc/require-param-description': 'warn',
-      'jsdoc/require-returns-description': 'warn',
+      'jsdoc/require-param': 'off',
+      'jsdoc/require-param-type': 'off',
+      'jsdoc/require-returns': 'off',
+      'jsdoc/require-returns-type': 'off',
+      'jsdoc/require-param-description': 'off',
+      'jsdoc/require-returns-description': 'off',
     },
   },
 
   // Test files configuration
   {
-    files: ['**/__tests__/**/*.ts', '**/e2e/**/*.ts', '**/*.test.ts'],
+    files: ['**/__tests__/**/*.ts', '**/e2e/**/*.ts', '**/unit/**/*.ts', '**/*.test.ts'],
     rules: {
       // Relax rules for test files
       'jsdoc/require-jsdoc': 'off',
