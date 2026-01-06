@@ -10,11 +10,10 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "sourceMap": false,
-    "moduleResolution": "Node",
-    "baseUrl": ".",
+    "moduleResolution": "bundler",
     "paths": {
-      "@src/*": ["src/*"],
-      "@tests/*": ["src/__tests__/*"]
+      "@src/*": ["./src/*"],
+      "@tests/*": ["./src/__tests__/*"]
     }
   }
 }
