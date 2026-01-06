@@ -5,8 +5,7 @@ import {
 	chromeStorageMock,
 	chromeTabsMock,
 	chromeActionMock,
-	resetChromeMocks,
-	mockStorage
+	resetChromeMocks
 } from './setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
 import { MessagingAction } from '@src/contentscript';
@@ -179,11 +178,9 @@ describe('Service Worker', () => {
 		});
 
 		it('clears all badges when badgeEnabled changes to false', async () => {
-			chromeTabsMock.query.mockImplementation(
-				(_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
-					callback([{ id: 1 }, { id: 2 }, { id: 3 }]);
-				}
-			);
+			chromeTabsMock.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
+				callback([{ id: 1 }, { id: 2 }, { id: 3 }]);
+			});
 
 			onStorageChangedCallback!({ badgeEnabled: { newValue: false, oldValue: true } }, 'sync');
 
@@ -195,11 +192,9 @@ describe('Service Worker', () => {
 		});
 
 		it('does not clear badges when badgeEnabled changes to true', async () => {
-			chromeTabsMock.query.mockImplementation(
-				(_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
-					callback([{ id: 1 }]);
-				}
-			);
+			chromeTabsMock.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
+				callback([{ id: 1 }]);
+			});
 
 			onStorageChangedCallback!({ badgeEnabled: { newValue: true, oldValue: false } }, 'sync');
 
@@ -288,4 +283,3 @@ describe('formatBadgeText', () => {
 		expect(formatBadgeText(3.5)).toBe('3.5');
 	});
 });
-
