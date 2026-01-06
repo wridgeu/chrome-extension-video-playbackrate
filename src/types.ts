@@ -33,6 +33,7 @@ type SetSpecificActionPayload = {
 type UpdateBadgePayload = {
 	action: typeof MessagingAction.UPDATE_BADGE;
 	playbackRate: number;
+	tabId?: number;
 };
 
 type UpdateContextMenuPayload = {
