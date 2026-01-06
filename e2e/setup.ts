@@ -10,6 +10,9 @@ const EXTENSION_PATH = path.resolve(__dirname, '../dist');
 
 let browser: Browser | null = null;
 
+/**
+ *
+ */
 export async function launchBrowserWithExtension(): Promise<Browser> {
   if (browser) {
     return browser;
@@ -29,6 +32,9 @@ export async function launchBrowserWithExtension(): Promise<Browser> {
   return browser;
 }
 
+/**
+ *
+ */
 export async function closeBrowser(): Promise<void> {
   if (browser) {
     await browser.close();
@@ -36,6 +42,9 @@ export async function closeBrowser(): Promise<void> {
   }
 }
 
+/**
+ *
+ */
 export async function getExtensionId(): Promise<string> {
   if (!browser) {
     throw new Error('Browser not launched');
@@ -69,6 +78,10 @@ export async function getExtensionId(): Promise<string> {
   return extensionId;
 }
 
+/**
+ *
+ * @param extensionId
+ */
 export async function openExtensionPopup(extensionId: string): Promise<Page> {
   if (!browser) {
     throw new Error('Browser not launched');
@@ -81,6 +94,10 @@ export async function openExtensionPopup(extensionId: string): Promise<Page> {
   return page;
 }
 
+/**
+ *
+ * @param extensionId
+ */
 export async function openExtensionOptions(extensionId: string): Promise<Page> {
   if (!browser) {
     throw new Error('Browser not launched');
@@ -93,6 +110,9 @@ export async function openExtensionOptions(extensionId: string): Promise<Page> {
   return page;
 }
 
+/**
+ *
+ */
 export async function createPageWithVideo(): Promise<Page> {
   if (!browser) {
     throw new Error('Browser not launched');
