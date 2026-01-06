@@ -721,7 +721,9 @@ describe('Chrome Extension E2E', () => {
 			// Change all video rates
 			const rates = await multiVideoPage.evaluate(() => {
 				const videos = document.querySelectorAll('video');
-				videos.forEach((v) => (v.playbackRate = 2));
+				videos.forEach((v) => {
+					v.playbackRate = 2;
+				});
 				return Array.from(videos).map((v) => v.playbackRate);
 			});
 
