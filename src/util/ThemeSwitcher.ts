@@ -28,8 +28,9 @@ export class ThemeSwitcher {
 	/**
 	 * Initialize (set) the currently active theme.
 	 *
-	 * In case we have one already saved (user already set  previously), use this one.
+	 * In case we have one already saved (user already set previously), use this one.
 	 * If we don't have one saved, set based on preference.
+	 * @returns {Promise<ThemeSwitcher>} The ThemeSwitcher instance for chaining
 	 */
 	public async init(): Promise<ThemeSwitcher> {
 		const activeTheme = await this.getLatestTheme();
@@ -61,8 +62,9 @@ export class ThemeSwitcher {
 	}
 
 	/**
+	 * Check if dark mode is currently active.
 	 * @public
-	 * @returns {boolean}
+	 * @returns {Promise<boolean>} True if dark mode is active
 	 */
 	public async isDarkModeActive(): Promise<boolean> {
 		const currentActiveTheme = (await this.getLatestTheme()) || getTheme();
@@ -70,8 +72,9 @@ export class ThemeSwitcher {
 	}
 
 	/**
-	 * Retrieve last set theme from stroage
+	 * Retrieve last set theme from storage.
 	 * @private
+	 * @returns {Promise<string>} The stored theme ID or empty string
 	 */
 	private async getLatestTheme(): Promise<string> {
 		const { theme } = (await chrome.storage.sync.get('theme')) as { theme?: string };
@@ -79,9 +82,9 @@ export class ThemeSwitcher {
 	}
 
 	/**
-	 * Write current theme into storage
+	 * Write current theme into storage.
 	 * @private
-	 * @param {ThemeId} currentTheme
+	 * @param {ThemeId} currentTheme - The theme ID to store
 	 */
 	private async setLatestTheme(currentTheme: ThemeId): Promise<void> {
 		await chrome.storage.sync.set({
@@ -91,9 +94,9 @@ export class ThemeSwitcher {
 
 	/**
 	 * In addition to setting the theme, we have to adjust the
-	 * background of the body as it has no connection to UI5/Fiori
+	 * background of the body as it has no connection to UI5/Fiori.
 	 * @private
-	 * @param {string} color
+	 * @param {string} color - The background color to set
 	 */
 	private setBackgroundColor(color: string): void {
 		const currentHtmlBody = <HTMLBodyElement>document.querySelector('body')!;
@@ -101,9 +104,10 @@ export class ThemeSwitcher {
 	}
 
 	/**
+	 * Set the theme and background color.
 	 * @private
-	 * @param {ThemeId} themeName
-	 * @param {string} backgroundColor
+	 * @param {ThemeId} themeName - The theme ID to apply
+	 * @param {string} backgroundColor - The background color for the theme
 	 */
 	private setTheme(themeName: ThemeId, backgroundColor: string): void {
 		setTheme(themeName);

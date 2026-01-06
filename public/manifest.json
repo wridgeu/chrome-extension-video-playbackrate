@@ -11,7 +11,7 @@
   "options_ui": {
     "page": "options.html"
   },
-  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus", "webNavigation"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "action": {
     "default_icon": {

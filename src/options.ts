@@ -12,22 +12,23 @@ import type Switch from '@ui5/webcomponents/dist/Switch.js';
 
 /**
  * Wrapper for the chrome.storage.sync for default settings.
- * @param {boolean} checkBoxState
- * @param {string} playbackRate
+ * @param {boolean} checkBoxState - Whether defaults are enabled
+ * @param {string} playbackRate - The playback rate value as string
  */
 async function saveDefaults(checkBoxState: boolean, playbackRate: string) {
 	await chrome.storage.sync.set({
 		defaults: {
 			enabled: checkBoxState,
-			playbackRate: Number.parseInt(playbackRate) // parse our string to a number
+			playbackRate: Number.parseFloat(playbackRate) // parseFloat to support fractional rates
 		}
 	});
 }
 
 /**
- *
- * @param defaultsCheckbox
- * @param defaultSpeedSelector
+ * Initialize the defaults from storage and populate UI elements.
+ * @param {CheckBox} defaultsCheckbox - The checkbox for enabling defaults
+ * @param {Select} defaultSpeedSelector - The dropdown for selecting default speed
+ * @returns {Promise<void>}
  */
 async function initDefaults(defaultsCheckbox: CheckBox, defaultSpeedSelector: Select): Promise<void> {
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
