@@ -8,7 +8,7 @@ vi.mock('@ui5/webcomponents-base/dist/config/Theme.js', () => ({
 	getTheme: vi.fn(() => 'sap_horizon')
 }));
 
-import { ThemeSwitcher } from '../util/ThemeSwitcher';
+import { ThemeSwitcher } from '@src/util/ThemeSwitcher';
 import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js';
 
 describe('ThemeSwitcher', () => {

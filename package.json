@@ -18,9 +18,10 @@
     "prepare": "husky",
     "zip": "npm-build-zip --name=dist --source=./dist",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:unit": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:coverage": "vitest run --coverage --project unit",
+    "test:e2e": "vitest run --project e2e",
     "typecheck": "tsc --noEmit"
   },
   "watch": {

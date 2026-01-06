@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import contextMenuOptions from '../ContextMenuOptions';
+import contextMenuOptions from '@src/ContextMenuOptions';
 
 describe('ContextMenuOptions', () => {
 	it('should export an array of options', () => {

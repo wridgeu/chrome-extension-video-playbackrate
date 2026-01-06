@@ -83,6 +83,20 @@ const chromeTabsMock = {
 		addListener: vi.fn(),
 		removeListener: vi.fn(),
 		hasListener: vi.fn()
+	},
+	onRemoved: {
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		hasListener: vi.fn()
+	}
+};
+
+// Mock Chrome WebNavigation API
+const chromeWebNavigationMock = {
+	onBeforeNavigate: {
+		addListener: vi.fn(),
+		removeListener: vi.fn(),
+		hasListener: vi.fn()
 	}
 };
 
@@ -111,7 +125,8 @@ const chromeMock = {
 	runtime: chromeRuntimeMock,
 	tabs: chromeTabsMock,
 	scripting: chromeScriptingMock,
-	contextMenus: chromeContextMenusMock
+	contextMenus: chromeContextMenusMock,
+	webNavigation: chromeWebNavigationMock
 };
 
 // Set chrome as a global
@@ -140,6 +155,7 @@ export {
 	chromeTabsMock,
 	chromeScriptingMock,
 	chromeContextMenusMock,
+	chromeWebNavigationMock,
 	mockStorage
 };
 

@@ -3,6 +3,13 @@ import { MessagingAction, type MessagingRequestPayload, type RetrieveResponse } 
 import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
 
+/**
+ * Positions the tooltip relative to the slider handle.
+ * The tooltip appears to the right of the handle when on the left half,
+ * and to the left of the handle when on the right half.
+ * @param slider - The UI5 slider component
+ * @param tooltip - The tooltip HTML element to position
+ */
 function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 	const value = slider.value;
 	const min = Number(slider.min);
@@ -11,21 +18,36 @@ function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 
 	tooltip.textContent = `${value}x`;
 
-	const sliderRect = slider.getBoundingClientRect();
+	// Force reflow to ensure dimensions are computed after content change
+	void tooltip.offsetWidth;
+
 	const tooltipRect = tooltip.getBoundingClientRect();
-	const handleX = sliderRect.left + percent * sliderRect.width;
-	const tooltipHalfWidth = tooltipRect.width / 2;
 
-	// Center tooltip above handle, but clamp to viewport edges
-	let left = handleX - tooltipHalfWidth;
-	const minLeft = 4;
-	const maxLeft = window.innerWidth - tooltipRect.width - 4;
-	left = Math.max(minLeft, Math.min(maxLeft, left));
+	// Get the actual handle element from shadow DOM for precise positioning
+	const handle = slider.shadowRoot?.querySelector('.ui5-slider-handle') as HTMLElement | null;
+	if (!handle) return;
 
-	tooltip.style.left = `${left}px`;
-	tooltip.style.top = `${sliderRect.top - tooltipRect.height - 8}px`;
+	const handleRect = handle.getBoundingClientRect();
+
+	// Vertically center with handle
+	const handleCenterY = handleRect.top + handleRect.height / 2;
+	tooltip.style.top = `${handleCenterY - tooltipRect.height / 2}px`;
+
+	// Position left or right of handle with gap
+	const gap = 4;
+	if (percent <= 0.5) {
+		// Handle on left half - tooltip to the right
+		tooltip.style.left = `${handleRect.right + gap}px`;
+	} else {
+		// Handle on right half - tooltip to the left
+		tooltip.style.left = `${handleRect.left - tooltipRect.width - gap}px`;
+	}
 }
 
+/**
+ * Initializes the popup UI and sets up event handlers for the playback rate slider.
+ * Retrieves the current playback rate from the active tab's video and syncs the slider.
+ */
 const popup = async () => {
 	await new ThemeSwitcher().init();
 	const slider = <Slider>document.getElementById('slider');
@@ -35,25 +57,28 @@ const popup = async () => {
 		currentWindow: true
 	});
 
-	const { playbackRate } = (await (<Promise<RetrieveResponse>>chrome.tabs.sendMessage(
-			<number>currentActiveTabId,
-			<MessagingRequestPayload>{
+	let playbackRate: number | undefined;
+	try {
+		if (currentActiveTabId) {
+			const response = await chrome.tabs.sendMessage(currentActiveTabId, <MessagingRequestPayload>{
 				action: MessagingAction.RETRIEVE
-			}
-		))) || {};
-
-	if (chrome.runtime.lastError || !playbackRate) {
-		slider.value = 1;
-	} else {
-		slider.value = playbackRate;
+			});
+			playbackRate = (response as RetrieveResponse)?.playbackRate;
+		}
+	} catch {
+		// Content script not available or tab doesn't support messaging
+		playbackRate = undefined;
 	}
 
-	// Show tooltip only during interaction
+	slider.value = playbackRate ?? 1;
+
+	/** Shows the tooltip and positions it relative to the slider handle */
 	const showTooltip = () => {
 		tooltip.showPopover();
 		positionTooltip(slider, tooltip);
 	};
 
+	/** Hides the tooltip popover */
 	const hideTooltip = () => {
 		tooltip.hidePopover();
 	};
@@ -63,23 +88,33 @@ const popup = async () => {
 	document.addEventListener('mouseup', hideTooltip);
 	document.addEventListener('touchend', hideTooltip);
 
-	// Update position while dragging
-	slider.addEventListener('input', () => {
+	slider.addEventListener('input', (event: Event) => {
 		if (tooltip.matches(':popover-open')) {
 			positionTooltip(slider, tooltip);
 		}
+
+		if (currentActiveTabId) {
+			chrome.tabs.sendMessage(currentActiveTabId, <MessagingRequestPayload>{
+				action: MessagingAction.SET,
+				playbackRate: (event.target as Slider).value
+			});
+		}
 	});
 
-	// Save on change (release)
-	slider.addEventListener('change', async (event: Event): Promise<void> => {
-		chrome.tabs.sendMessage(
-			<number>currentActiveTabId,
-			<MessagingRequestPayload>{
-				action: MessagingAction.SET,
-				playbackRate: <number>(event.target as Slider).value
+	/**
+	 * Listens for storage changes to sync slider when video playback rate
+	 * changes via native controls or context menu. Only responds to changes
+	 * from the current active tab.
+	 */
+	if (currentActiveTabId) {
+		const storageKey = `playbackRate_${currentActiveTabId}`;
+		chrome.storage.local.onChanged.addListener((changes) => {
+			const newRate = changes[storageKey]?.newValue as number | undefined;
+			if (newRate !== undefined) {
+				slider.value = newRate;
 			}
-		);
-	});
+		});
+	}
 };
 
 popup();
