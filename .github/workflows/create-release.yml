@@ -1,6 +1,6 @@
 name: create release
 
-on: 
+on:
   workflow_dispatch:
   push:
     tags:
@@ -19,12 +19,12 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'yarn'
+        cache: 'npm'
     - name: build extension source => dist => zip
       run: |
-        yarn install
-        yarn build
-        yarn zip
+        npm ci
+        npm run build
+        npm run zip
     - name: create release
       uses: ncipollo/release-action@v1
       with:

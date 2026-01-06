@@ -1,6 +1,6 @@
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
-import { terser } from 'rollup-plugin-terser';
+import terser from '@rollup/plugin-terser';
 import multiInput from 'rollup-plugin-multi-input';
 import copy from 'rollup-plugin-copy';
 import json from '@rollup/plugin-json';
