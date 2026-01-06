@@ -126,7 +126,11 @@ const popup = async () => {
 				args: [newRate]
 			});
 			// Update badge and context menu directly since executeScript runs in different world
-			chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, playbackRate: newRate, tabId: currentActiveTabId });
+			chrome.runtime.sendMessage({
+				action: MessagingAction.UPDATE_BADGE,
+				playbackRate: newRate,
+				tabId: currentActiveTabId
+			});
 			chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: newRate });
 			// Store rate for popup sync
 			chrome.storage.local.set({ [`playbackRate_${currentActiveTabId}`]: newRate });
