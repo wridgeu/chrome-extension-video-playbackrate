@@ -44,6 +44,7 @@ export type MessagingRequestPayload =
 
 export type RetrieveResponse = {
 	playbackRate: number;
+	videoCount: number;
 };
 
 /** User's default playback rate configuration stored in sync storage. */
@@ -112,11 +113,10 @@ chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, _, sendR
 			break;
 		}
 		case MessagingAction.RETRIEVE:
-			if (!firstVideoElement) {
-				sendResponse({ playbackRate: 1 });
-			} else {
-				sendResponse({ playbackRate: firstVideoElement.playbackRate });
-			}
+			sendResponse({
+				playbackRate: firstVideoElement?.playbackRate ?? 1,
+				videoCount: videoElements.length
+			});
 			break;
 		default:
 			break;

@@ -4,7 +4,9 @@ import {
 	chromeRuntimeMock,
 	chromeStorageMock,
 	chromeTabsMock,
-	resetChromeMocks
+	chromeActionMock,
+	resetChromeMocks,
+	mockStorage
 } from './setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
 import { MessagingAction } from '@src/contentscript';
@@ -16,6 +18,16 @@ describe('Service Worker', () => {
 		| ((itemData: { menuItemId: string; srcUrl: string }, tab: { id: number }) => Promise<void>)
 		| undefined;
 	let onUpdatedCallback: ((tabId: number, changeInfo: { status?: string }) => void) | undefined;
+	let onMessageCallback:
+		| ((
+				request: { action: number; playbackRate?: number },
+				sender: { tab?: { id: number } },
+				sendResponse: () => void
+		  ) => void)
+		| undefined;
+	let onStorageChangedCallback:
+		| ((changes: Record<string, { newValue?: unknown; oldValue?: unknown }>, areaName: string) => void)
+		| undefined;
 
 	beforeAll(async () => {
 		vi.resetModules();
@@ -25,6 +37,8 @@ describe('Service Worker', () => {
 		onInstalledCallback = chromeRuntimeMock.onInstalled.addListener.mock.calls[0]?.[0];
 		onClickedCallback = chromeContextMenusMock.onClicked.addListener.mock.calls[0]?.[0];
 		onUpdatedCallback = chromeTabsMock.onUpdated.addListener.mock.calls[0]?.[0];
+		onMessageCallback = chromeRuntimeMock.onMessage.addListener.mock.calls[0]?.[0];
+		onStorageChangedCallback = chromeStorageMock.onChanged.addListener.mock.calls[0]?.[0];
 	});
 
 	beforeEach(() => {
@@ -147,6 +161,53 @@ describe('Service Worker', () => {
 			expect(executeSpy).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('badge toggle behavior', () => {
+		beforeEach(() => {
+			chromeActionMock.setBadgeText.mockClear();
+			chromeStorageMock.sync.get.mockClear();
+		});
+
+		it('registers message listener for badge updates', () => {
+			expect(onMessageCallback).toBeDefined();
+			expect(typeof onMessageCallback).toBe('function');
+		});
+
+		it('registers storage change listener', () => {
+			expect(onStorageChangedCallback).toBeDefined();
+			expect(typeof onStorageChangedCallback).toBe('function');
+		});
+
+		it('clears all badges when badgeEnabled changes to false', async () => {
+			chromeTabsMock.query.mockImplementation(
+				(_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
+					callback([{ id: 1 }, { id: 2 }, { id: 3 }]);
+				}
+			);
+
+			onStorageChangedCallback!({ badgeEnabled: { newValue: false, oldValue: true } }, 'sync');
+
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 1 });
+			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 2 });
+			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 3 });
+		});
+
+		it('does not clear badges when badgeEnabled changes to true', async () => {
+			chromeTabsMock.query.mockImplementation(
+				(_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
+					callback([{ id: 1 }]);
+				}
+			);
+
+			onStorageChangedCallback!({ badgeEnabled: { newValue: true, oldValue: false } }, 'sync');
+
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(chromeActionMock.setBadgeText).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('findClosestOption', () => {
@@ -227,3 +288,4 @@ describe('formatBadgeText', () => {
 		expect(formatBadgeText(3.5)).toBe('3.5');
 	});
 });
+
