@@ -78,7 +78,7 @@ document.addEventListener('contextmenu', (event) => {
 		chrome.runtime.sendMessage({
 			action: MessagingAction.UPDATE_CONTEXT_MENU,
 			playbackRate
-		});
+		}).catch(() => {});
 	}
 });
 
@@ -92,10 +92,10 @@ function setupRateChangeListener(video: HTMLVideoElement) {
 		if (tabId !== undefined) {
 			chrome.storage.local.set({ [`playbackRate_${tabId}`]: video.playbackRate });
 		}
-		chrome.runtime.sendMessage({
-			action: MessagingAction.UPDATE_BADGE,
-			playbackRate: video.playbackRate
-		});
+		// Update both badge and context menu when rate changes
+		const payload = { playbackRate: video.playbackRate };
+		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, ...payload }).catch(() => {});
+		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, ...payload }).catch(() => {});
 	});
 }
 
@@ -123,7 +123,7 @@ if (existingVideos.length > 0) {
 	chrome.runtime.sendMessage({
 		action: MessagingAction.UPDATE_BADGE,
 		playbackRate: existingVideos[0].playbackRate
-	});
+	}).catch(() => {});
 }
 
 // Observe for dynamically added videos

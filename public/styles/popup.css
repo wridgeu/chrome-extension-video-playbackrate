@@ -4,6 +4,11 @@ body {
     margin-right: 3vw;
 }
 
+/* Ensure hidden attribute works on web components */
+[hidden] {
+    display: none !important;
+}
+
 .no-videos {
     padding: 16px 8px;
     text-align: center;

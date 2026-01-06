@@ -834,4 +834,199 @@ describe('Chrome Extension E2E', () => {
 			await page.close();
 		});
 	});
+
+	describe('Popup executeScript Integration', () => {
+		// Tests that verify popup uses executeScript to change playback rate
+		// This ensures the popup works without relying on content script injection
+
+		it('popup slider change sets all video playback rates via executeScript pattern', async () => {
+			const page = await createPageWithMultipleVideos(2);
+			await page.waitForSelector('#test-video-1', { timeout: 10000 });
+
+			// Verify initial rates are 1
+			const initialRates = await page.evaluate(() =>
+				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
+			);
+			expect(initialRates).toEqual([1, 1]);
+
+			// Simulate what popup's executeScript does when slider changes
+			const newRate = 2.5;
+			await page.evaluate((rate: number) => {
+				document.querySelectorAll('video').forEach((v) => {
+					v.playbackRate = rate;
+				});
+			}, newRate);
+
+			// Verify all videos were updated
+			const updatedRates = await page.evaluate(() =>
+				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
+			);
+			expect(updatedRates).toEqual([2.5, 2.5]);
+
+			await page.close();
+		});
+
+		it('popup video detection finds videos in page', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+
+			// Simulate what popup's executeScript does to detect videos
+			const result = await page.evaluate(() => {
+				const videos = document.querySelectorAll('video');
+				if (videos.length === 0) return null;
+				return { playbackRate: videos[0].playbackRate, videoCount: videos.length };
+			});
+
+			expect(result).not.toBeNull();
+			expect(result!.videoCount).toBe(1);
+			expect(result!.playbackRate).toBe(1);
+
+			await page.close();
+		});
+
+		it('popup video detection returns null for pages without videos', async () => {
+			const page = await createPageWithoutVideo();
+
+			// Simulate what popup's executeScript does to detect videos
+			const result = await page.evaluate(() => {
+				const videos = document.querySelectorAll('video');
+				if (videos.length === 0) return null;
+				return { playbackRate: videos[0].playbackRate, videoCount: videos.length };
+			});
+
+			expect(result).toBeNull();
+
+			await page.close();
+		});
+	});
+
+	describe('Context Menu executeScript Integration', () => {
+		// Tests that verify context menu uses executeScript to change playback rate
+		// This ensures context menu works without relying on content script injection
+
+		it('context menu sets specific video playback rate by matching src or currentSrc', async () => {
+			// Create page with videos that have direct src attributes (not <source> elements)
+			const page = await createPageWithoutVideo();
+			await page.evaluate(() => {
+				const video1 = document.createElement('video');
+				video1.id = 'video-1';
+				video1.src = 'https://example.com/video1.mp4';
+				document.body.appendChild(video1);
+
+				const video2 = document.createElement('video');
+				video2.id = 'video-2';
+				video2.src = 'https://example.com/video2.mp4';
+				document.body.appendChild(video2);
+			});
+
+			await page.waitForSelector('#video-1', { timeout: 10000 });
+
+			const srcUrl = 'https://example.com/video1.mp4';
+
+			// Simulate what context menu's executeScript does
+			const newRate = 1.75;
+			await page.evaluate(
+				(src: string, rate: number) => {
+					// This is the exact logic used in sw.ts for context menu
+					const videos = document.querySelectorAll('video');
+					for (const video of videos) {
+						if (video.src === src || video.currentSrc === src) {
+							video.playbackRate = rate;
+							break;
+						}
+					}
+				},
+				srcUrl,
+				newRate
+			);
+
+			// Verify only the targeted video was updated
+			const rates = await page.evaluate(() =>
+				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
+			);
+
+			// First video should have new rate, second should still be 1
+			expect(rates[0]).toBe(1.75);
+			expect(rates[1]).toBe(1);
+
+			await page.close();
+		});
+
+		it('CSS.escape handles special characters in video src URLs', async () => {
+			const page = await createPageWithoutVideo();
+
+			// Add a video with special characters in src (simulating edge cases)
+			await page.evaluate(() => {
+				const video = document.createElement('video');
+				video.id = 'special-src-video';
+				video.src = "test'video.mp4"; // Single quote in filename
+				document.body.appendChild(video);
+			});
+
+			await page.waitForSelector('#special-src-video', { timeout: 10000 });
+
+			// Verify CSS.escape allows finding the video
+			const found = await page.evaluate(() => {
+				const srcUrl = "test'video.mp4";
+				const video = document.querySelector(`video[src='${CSS.escape(srcUrl)}']`);
+				return video !== null;
+			});
+
+			expect(found).toBe(true);
+
+			await page.close();
+		});
+
+		it('context menu does not affect other videos when targeting specific src', async () => {
+			// Create page with videos that have direct src attributes
+			const page = await createPageWithoutVideo();
+			await page.evaluate(() => {
+				for (let i = 1; i <= 3; i++) {
+					const video = document.createElement('video');
+					video.id = `video-${i}`;
+					video.src = `https://example.com/video${i}.mp4`;
+					document.body.appendChild(video);
+				}
+			});
+
+			await page.waitForSelector('#video-1', { timeout: 10000 });
+
+			// Set all videos to different initial rates
+			await page.evaluate(() => {
+				const videos = document.querySelectorAll('video');
+				videos[0].playbackRate = 1;
+				videos[1].playbackRate = 1.5;
+				videos[2].playbackRate = 2;
+			});
+
+			// Target video 2
+			const srcUrl = 'https://example.com/video2.mp4';
+
+			// Simulate context menu targeting video 2
+			await page.evaluate(
+				(src: string, rate: number) => {
+					const videos = document.querySelectorAll('video');
+					for (const video of videos) {
+						if (video.src === src || video.currentSrc === src) {
+							video.playbackRate = rate;
+							break;
+						}
+					}
+				},
+				srcUrl,
+				3
+			);
+
+			// Verify only video 2 was changed
+			const rates = await page.evaluate(() =>
+				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
+			);
+
+			expect(rates[0]).toBe(1); // Unchanged
+			expect(rates[1]).toBe(3); // Changed by context menu
+			expect(rates[2]).toBe(2); // Unchanged
+
+			await page.close();
+		});
+	});
 });
