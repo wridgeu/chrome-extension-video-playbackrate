@@ -4,11 +4,8 @@ import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
 
 /**
- * Positions the tooltip relative to the slider handle.
- * The tooltip appears to the right of the handle when on the left half,
- * and to the left of the handle when on the right half.
- * @param slider - The UI5 slider component
- * @param tooltip - The tooltip HTML element to position
+ * Positions tooltip relative to slider handle.
+ * Appears to the right when handle is on left half, and vice versa.
  */
 function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 	const value = slider.value;
@@ -44,10 +41,7 @@ function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 	}
 }
 
-/**
- * Initializes the popup UI and sets up event handlers for the playback rate slider.
- * Retrieves the current playback rate from the active tab's video and syncs the slider.
- */
+/** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
 const popup = async () => {
 	await new ThemeSwitcher().init();
 	const slider = <Slider>document.getElementById('slider');
@@ -101,11 +95,7 @@ const popup = async () => {
 		}
 	});
 
-	/**
-	 * Listens for storage changes to sync slider when video playback rate
-	 * changes via native controls or context menu. Only responds to changes
-	 * from the current active tab.
-	 */
+	// Sync slider when video rate changes via native controls or context menu
 	if (currentActiveTabId) {
 		const storageKey = `playbackRate_${currentActiveTabId}`;
 		chrome.storage.local.onChanged.addListener((changes) => {

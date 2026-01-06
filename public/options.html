@@ -9,29 +9,31 @@
     <script type="module" src="./js/options.js"></script>
 </head>
 
-<body>
-    <ui5-title>Options</ui5-title>
-    <div class="options-container" title="options">
-        <ui5-checkbox id="defaultsEnabledCheckbox" class="mb-medium" text="Auto-apply on video load"></ui5-checkbox>
-        <div class="input-group">
-            <ui5-label class="mb-tiny" for="themeToggle">Dark Mode</ui5-label>
-            <ui5-switch id="themeToggle" class="mb-medium" text-on="On" text-off="Off"></ui5-switch>
-        </div>
-        <div class="input-group" title="defaultSpeed">
-            <ui5-label class="mb-tiny" id="selectorLabel" for="defaultSpeedSelector">Startup Speed</ui5-label>
-            <ui5-select id="defaultSpeedSelector" disabled>
-                <ui5-option id="option-0.5">0.5</ui5-option>
-                <ui5-option id="option-0.75">0.75</ui5-option>
-                <ui5-option id="option-1" selected>1</ui5-option>
-                <ui5-option id="option-1.25">1.25</ui5-option>
-                <ui5-option id="option-1.5">1.5</ui5-option>
-                <ui5-option id="option-1.75">1.75</ui5-option>
-                <ui5-option id="option-2">2</ui5-option>
-                <ui5-option id="option-2.5">2.5</ui5-option>
-                <ui5-option id="option-3">3</ui5-option>
-                <ui5-option id="option-4">4</ui5-option>
-            </ui5-select>
-        </div>
+<body class="options-container" title="options">
+    <div class="input-group">
+        <ui5-label class="mb-tiny" id="selectorLabel" for="defaultSpeedSelector">Miscellaneous</ui5-label>
+        <ui5-checkbox id="badgeEnabledCheckbox" class="mb-medium"
+            text="Show playback speed on icon badge"></ui5-checkbox>
+    </div>
+    <div class="input-group">
+        <ui5-label class="mb-tiny" for="themeToggle">Dark Mode</ui5-label>
+        <ui5-switch id="themeToggle" class="mb-medium" text-on="On" text-off="Off"></ui5-switch>
+    </div>
+    <div class="input-group" title="defaultSpeed">
+        <ui5-label class="mb-tiny" id="selectorLabel" for="defaultSpeedSelector">Startup Speed</ui5-label>
+        <ui5-checkbox id="defaultsEnabledCheckbox" text="Auto-apply on video load"></ui5-checkbox>
+        <ui5-select id="defaultSpeedSelector" disabled>
+            <ui5-option id="option-0.5">0.5</ui5-option>
+            <ui5-option id="option-0.75">0.75</ui5-option>
+            <ui5-option id="option-1" selected>1</ui5-option>
+            <ui5-option id="option-1.25">1.25</ui5-option>
+            <ui5-option id="option-1.5">1.5</ui5-option>
+            <ui5-option id="option-1.75">1.75</ui5-option>
+            <ui5-option id="option-2">2</ui5-option>
+            <ui5-option id="option-2.5">2.5</ui5-option>
+            <ui5-option id="option-3">3</ui5-option>
+            <ui5-option id="option-4">4</ui5-option>
+        </ui5-select>
     </div>
 </body>
 
