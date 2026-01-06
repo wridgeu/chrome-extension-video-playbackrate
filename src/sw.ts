@@ -1,5 +1,5 @@
 import { default as contextMenuOptions } from './ContextMenuOptions.js';
-import { MessagingAction, type MessagingRequestPayload } from './contentscript.js';
+import { MessagingAction, type MessagingRequestPayload } from './types';
 
 /** Badge background color - matches the icon's golden yellow */
 const BADGE_BACKGROUND_COLOR = '#F7B731';
@@ -30,8 +30,8 @@ export function findClosestOption(playbackRate: number, options: ContextMenuOpti
 
 export type { ContextMenuOption };
 
-/** Initialize context menu with playback rate options. */
-chrome.runtime.onInstalled.addListener(() => {
+/** Initialize context menu with playback rate options and inject content script into existing tabs. */
+chrome.runtime.onInstalled.addListener(async () => {
 	contextMenuOptions.forEach((option) => {
 		chrome.contextMenus.create({
 			id: option.id,
@@ -42,21 +42,59 @@ chrome.runtime.onInstalled.addListener(() => {
 		});
 	});
 	chrome.storage.local.set({ contextMenuOptions: contextMenuOptions });
+
+	// Inject content script into all existing tabs so extension works without requiring a page refresh
+	const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+	for (const tab of tabs) {
+		if (tab.id) {
+			chrome.scripting.executeScript(
+				{
+					target: { tabId: tab.id, allFrames: true },
+					files: ['/js/contentscript.js']
+				},
+				() => {
+					if (!chrome.runtime.lastError) {
+						injectedTabs.add(tab.id!);
+					}
+				}
+			);
+		}
+	}
 });
 
-/** Send playback rate to content script when context menu item is clicked. */
+/** Set playback rate when context menu item is clicked. */
 chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 	// Guard against missing tab ID
 	if (!tab?.id) return;
 
 	const { contextMenuOptions } = <ContextMenuStorage>await chrome.storage.local.get(['contextMenuOptions']);
 	const menuItem = contextMenuOptions.find((item: ContextMenuOption) => item.id === itemData.menuItemId);
-	if (menuItem) {
-		chrome.tabs.sendMessage(tab.id, <MessagingRequestPayload>{
-			action: MessagingAction.SETSPECIFIC,
-			videoElementSrcAttributeValue: itemData.srcUrl,
-			playbackRate: menuItem.playbackRate
+	if (menuItem && itemData.srcUrl) {
+		// Use executeScript to set playback rate directly, avoiding content script dependency
+		chrome.scripting.executeScript({
+			target: { tabId: tab.id, allFrames: true },
+			func: (srcUrl: string, rate: number) => {
+				// Find video by src attribute or currentSrc (for videos using <source> elements)
+				const videos = document.querySelectorAll('video');
+				for (const video of videos) {
+					if (video.src === srcUrl || video.currentSrc === srcUrl) {
+						video.playbackRate = rate;
+						break;
+					}
+				}
+			},
+			args: [itemData.srcUrl, menuItem.playbackRate]
 		});
+		// Update badge after setting playback rate
+		chrome.storage.sync.get('badgeEnabled', ({ badgeEnabled }) => {
+			if (badgeEnabled === false) return;
+			const badgeText = formatBadgeText(menuItem.playbackRate);
+			chrome.action.setBadgeText({ text: badgeText, tabId: tab.id });
+			chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId: tab.id });
+			chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId: tab.id });
+		});
+		// Store rate for popup sync
+		chrome.storage.local.set({ [`playbackRate_${tab.id}`]: menuItem.playbackRate });
 	}
 });
 
@@ -71,7 +109,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 		chrome.scripting.executeScript(
 			{
-				target: { tabId: tabId },
+				target: { tabId: tabId, allFrames: true },
 				files: ['/js/contentscript.js']
 			},
 			() => {
@@ -124,7 +162,7 @@ chrome.runtime.onMessage.addListener((request: IncomingMessage, sender, sendResp
 			chrome.contextMenus.update(closestOption.id, { checked: true });
 		}
 	} else if (request.action === MessagingAction.UPDATE_BADGE) {
-		const tabId = sender.tab?.id;
+		const tabId = request.tabId ?? sender.tab?.id;
 		// Check if badge is enabled (default: true)
 		chrome.storage.sync.get('badgeEnabled', ({ badgeEnabled }) => {
 			if (badgeEnabled === false) {

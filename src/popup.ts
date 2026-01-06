@@ -1,8 +1,9 @@
 import type Slider from '@ui5/webcomponents/dist/Slider.js';
-import { MessagingAction, type MessagingRequestPayload, type RetrieveResponse } from './contentscript.js';
-import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
 import '@ui5/webcomponents/dist/Text.js';
+
+import { ThemeSwitcher } from './util/ThemeSwitcher.js';
+import { MessagingAction } from './types.js';
 
 /**
  * Positions tooltip relative to slider handle.
@@ -64,15 +65,27 @@ const popup = async () => {
 	let hasVideos = false;
 	try {
 		if (currentActiveTabId) {
-			const response = await chrome.tabs.sendMessage(currentActiveTabId, <MessagingRequestPayload>{
-				action: MessagingAction.RETRIEVE
+			// Use executeScript to query videos across all frames (including iframes)
+			const results = await chrome.scripting.executeScript({
+				target: { tabId: currentActiveTabId, allFrames: true },
+				func: () => {
+					const videos = document.querySelectorAll('video');
+					if (videos.length === 0) return null;
+					return { playbackRate: videos[0].playbackRate, videoCount: videos.length };
+				}
 			});
-			const retrieveResponse = response as RetrieveResponse;
-			playbackRate = retrieveResponse?.playbackRate;
-			hasVideos = (retrieveResponse?.videoCount ?? 0) > 0;
+
+			// Aggregate results from all frames - find first frame with videos
+			for (const result of results) {
+				if (result.result && result.result.videoCount > 0) {
+					playbackRate = result.result.playbackRate;
+					hasVideos = true;
+					break;
+				}
+			}
 		}
 	} catch {
-		// Content script not available or tab doesn't support messaging
+		// Scripting not available on this tab (e.g., chrome:// pages)
 		playbackRate = undefined;
 		hasVideos = false;
 	}
@@ -102,10 +115,25 @@ const popup = async () => {
 		}
 
 		if (currentActiveTabId) {
-			chrome.tabs.sendMessage(currentActiveTabId, <MessagingRequestPayload>{
-				action: MessagingAction.SET,
-				playbackRate: (event.target as Slider).value
+			const newRate = (event.target as Slider).value;
+			chrome.scripting.executeScript({
+				target: { tabId: currentActiveTabId, allFrames: true },
+				func: (rate: number) => {
+					document.querySelectorAll('video').forEach((v) => {
+						v.playbackRate = rate;
+					});
+				},
+				args: [newRate]
 			});
+			// Update badge and context menu directly since executeScript runs in different world
+			chrome.runtime.sendMessage({
+				action: MessagingAction.UPDATE_BADGE,
+				playbackRate: newRate,
+				tabId: currentActiveTabId
+			});
+			chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: newRate });
+			// Store rate for popup sync
+			chrome.storage.local.set({ [`playbackRate_${currentActiveTabId}`]: newRate });
 		}
 	});
 

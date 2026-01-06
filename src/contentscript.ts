@@ -1,59 +1,4 @@
-// export const, to prevent code generation and directly replace enum usage with it's value (0,1,2)
-// dynamic import of enum causes some issues
-// https://stackoverflow.com/questions/48104433/how-to-import-es6-modules-in-content-script-for-chrome-extension
-export const enum MessagingAction {
-	SET = 0,
-	SETSPECIFIC = 1,
-	RETRIEVE = 2,
-	UPDATE_CONTEXT_MENU = 3,
-	UPDATE_BADGE = 4
-}
-
-type SetSpecificActionPayload = {
-	action: MessagingAction.SETSPECIFIC;
-	playbackRate: number;
-	videoElementSrcAttributeValue: string;
-};
-
-type SetActionPayload = {
-	action: MessagingAction.SET;
-	playbackRate: number;
-};
-
-type RetrieveActionPayload = {
-	action: MessagingAction.RETRIEVE;
-};
-
-type UpdateContextMenuPayload = {
-	action: MessagingAction.UPDATE_CONTEXT_MENU;
-	playbackRate: number;
-};
-
-type UpdateBadgePayload = {
-	action: MessagingAction.UPDATE_BADGE;
-	playbackRate: number;
-};
-
-/** Discriminated union for messaging between popup/service worker and content script. */
-export type MessagingRequestPayload =
-	| SetSpecificActionPayload
-	| SetActionPayload
-	| RetrieveActionPayload
-	| UpdateContextMenuPayload
-	| UpdateBadgePayload;
-
-export type RetrieveResponse = {
-	playbackRate: number;
-	videoCount: number;
-};
-
-/** User's default playback rate configuration stored in sync storage. */
-export type Defaults = {
-	defaults: {
-		enabled?: boolean;
-		playbackRate?: number;
-	};
-};
+import { Defaults, MessagingAction, MessagingRequestPayload } from './types';
 
 // set playbackrate defaults
 (async () => {
@@ -130,10 +75,12 @@ document.addEventListener('contextmenu', (event) => {
 
 	if (video) {
 		const playbackRate = (video as HTMLVideoElement).playbackRate;
-		chrome.runtime.sendMessage({
-			action: MessagingAction.UPDATE_CONTEXT_MENU,
-			playbackRate
-		});
+		chrome.runtime
+			.sendMessage({
+				action: MessagingAction.UPDATE_CONTEXT_MENU,
+				playbackRate
+			})
+			.catch(() => {});
 	}
 });
 
@@ -147,10 +94,10 @@ function setupRateChangeListener(video: HTMLVideoElement) {
 		if (tabId !== undefined) {
 			chrome.storage.local.set({ [`playbackRate_${tabId}`]: video.playbackRate });
 		}
-		chrome.runtime.sendMessage({
-			action: MessagingAction.UPDATE_BADGE,
-			playbackRate: video.playbackRate
-		});
+		// Update both badge and context menu when rate changes
+		const payload = { playbackRate: video.playbackRate };
+		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, ...payload }).catch(() => {});
+		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, ...payload }).catch(() => {});
 	});
 }
 
@@ -175,10 +122,12 @@ existingVideos.forEach(setupRateChangeListener);
 
 // Send initial badge update if there are videos on the page
 if (existingVideos.length > 0) {
-	chrome.runtime.sendMessage({
-		action: MessagingAction.UPDATE_BADGE,
-		playbackRate: existingVideos[0].playbackRate
-	});
+	chrome.runtime
+		.sendMessage({
+			action: MessagingAction.UPDATE_BADGE,
+			playbackRate: existingVideos[0].playbackRate
+		})
+		.catch(() => {});
 }
 
 // Observe for dynamically added videos

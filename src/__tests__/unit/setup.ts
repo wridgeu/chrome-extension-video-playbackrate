@@ -43,7 +43,9 @@ const chromeStorageMock = {
 			return Promise.resolve();
 		}),
 		clear: vi.fn((callback?: () => void) => {
-			Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+			Object.keys(mockStorage).forEach((key) => {
+				delete mockStorage[key];
+			});
 			if (callback) {
 				callback();
 			}
