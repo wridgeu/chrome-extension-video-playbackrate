@@ -1,4 +1,4 @@
-import { MessagingAction, MessagingRequestPayload, Defaults } from './types';
+import { Defaults, MessagingAction, MessagingRequestPayload } from './types';
 
 // set playbackrate defaults
 (async () => {

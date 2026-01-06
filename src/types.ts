@@ -15,10 +15,8 @@ export const MessagingAction = {
 
 export type MessagingAction = (typeof MessagingAction)[keyof typeof MessagingAction];
 
-type SetSpecificActionPayload = {
-	action: typeof MessagingAction.SETSPECIFIC;
-	playbackRate: number;
-	videoElementSrcAttributeValue: string;
+type RetrieveActionPayload = {
+	action: typeof MessagingAction.RETRIEVE;
 };
 
 type SetActionPayload = {
@@ -26,13 +24,10 @@ type SetActionPayload = {
 	playbackRate: number;
 };
 
-type RetrieveActionPayload = {
-	action: typeof MessagingAction.RETRIEVE;
-};
-
-type UpdateContextMenuPayload = {
-	action: typeof MessagingAction.UPDATE_CONTEXT_MENU;
+type SetSpecificActionPayload = {
+	action: typeof MessagingAction.SETSPECIFIC;
 	playbackRate: number;
+	videoElementSrcAttributeValue: string;
 };
 
 type UpdateBadgePayload = {
@@ -40,17 +35,9 @@ type UpdateBadgePayload = {
 	playbackRate: number;
 };
 
-/** Discriminated union for messaging between popup/service worker and content script. */
-export type MessagingRequestPayload =
-	| SetSpecificActionPayload
-	| SetActionPayload
-	| RetrieveActionPayload
-	| UpdateContextMenuPayload
-	| UpdateBadgePayload;
-
-export type RetrieveResponse = {
+type UpdateContextMenuPayload = {
+	action: typeof MessagingAction.UPDATE_CONTEXT_MENU;
 	playbackRate: number;
-	videoCount: number;
 };
 
 /** User's default playback rate configuration stored in sync storage. */
@@ -59,4 +46,17 @@ export type Defaults = {
 		enabled?: boolean;
 		playbackRate?: number;
 	};
+};
+
+/** Discriminated union for messaging between popup/service worker and content script. */
+export type MessagingRequestPayload =
+	| RetrieveActionPayload
+	| SetActionPayload
+	| SetSpecificActionPayload
+	| UpdateBadgePayload
+	| UpdateContextMenuPayload;
+
+export type RetrieveResponse = {
+	playbackRate: number;
+	videoCount: number;
 };
