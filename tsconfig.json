@@ -5,7 +5,6 @@
     "module": "ESNext",
     "rootDir": "./",
     "outDir": "./dist/js/",
-    "importHelpers": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
