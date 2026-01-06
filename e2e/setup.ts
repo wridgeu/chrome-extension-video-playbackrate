@@ -42,6 +42,25 @@ export async function closeBrowser(): Promise<void> {
   }
 }
 
+async function waitForServiceWorker(maxAttempts = 10, delayMs = 500): Promise<string> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const targets = browser!.targets();
+    const extensionTarget = targets.find(
+      (target) => target.type() === 'service_worker' && target.url().includes('chrome-extension://')
+    );
+
+    if (extensionTarget) {
+      return extensionTarget.url().split('/')[2];
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw new Error(`Extension service worker not found after ${maxAttempts} attempts`);
+}
+
 /**
  *
  */
@@ -50,32 +69,7 @@ export async function getExtensionId(): Promise<string> {
     throw new Error('Browser not launched');
   }
 
-  // Get the extension ID from the service worker
-  const targets = browser.targets();
-  const extensionTarget = targets.find(
-    (target) => target.type() === 'service_worker' && target.url().includes('chrome-extension://')
-  );
-
-  if (!extensionTarget) {
-    // Wait a bit for the extension to load
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const retryTargets = browser.targets();
-    const retryExtensionTarget = retryTargets.find(
-      (target) => target.type() === 'service_worker' && target.url().includes('chrome-extension://')
-    );
-
-    if (!retryExtensionTarget) {
-      throw new Error('Extension service worker not found');
-    }
-
-    const url = retryExtensionTarget.url();
-    const extensionId = url.split('/')[2];
-    return extensionId;
-  }
-
-  const url = extensionTarget.url();
-  const extensionId = url.split('/')[2];
-  return extensionId;
+  return waitForServiceWorker();
 }
 
 /**
