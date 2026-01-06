@@ -1,47 +1,70 @@
-import globals from "globals";
-import eslint from "@eslint/js";
-import tseslint from "typescript-eslint";
-import tseslintPlugin from "@typescript-eslint/eslint-plugin";
-import eslintConfigPrettier from "eslint-config-prettier";
-import jsdoc from "eslint-plugin-jsdoc";
+import globals from 'globals';
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import eslintConfigPrettier from 'eslint-config-prettier';
+import jsdoc from 'eslint-plugin-jsdoc';
 
-export default [
-	{
-		ignores: ["**node_modules/*", "**dist/*", "**docs/*", "rollup.config.js"],
-	},
-	eslint.configs.recommended,
-	...tseslint.configs.recommended,
-	eslintConfigPrettier,
-	jsdoc.configs["flat/recommended"],
-	{
-		languageOptions: {
-			ecmaVersion: 2022,
-			sourceType: "module",
-			globals: {
-				...globals.browser,
-			},
-			parser: tseslint.parser,
-			parserOptions: {
-				ecmaVersion: 2022,
-				sourceType: "module",
-			},
-		},
-		plugins: {
-			"@typescript-eslint": tseslintPlugin,
-			jsdoc,
-		},
-		rules: {
-			"max-len": [
-				"warn",
-				{
-					code: 120,
-					comments: 120,
-				},
-			],
-			"linebreak-style": 0,
-			"no-unused-vars": "off",
-			"@typescript-eslint/no-unused-vars": "error",
-			"@typescript-eslint/no-non-null-assertion": "off",
-		},
-	},
-];
+export default tseslint.config(
+  // Global ignores
+  {
+    ignores: ['**/node_modules/**', '**/dist/**', '**/docs/**', 'rollup.config.js', 'vitest*.config.ts'],
+  },
+
+  // Base ESLint recommended
+  eslint.configs.recommended,
+
+  // TypeScript ESLint recommended
+  ...tseslint.configs.recommended,
+
+  // JSDoc recommended
+  jsdoc.configs['flat/recommended'],
+
+  // Prettier (must be last to override other formatting rules)
+  eslintConfigPrettier,
+
+  // Custom configuration
+  {
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.es2022,
+        chrome: 'readonly',
+      },
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      // Line length
+      'max-len': ['warn', { code: 120, comments: 120, ignoreUrls: true, ignoreStrings: true }],
+
+      // Linebreak style (disabled for cross-platform)
+      'linebreak-style': 'off',
+
+      // TypeScript handles unused vars better
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+
+      // Allow non-null assertions in this project (Chrome extension types often need them)
+      '@typescript-eslint/no-non-null-assertion': 'off',
+
+      // JSDoc rules (relaxed for test files)
+      'jsdoc/require-jsdoc': ['warn', { publicOnly: true }],
+      'jsdoc/require-param-description': 'warn',
+      'jsdoc/require-returns-description': 'warn',
+    },
+  },
+
+  // Test files configuration
+  {
+    files: ['**/__tests__/**/*.ts', '**/e2e/**/*.ts', '**/*.test.ts'],
+    rules: {
+      // Relax rules for test files
+      'jsdoc/require-jsdoc': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  }
+);

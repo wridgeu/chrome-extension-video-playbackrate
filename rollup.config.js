@@ -1,26 +1,35 @@
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
-import multiInput from 'rollup-plugin-multi-input';
 import copy from 'rollup-plugin-copy';
 import json from '@rollup/plugin-json';
+import { globSync } from 'glob';
+import path from 'path';
+
+// Get all TypeScript files in src/ (excluding test files and subdirectories)
+const inputFiles = globSync('src/*.ts').reduce((acc, file) => {
+  const name = path.basename(file, '.ts');
+  acc[name] = file;
+  return acc;
+}, {});
 
 export default {
-  input: ['src/*.ts'],
+  input: inputFiles,
   output: {
     format: 'esm',
     dir: 'dist/js/',
+    entryFileNames: '[name].js',
+    chunkFileNames: '[name]-[hash].js',
   },
   plugins: [
     json(),
     nodeResolve(),
     typescript(),
-    multiInput(),
     terser(),
     copy({
       targets: [
         {
-          src: ['public/*', 'public/!(manifest.json)',],
+          src: ['public/*', 'public/!(manifest.json)'],
           dest: 'dist',
         },
         {
@@ -29,9 +38,9 @@ export default {
           transform: (fileBuffer) => {
             const chromeExtensionManifest = JSON.parse(fileBuffer.toString());
             chromeExtensionManifest.version = process.env.npm_package_version;
-            delete chromeExtensionManifest.$schema; // not supported in dist, helps during development
+            delete chromeExtensionManifest.$schema;
             return JSON.stringify(chromeExtensionManifest, null, 2);
-          }
+          },
         },
       ],
     }),
