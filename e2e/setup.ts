@@ -42,7 +42,7 @@ export async function closeBrowser(): Promise<void> {
   }
 }
 
-async function waitForServiceWorker(maxAttempts = 10, delayMs = 500): Promise<string> {
+async function waitForServiceWorker(maxAttempts = 20, delayMs = 500): Promise<string> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const targets = browser!.targets();
     const extensionTarget = targets.find(
