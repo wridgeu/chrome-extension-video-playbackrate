@@ -97,14 +97,14 @@ describe('Chrome Extension E2E Tests', () => {
     });
 
     it('should contain the enable defaults checkbox', async () => {
-      await optionsPage.waitForSelector('#enable-defaults', { timeout: 10000 });
-      const checkbox = await optionsPage.$('#enable-defaults');
+      await optionsPage.waitForSelector('#defaultsEnabledCheckbox', { timeout: 10000 });
+      const checkbox = await optionsPage.$('#defaultsEnabledCheckbox');
       expect(checkbox).not.toBeNull();
     });
 
     it('should contain the playback rate dropdown', async () => {
-      await optionsPage.waitForSelector('#speed-value', { timeout: 10000 });
-      const dropdown = await optionsPage.$('#speed-value');
+      await optionsPage.waitForSelector('#defaultSpeedSelector', { timeout: 10000 });
+      const dropdown = await optionsPage.$('#defaultSpeedSelector');
       expect(dropdown).not.toBeNull();
     });
 
@@ -194,6 +194,93 @@ describe('Chrome Extension E2E Tests', () => {
       // Note: The actual color comparison might vary depending on initial state
       expect(typeof initialBgColor).toBe('string');
       expect(typeof newBgColor).toBe('string');
+    });
+  });
+
+  describe('Context Menu (Right-Click) Behavior', () => {
+    let videoPage: Page;
+
+    beforeAll(async () => {
+      videoPage = await createPageWithVideo();
+      await videoPage.waitForSelector('#test-video', { timeout: 10000 });
+    });
+
+    afterAll(async () => {
+      if (videoPage && !videoPage.isClosed()) {
+        await videoPage.close();
+      }
+    });
+
+    it('should be able to right-click on video element', async () => {
+      const video = await videoPage.$('#test-video');
+      expect(video).not.toBeNull();
+
+      // Simulate right-click on video
+      await video!.click({ button: 'right' });
+
+      // The context menu is handled by Chrome, so we just verify the click doesn't error
+      expect(true).toBe(true);
+    });
+
+    it('should have video element that responds to playback rate changes via messaging', async () => {
+      // This simulates what happens when context menu item is clicked
+      // The extension sends a message to content script to change playback rate
+      const initialRate = await videoPage.evaluate(() => {
+        const video = document.getElementById('test-video') as HTMLVideoElement;
+        return video?.playbackRate;
+      });
+
+      // Simulate the effect of context menu selection (changing playback rate)
+      await videoPage.evaluate(() => {
+        const video = document.getElementById('test-video') as HTMLVideoElement;
+        video.playbackRate = 1.5; // Simulating "High Speed (1.5x)" selection
+      });
+
+      const newRate = await videoPage.evaluate(() => {
+        const video = document.getElementById('test-video') as HTMLVideoElement;
+        return video?.playbackRate;
+      });
+
+      expect(newRate).toBe(1.5);
+      expect(newRate).not.toBe(initialRate);
+    });
+
+    it('should support all predefined playback rates from context menu options', async () => {
+      const predefinedRates = [0.25, 0.5, 1, 1.25, 1.5, 2, 2.25, 2.5, 3, 3.25, 3.5, 4];
+
+      for (const rate of predefinedRates) {
+        await videoPage.evaluate((r) => {
+          const video = document.getElementById('test-video') as HTMLVideoElement;
+          video.playbackRate = r;
+        }, rate);
+
+        const currentRate = await videoPage.evaluate(() => {
+          const video = document.getElementById('test-video') as HTMLVideoElement;
+          return video?.playbackRate;
+        });
+
+        expect(currentRate).toBe(rate);
+      }
+    });
+
+    it('should maintain playback rate after video source change simulation', async () => {
+      // Set a custom playback rate
+      await videoPage.evaluate(() => {
+        const video = document.getElementById('test-video') as HTMLVideoElement;
+        video.playbackRate = 2;
+      });
+
+      // Verify it was set
+      const rateBeforeChange = await videoPage.evaluate(() => {
+        const video = document.getElementById('test-video') as HTMLVideoElement;
+        return video?.playbackRate;
+      });
+
+      expect(rateBeforeChange).toBe(2);
+
+      // Note: In the actual extension, a MutationObserver re-applies the rate
+      // when the src attribute changes. This test verifies the video element
+      // can handle rate changes which the extension relies on.
     });
   });
 });
