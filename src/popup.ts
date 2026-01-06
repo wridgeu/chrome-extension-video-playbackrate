@@ -3,7 +3,7 @@ import { MessagingAction, type MessagingRequestPayload, type RetrieveResponse } 
 import { ThemeSwitcher } from './util/ThemeSwitcher.js';
 import '@ui5/webcomponents/dist/Slider.js';
 
-function updateTooltip(slider: Slider, tooltip: HTMLElement) {
+function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 	const value = slider.value;
 	const min = Number(slider.min);
 	const max = Number(slider.max);
@@ -11,27 +11,25 @@ function updateTooltip(slider: Slider, tooltip: HTMLElement) {
 
 	tooltip.textContent = `${value}x`;
 
-	// Position tooltip based on handle position
 	const sliderRect = slider.getBoundingClientRect();
-	const handleX = percent * sliderRect.width;
+	const tooltipRect = tooltip.getBoundingClientRect();
+	const handleX = sliderRect.left + percent * sliderRect.width;
+	const tooltipHalfWidth = tooltipRect.width / 2;
 
-	if (percent <= 0.5) {
-		// Handle in left half - tooltip to the right
-		tooltip.style.left = `${handleX}px`;
-		tooltip.style.transform = 'translateX(0)';
-		tooltip.className = 'tooltip left';
-	} else {
-		// Handle in right half - tooltip to the left
-		tooltip.style.left = `${handleX}px`;
-		tooltip.style.transform = 'translateX(-100%)';
-		tooltip.className = 'tooltip right';
-	}
+	// Center tooltip above handle, but clamp to viewport edges
+	let left = handleX - tooltipHalfWidth;
+	const minLeft = 4;
+	const maxLeft = window.innerWidth - tooltipRect.width - 4;
+	left = Math.max(minLeft, Math.min(maxLeft, left));
+
+	tooltip.style.left = `${left}px`;
+	tooltip.style.top = `${sliderRect.top - tooltipRect.height - 8}px`;
 }
 
 const popup = async () => {
 	await new ThemeSwitcher().init();
 	const slider = <Slider>document.getElementById('slider');
-	const tooltip = document.getElementById('tooltip')!;
+	const tooltip = document.getElementById('tooltip') as HTMLElement;
 	const [{ id: currentActiveTabId }] = await chrome.tabs.query({
 		active: true,
 		currentWindow: true
@@ -50,13 +48,30 @@ const popup = async () => {
 		slider.value = playbackRate;
 	}
 
-	// Initial tooltip position
-	updateTooltip(slider, tooltip);
+	// Show tooltip only during interaction
+	const showTooltip = () => {
+		tooltip.showPopover();
+		positionTooltip(slider, tooltip);
+	};
 
-	// Update tooltip on input (while dragging) and change (on release)
-	slider.addEventListener('input', () => updateTooltip(slider, tooltip));
+	const hideTooltip = () => {
+		tooltip.hidePopover();
+	};
+
+	slider.addEventListener('mousedown', showTooltip);
+	slider.addEventListener('touchstart', showTooltip);
+	document.addEventListener('mouseup', hideTooltip);
+	document.addEventListener('touchend', hideTooltip);
+
+	// Update position while dragging
+	slider.addEventListener('input', () => {
+		if (tooltip.matches(':popover-open')) {
+			positionTooltip(slider, tooltip);
+		}
+	});
+
+	// Save on change (release)
 	slider.addEventListener('change', async (event: Event): Promise<void> => {
-		updateTooltip(slider, tooltip);
 		chrome.tabs.sendMessage(
 			<number>currentActiveTabId,
 			<MessagingRequestPayload>{
