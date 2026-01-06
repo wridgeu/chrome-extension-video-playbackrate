@@ -75,10 +75,12 @@ document.addEventListener('contextmenu', (event) => {
 
 	if (video) {
 		const playbackRate = (video as HTMLVideoElement).playbackRate;
-		chrome.runtime.sendMessage({
-			action: MessagingAction.UPDATE_CONTEXT_MENU,
-			playbackRate
-		}).catch(() => {});
+		chrome.runtime
+			.sendMessage({
+				action: MessagingAction.UPDATE_CONTEXT_MENU,
+				playbackRate
+			})
+			.catch(() => {});
 	}
 });
 
@@ -120,10 +122,12 @@ existingVideos.forEach(setupRateChangeListener);
 
 // Send initial badge update if there are videos on the page
 if (existingVideos.length > 0) {
-	chrome.runtime.sendMessage({
-		action: MessagingAction.UPDATE_BADGE,
-		playbackRate: existingVideos[0].playbackRate
-	}).catch(() => {});
+	chrome.runtime
+		.sendMessage({
+			action: MessagingAction.UPDATE_BADGE,
+			playbackRate: existingVideos[0].playbackRate
+		})
+		.catch(() => {});
 }
 
 // Observe for dynamically added videos
