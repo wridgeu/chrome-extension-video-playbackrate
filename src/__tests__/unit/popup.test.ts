@@ -49,14 +49,15 @@ describe('Popup', () => {
 			textContent: '',
 			offsetWidth: 40,
 			style: {} as CSSStyleDeclaration,
-			getBoundingClientRect: () => ({
-				width: 40,
-				height: 20,
-				top: 0,
-				left: 0,
-				right: 40,
-				bottom: 20
-			} as DOMRect),
+			getBoundingClientRect: () =>
+				({
+					width: 40,
+					height: 20,
+					top: 0,
+					left: 0,
+					right: 40,
+					bottom: 20
+				}) as DOMRect,
 			showPopover: vi.fn(),
 			hidePopover: vi.fn(),
 			matches: vi.fn().mockReturnValue(false)
@@ -112,9 +113,7 @@ describe('Popup', () => {
 
 		it('shows slider when videos are found', async () => {
 			chromeTabsMock.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeScriptingMock.executeScript.mockResolvedValue([
-				{ result: { playbackRate: 1.5, videoCount: 1 } }
-			]);
+			chromeScriptingMock.executeScript.mockResolvedValue([{ result: { playbackRate: 1.5, videoCount: 1 } }]);
 
 			await initPopup();
 
@@ -124,9 +123,7 @@ describe('Popup', () => {
 
 		it('sets slider value to current playback rate', async () => {
 			chromeTabsMock.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeScriptingMock.executeScript.mockResolvedValue([
-				{ result: { playbackRate: 2, videoCount: 1 } }
-			]);
+			chromeScriptingMock.executeScript.mockResolvedValue([{ result: { playbackRate: 2, videoCount: 1 } }]);
 
 			await initPopup();
 
@@ -181,9 +178,7 @@ describe('Popup', () => {
 		it('executes script to update video playback rate', async () => {
 			const tabId = 123;
 			chromeTabsMock.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeScriptingMock.executeScript.mockResolvedValue([
-				{ result: { playbackRate: 1, videoCount: 1 } }
-			]);
+			chromeScriptingMock.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
 
 			await initPopup();
 
@@ -210,9 +205,7 @@ describe('Popup', () => {
 		it('sends UPDATE_BADGE and UPDATE_CONTEXT_MENU messages', async () => {
 			const tabId = 456;
 			chromeTabsMock.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeScriptingMock.executeScript.mockResolvedValue([
-				{ result: { playbackRate: 1, videoCount: 1 } }
-			]);
+			chromeScriptingMock.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
 
 			await initPopup();
 
@@ -239,9 +232,7 @@ describe('Popup', () => {
 		it('stores playback rate in local storage', async () => {
 			const tabId = 789;
 			chromeTabsMock.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeScriptingMock.executeScript.mockResolvedValue([
-				{ result: { playbackRate: 1, videoCount: 1 } }
-			]);
+			chromeScriptingMock.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
 
 			await initPopup();
 
@@ -264,9 +255,7 @@ describe('Popup', () => {
 		it('registers storage change listener for current tab', async () => {
 			const tabId = 999;
 			chromeTabsMock.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeScriptingMock.executeScript.mockResolvedValue([
-				{ result: { playbackRate: 1, videoCount: 1 } }
-			]);
+			chromeScriptingMock.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
 
 			await initPopup();
 
@@ -283,9 +272,7 @@ describe('Popup', () => {
 			});
 
 			chromeTabsMock.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeScriptingMock.executeScript.mockResolvedValue([
-				{ result: { playbackRate: 1, videoCount: 1 } }
-			]);
+			chromeScriptingMock.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
 
 			await initPopup();
 

@@ -197,11 +197,7 @@ describe('ContentScript', () => {
 			video.playbackRate = 2.5;
 			document.body.appendChild(video);
 
-			handleMessage(
-				{ action: MessagingAction.RETRIEVE },
-				{} as chrome.runtime.MessageSender,
-				sendResponse
-			);
+			handleMessage({ action: MessagingAction.RETRIEVE }, {} as chrome.runtime.MessageSender, sendResponse);
 
 			expect(sendResponse).toHaveBeenCalledWith({
 				playbackRate: 2.5,
@@ -210,11 +206,7 @@ describe('ContentScript', () => {
 		});
 
 		it('returns default rate of 1 when no videos present with RETRIEVE action', () => {
-			handleMessage(
-				{ action: MessagingAction.RETRIEVE },
-				{} as chrome.runtime.MessageSender,
-				sendResponse
-			);
+			handleMessage({ action: MessagingAction.RETRIEVE }, {} as chrome.runtime.MessageSender, sendResponse);
 
 			expect(sendResponse).toHaveBeenCalledWith({
 				playbackRate: 1,
@@ -231,11 +223,7 @@ describe('ContentScript', () => {
 			document.body.appendChild(video2);
 			document.body.appendChild(video3);
 
-			handleMessage(
-				{ action: MessagingAction.RETRIEVE },
-				{} as chrome.runtime.MessageSender,
-				sendResponse
-			);
+			handleMessage({ action: MessagingAction.RETRIEVE }, {} as chrome.runtime.MessageSender, sendResponse);
 
 			expect(sendResponse).toHaveBeenCalledWith({
 				playbackRate: 1.5,
