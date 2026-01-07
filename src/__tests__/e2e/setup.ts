@@ -20,7 +20,7 @@ export async function launchBrowserWithExtension(): Promise<Browser> {
 	}
 
 	browser = await puppeteer.launch({
-		headless: process.env.CI ? 'new' : false, // Extensions work in new headless mode
+		headless: process.env.CI ? true : false, // Extensions work in modern headless mode (headless: true)
 		args: [
 			`--disable-extensions-except=${EXTENSION_PATH}`,
 			`--load-extension=${EXTENSION_PATH}`,
