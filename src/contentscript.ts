@@ -1,7 +1,7 @@
 import { Defaults, MessagingAction, MessagingRequestPayload } from './types';
 
-// set playbackrate defaults
-(async () => {
+/** Apply default playback rate to all video elements on the page. */
+export async function applyDefaultPlaybackRate() {
 	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
 	if (!defaults?.enabled) return;
 
@@ -30,15 +30,19 @@ import { Defaults, MessagingAction, MessagingRequestPayload } from './types';
 			attributeFilter: ['src']
 		});
 	});
-})();
+}
 
 /** Find a video element by its src attribute. Uses CSS.escape() to sanitize the selector. */
-function findVideoElementBySrc(srcUrl: string): HTMLVideoElement | null {
+export function findVideoElementBySrc(srcUrl: string): HTMLVideoElement | null {
 	return document.querySelector(`video[src='${CSS.escape(srcUrl)}']`);
 }
 
-// https://developer.chrome.com/docs/extensions/mv3/messaging/
-chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, _, sendResponse) => {
+/** Handle incoming messages from the extension. */
+export function handleMessage(
+	request: MessagingRequestPayload,
+	sender: chrome.runtime.MessageSender,
+	sendResponse: (response?: unknown) => void
+) {
 	const videoElements = document.querySelectorAll('video');
 	const [firstVideoElement] = videoElements;
 
@@ -66,29 +70,14 @@ chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, _, sendR
 		default:
 			break;
 	}
-});
+}
 
-/** Sync context menu checked state when right-clicking on a video. */
-document.addEventListener('contextmenu', (event) => {
-	const target = event.target as HTMLElement;
-	const video = target.closest('video') || (target.tagName === 'VIDEO' ? target : null);
-
-	if (video) {
-		const playbackRate = (video as HTMLVideoElement).playbackRate;
-		chrome.runtime
-			.sendMessage({
-				action: MessagingAction.UPDATE_CONTEXT_MENU,
-				playbackRate
-			})
-			.catch(() => {});
-	}
-});
 
 /**
  * Sets up a listener for playback rate changes on a video element.
  * Stores the rate in storage (for popup sync) and updates the extension badge.
  */
-function setupRateChangeListener(video: HTMLVideoElement) {
+export function setupRateChangeListener(video: HTMLVideoElement) {
 	video.addEventListener('ratechange', async () => {
 		const tabId = await getTabId();
 		if (tabId !== undefined) {
@@ -105,7 +94,7 @@ function setupRateChangeListener(video: HTMLVideoElement) {
 let cachedTabId: number | undefined;
 
 /** Gets the current tab ID from the service worker. */
-async function getTabId(): Promise<number | undefined> {
+export async function getTabId(): Promise<number | undefined> {
 	if (cachedTabId !== undefined) return cachedTabId;
 	try {
 		const response = await chrome.runtime.sendMessage({ action: 'getTabId' });
@@ -116,31 +105,66 @@ async function getTabId(): Promise<number | undefined> {
 	}
 }
 
-// Set up ratechange listeners for existing videos and update badge with initial rate
-const existingVideos = document.querySelectorAll('video');
-existingVideos.forEach(setupRateChangeListener);
-
-// Send initial badge update if there are videos on the page
-if (existingVideos.length > 0) {
-	chrome.runtime
-		.sendMessage({
-			action: MessagingAction.UPDATE_BADGE,
-			playbackRate: existingVideos[0].playbackRate
-		})
-		.catch(() => {});
+/** Reset cached tab ID (useful for testing). */
+export function resetCachedTabId() {
+	cachedTabId = undefined;
 }
 
-// Observe for dynamically added videos
-const videoObserver = new MutationObserver((mutations) => {
-	for (const mutation of mutations) {
-		for (const node of mutation.addedNodes) {
-			if (node instanceof HTMLVideoElement) {
-				setupRateChangeListener(node);
-			} else if (node instanceof Element) {
-				node.querySelectorAll('video').forEach(setupRateChangeListener);
+/** Initialize content script functionality. */
+export function initContentScript() {
+	// Apply default playback rate
+	applyDefaultPlaybackRate();
+
+	// Register message listener
+	chrome.runtime.onMessage.addListener(handleMessage);
+
+	// Set up ratechange listeners for existing videos and update badge with initial rate
+	const existingVideos = document.querySelectorAll('video');
+	existingVideos.forEach(setupRateChangeListener);
+
+	// Send initial badge update if there are videos on the page
+	if (existingVideos.length > 0) {
+		chrome.runtime
+			.sendMessage({
+				action: MessagingAction.UPDATE_BADGE,
+				playbackRate: existingVideos[0].playbackRate
+			})
+			.catch(() => {});
+	}
+
+	// Observe for dynamically added videos
+	const videoObserver = new MutationObserver((mutations) => {
+		for (const mutation of mutations) {
+			for (const node of mutation.addedNodes) {
+				if (node instanceof HTMLVideoElement) {
+					setupRateChangeListener(node);
+				} else if (node instanceof Element) {
+					node.querySelectorAll('video').forEach(setupRateChangeListener);
+				}
 			}
 		}
-	}
-});
+	});
 
-videoObserver.observe(document.body, { childList: true, subtree: true });
+	videoObserver.observe(document.body, { childList: true, subtree: true });
+
+	// Set up context menu sync
+	document.addEventListener('contextmenu', (event) => {
+		const target = event.target as HTMLElement;
+		const video = target.closest('video') || (target.tagName === 'VIDEO' ? target : null);
+
+		if (video) {
+			const playbackRate = (video as HTMLVideoElement).playbackRate;
+			chrome.runtime
+				.sendMessage({
+					action: MessagingAction.UPDATE_CONTEXT_MENU,
+					playbackRate
+				})
+				.catch(() => {});
+		}
+	});
+}
+
+// Auto-initialize when loaded (not in test environment)
+if (typeof document !== 'undefined' && typeof chrome !== 'undefined' && typeof process === 'undefined') {
+	initContentScript();
+}
