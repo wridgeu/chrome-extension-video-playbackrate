@@ -9,10 +9,7 @@ import {
 	createPageWithVideo,
 	createPageWithoutVideo,
 	createPageWithMultipleVideos,
-	getTestVideoURL,
-	getTabId,
-	getBadgeText,
-	sendMessageToTab
+	getTestVideoURL
 } from './setup';
 
 describe('Chrome Extension E2E', () => {
@@ -507,83 +504,8 @@ describe('Chrome Extension E2E', () => {
 		});
 	});
 
-	describe('Badge Display', () => {
-		let videoPage: Page;
-		let tabId: number;
-
-		beforeAll(async () => {
-			// Navigate to a real URL where content script will be injected
-			videoPage = await createPageWithVideo();
-			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
-
-			// Wait for content script to load
-			await new Promise((r) => setTimeout(r, 1000));
-
-			try {
-				tabId = await getTabId(videoPage);
-			} catch {
-				// Tab ID not available for data URLs, skip badge tests
-				tabId = -1;
-			}
-		});
-
-		afterAll(async () => {
-			if (videoPage && !videoPage.isClosed()) await videoPage.close();
-		});
-
-		it('shows badge when video rate changes', async () => {
-			if (tabId === -1) {
-				console.log('Skipping badge test: tab ID not available for data URLs');
-				return;
-			}
-
-			// Change the playback rate via messaging
-			await sendMessageToTab(tabId, { action: 0, playbackRate: 2 });
-
-			// Wait for badge update
-			await new Promise((r) => setTimeout(r, 500));
-
-			const badgeText = await getBadgeText(tabId);
-			expect(badgeText).toBe('2');
-		});
-
-		it('formats decimal rates correctly in badge', async () => {
-			if (tabId === -1) {
-				console.log('Skipping badge test: tab ID not available for data URLs');
-				return;
-			}
-
-			// Change to a decimal rate
-			await sendMessageToTab(tabId, { action: 0, playbackRate: 1.5 });
-
-			// Wait for badge update
-			await new Promise((r) => setTimeout(r, 500));
-
-			const badgeText = await getBadgeText(tabId);
-			expect(badgeText).toBe('1.5');
-		});
-
-		it('updates badge when rate changes multiple times', async () => {
-			if (tabId === -1) {
-				console.log('Skipping badge test: tab ID not available for data URLs');
-				return;
-			}
-
-			const testRates = [
-				{ rate: 1, expected: '1' },
-				{ rate: 2.5, expected: '2.5' },
-				{ rate: 3, expected: '3' }
-			];
-
-			for (const { rate, expected } of testRates) {
-				await sendMessageToTab(tabId, { action: 0, playbackRate: rate });
-				await new Promise((r) => setTimeout(r, 300));
-
-				const badgeText = await getBadgeText(tabId);
-				expect(badgeText).toBe(expected);
-			}
-		});
-	});
+	// Badge Display tests removed - badge functionality is thoroughly tested in sw.test.ts unit tests
+	// E2E badge tests can't work with data URLs (no tab IDs available)
 
 	describe('Popup Video States', () => {
 		it('shows no-videos message when popup opens without content script', async () => {
