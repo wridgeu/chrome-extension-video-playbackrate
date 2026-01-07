@@ -20,6 +20,12 @@ export default defineConfig({
     // Required for Chrome extensions - use relative paths
     base: './',
 
+    // Replace import.meta.vitest with undefined in production build
+    // This ensures content script auto-initializes in browser but not in unit tests
+    define: {
+        'import.meta.vitest': 'undefined'
+    },
+
     resolve: {
         alias: aliases
     },
@@ -99,7 +105,8 @@ export default defineConfig({
                     include: ['src/__tests__/e2e/**/*.test.ts'],
                     exclude: ['node_modules', 'dist'],
                     testTimeout: 60000,
-                    hookTimeout: 60000
+                    hookTimeout: 60000,
+                    globalSetup: './src/__tests__/e2e/globalSetup.ts'
                 }
             }
         ]

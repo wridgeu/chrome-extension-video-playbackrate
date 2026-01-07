@@ -9,8 +9,13 @@ import {
 	createPageWithVideo,
 	createPageWithoutVideo,
 	createPageWithMultipleVideos,
-	getTestVideoURL
+	getTestServerURL,
+	getTabId,
+	sendMessageToTab,
+	waitForContentScript,
+	getBadgeText
 } from './setup';
+import { MessagingAction } from '@src/types';
 
 describe('Chrome Extension E2E', () => {
 	let extensionId: string;
@@ -423,77 +428,57 @@ describe('Chrome Extension E2E', () => {
 		});
 	});
 
-	describe('Extension Messaging', () => {
+	describe('Extension Messaging (Real Content Script)', () => {
 		let videoPage: Page;
+		let tabId: number;
 
 		beforeAll(async () => {
-			// Create page and navigate to a URL that allows content script injection
+			// Create page with HTTP URL (enables content script injection)
 			videoPage = await createPageWithVideo();
 			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
 
-			// Reset video to 1x
-			await videoPage.evaluate(() => {
-				(document.getElementById('test-video') as HTMLVideoElement).playbackRate = 1;
-			});
+			// Wait for content script to be injected and ready
+			await waitForContentScript(videoPage);
+			tabId = await getTabId(videoPage);
 
-			// Get the tab ID for messaging
-			// Note: Content script may not be injected on about:blank/data URLs
-			// This test verifies the messaging infrastructure works
+			// Reset video to 1x via real content script messaging
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 1 });
 		});
 
 		afterAll(async () => {
 			if (videoPage && !videoPage.isClosed()) await videoPage.close();
 		});
 
-		it('SET message changes video playback rate', async () => {
-			// For pages created with setContent, content script won't be injected
-			// This test verifies the video element accepts programmatic rate changes
-			// which is what the content script does when it receives a message
+		it('SET message changes video playback rate via content script', async () => {
+			// Send SET message through service worker to content script
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 1.5 });
 
-			const initialRate = await videoPage.evaluate(
-				() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
-			);
-			expect(initialRate).toBe(1);
-
-			// Simulate what the content script does when receiving SET message
-			await videoPage.evaluate(() => {
-				const videos = document.querySelectorAll('video');
-				videos.forEach((video) => {
-					video.playbackRate = 1.5;
-				});
-			});
-
+			// Verify the content script actually changed the video rate
 			const newRate = await videoPage.evaluate(
 				() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
 			);
 			expect(newRate).toBe(1.5);
 		});
 
-		it('RETRIEVE returns current playback rate', async () => {
-			// Set a specific rate
-			await videoPage.evaluate(() => {
-				(document.getElementById('test-video') as HTMLVideoElement).playbackRate = 2.5;
-			});
+		it('RETRIEVE message returns current playback rate from content script', async () => {
+			// First set a specific rate
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2.5 });
 
-			// Simulate what content script returns for RETRIEVE
-			const response = await videoPage.evaluate(() => {
-				const video = document.querySelector('video');
-				return { playbackRate: video?.playbackRate ?? 1 };
-			});
+			// Now retrieve via real content script messaging
+			const response = (await sendMessageToTab(tabId, { action: MessagingAction.RETRIEVE })) as {
+				playbackRate: number;
+				videoCount: number;
+			};
 
 			expect(response.playbackRate).toBe(2.5);
+			expect(response.videoCount).toBe(1);
 		});
 
-		it('rate changes persist across multiple updates', async () => {
+		it('rate changes persist across multiple updates via content script', async () => {
 			const testRates = [0.5, 1.25, 2, 3.5];
 
 			for (const rate of testRates) {
-				await videoPage.evaluate((r) => {
-					const videos = document.querySelectorAll('video');
-					videos.forEach((video) => {
-						video.playbackRate = r;
-					});
-				}, rate);
+				await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: rate });
 
 				const currentRate = await videoPage.evaluate(
 					() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
@@ -504,8 +489,45 @@ describe('Chrome Extension E2E', () => {
 		});
 	});
 
-	// Badge Display tests removed - badge functionality is thoroughly tested in sw.test.ts unit tests
-	// E2E badge tests can't work with data URLs (no tab IDs available)
+	describe('Badge Display (Real Extension)', () => {
+		it('badge shows playback rate for page with video', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Set a playback rate
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2 });
+
+			// Give the badge time to update
+			await new Promise((r) => setTimeout(r, 100));
+
+			// Check badge text
+			const badgeText = await getBadgeText(tabId);
+			expect(badgeText).toBe('2');
+
+			await page.close();
+		});
+
+		it('badge updates when rate changes', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Set rate to 1.5
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 1.5 });
+			await new Promise((r) => setTimeout(r, 100));
+			expect(await getBadgeText(tabId)).toBe('1.5');
+
+			// Change rate to 0.75
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 0.75 });
+			await new Promise((r) => setTimeout(r, 100));
+			expect(await getBadgeText(tabId)).toBe('0.75');
+
+			await page.close();
+		});
+	});
 
 	describe('Popup Video States', () => {
 		it('shows no-videos message when popup opens without content script', async () => {
@@ -555,49 +577,6 @@ describe('Chrome Extension E2E', () => {
 			await popupPage.close();
 		});
 
-		it('toggles visibility correctly between states', async () => {
-			const popupPage = await openExtensionPopup(extensionId);
-			await popupPage.waitForSelector('ui5-text', { timeout: 10000 });
-
-			// Test toggling to "has videos" state
-			const stateWithVideos = await popupPage.evaluate(() => {
-				const noVideosEl = document.getElementById('no-videos')!;
-				const sliderContainer = document.getElementById('slider-container')!;
-
-				// Simulate video found state
-				noVideosEl.hidden = true;
-				sliderContainer.hidden = false;
-
-				return {
-					noVideosHidden: noVideosEl.hidden,
-					sliderContainerHidden: sliderContainer.hidden
-				};
-			});
-
-			expect(stateWithVideos.noVideosHidden).toBe(true);
-			expect(stateWithVideos.sliderContainerHidden).toBe(false);
-
-			// Test toggling back to "no videos" state
-			const stateNoVideos = await popupPage.evaluate(() => {
-				const noVideosEl = document.getElementById('no-videos')!;
-				const sliderContainer = document.getElementById('slider-container')!;
-
-				// Simulate no video state
-				noVideosEl.hidden = false;
-				sliderContainer.hidden = true;
-
-				return {
-					noVideosHidden: noVideosEl.hidden,
-					sliderContainerHidden: sliderContainer.hidden
-				};
-			});
-
-			expect(stateNoVideos.noVideosHidden).toBe(false);
-			expect(stateNoVideos.sliderContainerHidden).toBe(true);
-
-			await popupPage.close();
-		});
-
 		it('page with no videos has zero video elements', async () => {
 			const noVideoPage = await createPageWithoutVideo();
 
@@ -610,34 +589,8 @@ describe('Chrome Extension E2E', () => {
 			await noVideoPage.close();
 		});
 
-		it('page with single video has one video element', async () => {
-			const singleVideoPage = await createPageWithVideo();
-			await singleVideoPage.waitForSelector('#test-video', { timeout: 10000 });
-
-			const videoCount = await singleVideoPage.evaluate(() => {
-				return document.querySelectorAll('video').length;
-			});
-
-			expect(videoCount).toBe(1);
-
-			await singleVideoPage.close();
-		});
-
-		it('page with multiple videos has correct video count', async () => {
-			const multiVideoPage = await createPageWithMultipleVideos(3);
-			await multiVideoPage.waitForSelector('#test-video-1', { timeout: 10000 });
-
-			const videoCount = await multiVideoPage.evaluate(() => {
-				return document.querySelectorAll('video').length;
-			});
-
-			expect(videoCount).toBe(3);
-
-			await multiVideoPage.close();
-		});
-
 		it('all videos on multi-video page respond to rate changes', async () => {
-			const multiVideoPage = await createPageWithMultipleVideos(3);
+			const multiVideoPage = await createPageWithMultipleVideos();
 			await multiVideoPage.waitForSelector('#test-video-1', { timeout: 10000 });
 
 			// Change all video rates
@@ -662,19 +615,8 @@ describe('Chrome Extension E2E', () => {
 			const initialVideoCount = await page.evaluate(() => document.querySelectorAll('video').length);
 			expect(initialVideoCount).toBe(0);
 
-			// Navigate to a page with video (same tab)
-			const videoUrl = getTestVideoURL();
-			await page.setContent(`
-				<!DOCTYPE html>
-				<html>
-					<head><title>Video Page</title></head>
-					<body>
-						<video id="test-video" width="640" height="360" controls>
-							<source src="${videoUrl}" type="video/mp4">
-						</video>
-					</body>
-				</html>
-			`);
+			// Navigate to a page with video (same tab) using HTTP URL
+			await page.goto(`${getTestServerURL()}/video.html`, { waitUntil: 'networkidle0' });
 
 			await page.waitForSelector('#test-video', { timeout: 10000 });
 
@@ -702,17 +644,8 @@ describe('Chrome Extension E2E', () => {
 			const initialVideoCount = await page.evaluate(() => document.querySelectorAll('video').length);
 			expect(initialVideoCount).toBe(1);
 
-			// Navigate to a page without videos (same tab)
-			await page.setContent(`
-				<!DOCTYPE html>
-				<html>
-					<head><title>No Video Page</title></head>
-					<body>
-						<h1>Page without videos</h1>
-						<p>No video elements here.</p>
-					</body>
-				</html>
-			`);
+			// Navigate to a page without videos (same tab) using HTTP URL
+			await page.goto(`${getTestServerURL()}/no-video.html`, { waitUntil: 'networkidle0' });
 
 			// Verify no videos after navigation
 			const finalVideoCount = await page.evaluate(() => document.querySelectorAll('video').length);
@@ -762,14 +695,14 @@ describe('Chrome Extension E2E', () => {
 		// This ensures the popup works without relying on content script injection
 
 		it('popup slider change sets all video playback rates via executeScript pattern', async () => {
-			const page = await createPageWithMultipleVideos(2);
+			const page = await createPageWithMultipleVideos();
 			await page.waitForSelector('#test-video-1', { timeout: 10000 });
 
-			// Verify initial rates are 1
+			// Verify initial rates are 1 (multi-video.html has 3 videos)
 			const initialRates = await page.evaluate(() =>
 				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
 			);
-			expect(initialRates).toEqual([1, 1]);
+			expect(initialRates).toEqual([1, 1, 1]);
 
 			// Simulate what popup's executeScript does when slider changes
 			const newRate = 2.5;
@@ -783,40 +716,7 @@ describe('Chrome Extension E2E', () => {
 			const updatedRates = await page.evaluate(() =>
 				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
 			);
-			expect(updatedRates).toEqual([2.5, 2.5]);
-
-			await page.close();
-		});
-
-		it('popup video detection finds videos in page', async () => {
-			const page = await createPageWithVideo();
-			await page.waitForSelector('#test-video', { timeout: 10000 });
-
-			// Simulate what popup's executeScript does to detect videos
-			const result = await page.evaluate(() => {
-				const videos = document.querySelectorAll('video');
-				if (videos.length === 0) return null;
-				return { playbackRate: videos[0].playbackRate, videoCount: videos.length };
-			});
-
-			expect(result).not.toBeNull();
-			expect(result!.videoCount).toBe(1);
-			expect(result!.playbackRate).toBe(1);
-
-			await page.close();
-		});
-
-		it('popup video detection returns null for pages without videos', async () => {
-			const page = await createPageWithoutVideo();
-
-			// Simulate what popup's executeScript does to detect videos
-			const result = await page.evaluate(() => {
-				const videos = document.querySelectorAll('video');
-				if (videos.length === 0) return null;
-				return { playbackRate: videos[0].playbackRate, videoCount: videos.length };
-			});
-
-			expect(result).toBeNull();
+			expect(updatedRates).toEqual([2.5, 2.5, 2.5]);
 
 			await page.close();
 		});

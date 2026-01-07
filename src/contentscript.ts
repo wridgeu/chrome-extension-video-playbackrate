@@ -1,4 +1,54 @@
-import { Defaults, MessagingAction, MessagingRequestPayload } from './types';
+// Inline types to make content script self-contained
+// chrome.scripting.executeScript doesn't reliably resolve ES module imports
+const MessagingAction = {
+	SET: 0,
+	SETSPECIFIC: 1,
+	RETRIEVE: 2,
+	UPDATE_CONTEXT_MENU: 3,
+	UPDATE_BADGE: 4
+} as const;
+
+type MessagingAction = (typeof MessagingAction)[keyof typeof MessagingAction];
+
+type RetrieveActionPayload = {
+	action: typeof MessagingAction.RETRIEVE;
+};
+
+type SetActionPayload = {
+	action: typeof MessagingAction.SET;
+	playbackRate: number;
+};
+
+type SetSpecificActionPayload = {
+	action: typeof MessagingAction.SETSPECIFIC;
+	playbackRate: number;
+	videoElementSrcAttributeValue: string;
+};
+
+type UpdateBadgePayload = {
+	action: typeof MessagingAction.UPDATE_BADGE;
+	playbackRate: number;
+	tabId?: number;
+};
+
+type UpdateContextMenuPayload = {
+	action: typeof MessagingAction.UPDATE_CONTEXT_MENU;
+	playbackRate: number;
+};
+
+type Defaults = {
+	defaults: {
+		enabled?: boolean;
+		playbackRate?: number;
+	};
+};
+
+type MessagingRequestPayload =
+	| RetrieveActionPayload
+	| SetActionPayload
+	| SetSpecificActionPayload
+	| UpdateBadgePayload
+	| UpdateContextMenuPayload;
 
 /** Apply default playback rate to all video elements on the page. */
 export async function applyDefaultPlaybackRate() {
@@ -158,8 +208,9 @@ export function initContentScript() {
 	});
 }
 
-// Auto-initialize when loaded (not in test environment)
-// @ts-expect-error - import.meta.vitest is added by vitest
+// Auto-initialize when loaded in browser context
+// @ts-expect-error - import.meta.vitest is added by vitest for in-source testing
+// Vite's define config replaces this with undefined in production builds
 if (typeof document !== 'undefined' && typeof chrome !== 'undefined' && !import.meta.vitest) {
 	initContentScript();
 }

@@ -5,6 +5,7 @@ import {
 	chromeStorageMock,
 	chromeTabsMock,
 	chromeActionMock,
+	chromeWebNavigationMock,
 	resetChromeMocks
 } from './setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
@@ -27,6 +28,8 @@ describe('Service Worker', () => {
 	let onStorageChangedCallback:
 		| ((changes: Record<string, { newValue?: unknown; oldValue?: unknown }>, areaName: string) => void)
 		| undefined;
+	let onRemovedCallback: ((tabId: number) => void) | undefined;
+	let onBeforeNavigateCallback: ((details: { tabId: number; frameId: number }) => void) | undefined;
 
 	beforeAll(async () => {
 		vi.resetModules();
@@ -38,6 +41,8 @@ describe('Service Worker', () => {
 		onUpdatedCallback = chromeTabsMock.onUpdated.addListener.mock.calls[0]?.[0];
 		onMessageCallback = chromeRuntimeMock.onMessage.addListener.mock.calls[0]?.[0];
 		onStorageChangedCallback = chromeStorageMock.onChanged.addListener.mock.calls[0]?.[0];
+		onRemovedCallback = chromeTabsMock.onRemoved.addListener.mock.calls[0]?.[0];
+		onBeforeNavigateCallback = chromeWebNavigationMock.onBeforeNavigate.addListener.mock.calls[0]?.[0];
 	});
 
 	beforeEach(() => {
@@ -86,6 +91,45 @@ describe('Service Worker', () => {
 			expect(chromeStorageMock.local.set).toHaveBeenCalledWith({
 				contextMenuOptions: contextMenuOptions
 			});
+		});
+
+		it('injects content script into existing tabs on install', async () => {
+			const existingTabs = [
+				{ id: 1, url: 'https://example.com' },
+				{ id: 2, url: 'https://test.com' },
+				{ id: 3, url: 'https://other.com' }
+			];
+			chromeTabsMock.query.mockResolvedValue(existingTabs);
+			const executeScriptSpy = vi.spyOn(chrome.scripting, 'executeScript').mockClear();
+
+			await onInstalledCallback!({ reason: 'install' });
+
+			// Wait for async operations
+			await new Promise((r) => setTimeout(r, 10));
+
+			expect(chromeTabsMock.query).toHaveBeenCalledWith({ url: ['http://*/*', 'https://*/*'] });
+			expect(executeScriptSpy).toHaveBeenCalledTimes(3);
+			existingTabs.forEach((tab) => {
+				expect(executeScriptSpy).toHaveBeenCalledWith(
+					{
+						target: { tabId: tab.id, allFrames: true },
+						files: ['/js/contentscript.js']
+					},
+					expect.any(Function)
+				);
+			});
+		});
+
+		it('skips tabs without id during batch injection', async () => {
+			const existingTabs = [{ id: 1 }, { id: undefined }, { id: 3 }];
+			chromeTabsMock.query.mockResolvedValue(existingTabs);
+			const executeScriptSpy = vi.spyOn(chrome.scripting, 'executeScript').mockClear();
+
+			await onInstalledCallback!({ reason: 'install' });
+			await new Promise((r) => setTimeout(r, 10));
+
+			// Should only inject into tabs with valid id
+			expect(executeScriptSpy).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -318,6 +362,44 @@ describe('Service Worker', () => {
 			expect(chromeContextMenusMock.update).toHaveBeenCalledWith('6', { checked: true });
 		});
 	});
+
+	describe('tab cleanup on close', () => {
+		it('registers onRemoved listener', () => {
+			expect(chromeTabsMock.onRemoved.addListener).toHaveBeenCalled();
+			expect(onRemovedCallback).toBeDefined();
+		});
+
+		it('clears playback rate storage when tab is closed', () => {
+			chromeStorageMock.local.remove.mockClear();
+
+			onRemovedCallback!(123);
+
+			expect(chromeStorageMock.local.remove).toHaveBeenCalledWith('playbackRate_123');
+		});
+	});
+
+	describe('navigation event handling', () => {
+		it('registers onBeforeNavigate listener', () => {
+			expect(chromeWebNavigationMock.onBeforeNavigate.addListener).toHaveBeenCalled();
+			expect(onBeforeNavigateCallback).toBeDefined();
+		});
+
+		it('clears badge on main frame navigation', () => {
+			chromeActionMock.setBadgeText.mockClear();
+
+			onBeforeNavigateCallback!({ tabId: 456, frameId: 0 });
+
+			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 456 });
+		});
+
+		it('does not clear badge on subframe navigation', () => {
+			chromeActionMock.setBadgeText.mockClear();
+
+			onBeforeNavigateCallback!({ tabId: 456, frameId: 1 });
+
+			expect(chromeActionMock.setBadgeText).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('findClosestOption', () => {
@@ -377,24 +459,12 @@ describe('findClosestOption', () => {
 });
 
 describe('formatBadgeText', () => {
-	it('formats integer rates without decimals', () => {
+	it('converts playback rates to string format', () => {
+		// Integers
 		expect(formatBadgeText(1)).toBe('1');
 		expect(formatBadgeText(2)).toBe('2');
-		expect(formatBadgeText(4)).toBe('4');
-	});
-
-	it('formats decimal rates with one decimal place', () => {
+		// Decimals
+		expect(formatBadgeText(0.75)).toBe('0.75');
 		expect(formatBadgeText(1.5)).toBe('1.5');
-		expect(formatBadgeText(0.5)).toBe('0.5');
-		expect(formatBadgeText(2.25)).toBe('2.3'); // toFixed rounds
-	});
-
-	it('handles zero', () => {
-		expect(formatBadgeText(0)).toBe('0');
-	});
-
-	it('handles edge case decimal values', () => {
-		expect(formatBadgeText(0.25)).toBe('0.3'); // toFixed rounds
-		expect(formatBadgeText(3.5)).toBe('3.5');
 	});
 });
