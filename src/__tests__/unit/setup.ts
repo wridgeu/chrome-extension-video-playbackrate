@@ -27,7 +27,7 @@ const chrome = {
 					return Promise.resolve({ [key]: mockStorage[key] });
 				}
 				const result: Record<string, any> = {};
-				key.forEach(k => {
+				key.forEach((k) => {
 					if (mockStorage[k] !== undefined) {
 						result[k] = mockStorage[k];
 					}
@@ -40,11 +40,11 @@ const chrome = {
 			}),
 			remove: vi.fn().mockImplementation((key: string | string[]) => {
 				const keys = typeof key === 'string' ? [key] : key;
-				keys.forEach(k => delete mockStorage[k]);
+				keys.forEach((k) => delete mockStorage[k]);
 				return Promise.resolve();
 			}),
 			clear: vi.fn().mockImplementation(() => {
-				Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+				Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
 				return Promise.resolve();
 			})
 		},
@@ -165,7 +165,7 @@ export const chromeActionMock = chrome.action;
 // Helper to reset all mocks between tests
 export function resetChromeMocks() {
 	// Clear mockStorage
-	Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+	Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
 
 	// Reset all chrome API mocks
 	vi.mocked(chrome.runtime.sendMessage).mockClear();
