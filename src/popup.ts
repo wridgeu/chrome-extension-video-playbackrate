@@ -44,18 +44,22 @@ function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 }
 
 /** Shows or hides elements based on whether videos are present on the page. */
-function updateVisibility(hasVideos: boolean, noVideosEl: HTMLElement, sliderContainer: HTMLElement) {
-	noVideosEl.hidden = hasVideos;
-	sliderContainer.hidden = !hasVideos;
+function updateVisibility(hasVideos: boolean, noVideosEl: HTMLElement | null, sliderContainer: HTMLElement | null) {
+	if (noVideosEl) {
+		noVideosEl.hidden = hasVideos;
+	}
+	if (sliderContainer) {
+		sliderContainer.hidden = !hasVideos;
+	}
 }
 
 /** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
 export async function initPopup() {
 	await new ThemeSwitcher().init();
-	const slider = <Slider>document.getElementById('slider');
-	const tooltip = document.getElementById('tooltip') as HTMLElement;
-	const noVideosEl = document.getElementById('no-videos') as HTMLElement;
-	const sliderContainer = document.getElementById('slider-container') as HTMLElement;
+	const slider = document.getElementById('slider') as Slider | null;
+	const tooltip = document.getElementById('tooltip') as HTMLElement | null;
+	const noVideosEl = document.getElementById('no-videos');
+	const sliderContainer = document.getElementById('slider-container');
 	const [{ id: currentActiveTabId }] = await chrome.tabs.query({
 		active: true,
 		currentWindow: true
@@ -91,58 +95,68 @@ export async function initPopup() {
 	}
 
 	updateVisibility(hasVideos, noVideosEl, sliderContainer);
-	slider.value = playbackRate ?? 1;
+	if (slider) {
+		slider.value = playbackRate ?? 1;
+	}
 
 	/** Shows the tooltip and positions it relative to the slider handle */
 	const showTooltip = () => {
-		tooltip.showPopover();
-		positionTooltip(slider, tooltip);
+		if (tooltip && slider) {
+			tooltip.showPopover();
+			positionTooltip(slider, tooltip);
+		}
 	};
 
 	/** Hides the tooltip popover */
 	const hideTooltip = () => {
-		tooltip.hidePopover();
+		if (tooltip) {
+			tooltip.hidePopover();
+		}
 	};
 
-	slider.addEventListener('mousedown', showTooltip);
-	slider.addEventListener('touchstart', showTooltip);
+	if (slider) {
+		slider.addEventListener('mousedown', showTooltip);
+		slider.addEventListener('touchstart', showTooltip);
+	}
 	document.addEventListener('mouseup', hideTooltip);
 	document.addEventListener('touchend', hideTooltip);
 
-	slider.addEventListener('input', (event: Event) => {
-		if (tooltip.matches(':popover-open')) {
-			positionTooltip(slider, tooltip);
-		}
+	if (slider) {
+		slider.addEventListener('input', (event: Event) => {
+			if (tooltip && tooltip.matches(':popover-open')) {
+				positionTooltip(slider, tooltip);
+			}
 
-		if (currentActiveTabId) {
-			const newRate = (event.target as Slider).value;
-			chrome.scripting.executeScript({
-				target: { tabId: currentActiveTabId, allFrames: true },
-				func: (rate: number) => {
-					document.querySelectorAll('video').forEach((v) => {
-						v.playbackRate = rate;
-					});
-				},
-				args: [newRate]
-			});
-			// Update badge and context menu directly since executeScript runs in different world
-			chrome.runtime.sendMessage({
-				action: MessagingAction.UPDATE_BADGE,
-				playbackRate: newRate,
-				tabId: currentActiveTabId
-			});
-			chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: newRate });
-			// Store rate for popup sync
-			chrome.storage.local.set({ [`playbackRate_${currentActiveTabId}`]: newRate });
-		}
-	});
+			if (currentActiveTabId) {
+				const newRate = (event.target as Slider).value;
+				chrome.scripting.executeScript({
+					target: { tabId: currentActiveTabId, allFrames: true },
+					func: (rate: number) => {
+						document.querySelectorAll('video').forEach((v) => {
+							v.playbackRate = rate;
+						});
+					},
+					args: [newRate]
+				});
+				// Update badge and context menu directly since executeScript runs in different world
+				chrome.runtime.sendMessage({
+					action: MessagingAction.UPDATE_BADGE,
+					playbackRate: newRate,
+					tabId: currentActiveTabId
+				});
+				chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: newRate });
+				// Store rate for popup sync
+				chrome.storage.local.set({ [`playbackRate_${currentActiveTabId}`]: newRate });
+			}
+		});
+	}
 
 	// Sync slider when video rate changes via native controls or context menu
-	if (currentActiveTabId) {
+	if (currentActiveTabId && slider) {
 		const storageKey = `playbackRate_${currentActiveTabId}`;
 		chrome.storage.local.onChanged.addListener((changes) => {
 			const newRate = changes[storageKey]?.newValue as number | undefined;
-			if (newRate !== undefined) {
+			if (newRate !== undefined && slider) {
 				slider.value = newRate;
 			}
 		});
