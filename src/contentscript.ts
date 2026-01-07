@@ -61,26 +61,12 @@ async function getDefaultSettings(): Promise<{ enabled: boolean; playbackRate: n
 	};
 }
 
-/** Apply default playback rate to a single video element */
+/** Apply default playback rate to a single video element and send updates */
 function applyDefaultRateToVideo(video: HTMLVideoElement, playbackRate: number) {
 	video.playbackRate = playbackRate;
-
-	// Watch for src changes and reapply rate
-	const mutObserver = new MutationObserver((mutationList: MutationRecord[]) => {
-		for (const mutation of mutationList) {
-			if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-				video.playbackRate = playbackRate;
-			}
-		}
-	});
-
-	// Stop observing once user manually changes rate
-	video.addEventListener('ratechange', () => mutObserver.disconnect(), { once: true });
-
-	mutObserver.observe(video, {
-		attributes: true,
-		attributeFilter: ['src']
-	});
+	const payload = { playbackRate };
+	chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, ...payload }).catch(() => {});
+	chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, ...payload }).catch(() => {});
 }
 
 /** Apply default playback rate to all video elements on the page. */
@@ -173,25 +159,22 @@ async function getTabId(): Promise<number | undefined> {
 }
 
 /** Initialize content script functionality. */
-export function initContentScript() {
-	// Apply default playback rate
-	applyDefaultPlaybackRate();
-
-	// Register message listener
+export async function initContentScript() {
+	// Register message listener first (needed immediately for popup/context menu)
 	chrome.runtime.onMessage.addListener(handleMessage);
 
-	// Set up ratechange listeners for existing videos and update badge with initial rate
+	// Set up ratechange listeners for existing videos
 	const existingVideos = document.querySelectorAll('video');
 	existingVideos.forEach(setupRateChangeListener);
 
-	// Send initial badge update if there are videos on the page
+	// Apply default playback rate (this also sends badge/context menu updates)
+	await applyDefaultPlaybackRate();
+
+	// If defaults weren't enabled or no videos exist, send current state for any existing videos
 	if (existingVideos.length > 0) {
-		chrome.runtime
-			.sendMessage({
-				action: MessagingAction.UPDATE_BADGE,
-				playbackRate: existingVideos[0].playbackRate
-			})
-			.catch(() => {});
+		const payload = { playbackRate: existingVideos[0].playbackRate };
+		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, ...payload }).catch(() => {});
+		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, ...payload }).catch(() => {});
 	}
 
 	// Observe for dynamically added videos
