@@ -1,15 +1,14 @@
 import puppeteer, { Browser, Page, Target } from 'puppeteer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { TEST_SERVER_URL } from './server';
+import { MessagingAction } from '@src/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Path to the built extension
 const EXTENSION_PATH = path.resolve(__dirname, '../../../dist');
-
-// Test video URL (file:// URL for browser access, resolved relative to this module)
-const TEST_VIDEO_URL = new URL('../fixtures/test-video.mp4', import.meta.url).href;
 
 let browser: Browser | null = null;
 
@@ -95,97 +94,42 @@ export async function openExtensionOptions(extensionId: string): Promise<Page> {
 	return page;
 }
 
-/** Create a test page with a video element. */
+/** Create a test page with a video element using HTTP URL (enables content script injection). */
 export async function createPageWithVideo(): Promise<Page> {
 	if (!browser) {
 		throw new Error('Browser not launched');
 	}
 
 	const page = await browser.newPage();
-
-	// Create a page with a video element using local test video
-	await page.setContent(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Video Test Page</title>
-      </head>
-      <body>
-        <video id="test-video" width="640" height="360" controls>
-          <source src="${TEST_VIDEO_URL}" type="video/mp4">
-        </video>
-        <script>
-          window.testVideo = document.getElementById('test-video');
-        </script>
-      </body>
-    </html>
-  `);
-
+	await page.goto(`${TEST_SERVER_URL}/video.html`, { waitUntil: 'networkidle0' });
 	return page;
 }
 
-/** Create a test page without any video elements. */
+/** Create a test page without any video elements using HTTP URL. */
 export async function createPageWithoutVideo(): Promise<Page> {
 	if (!browser) {
 		throw new Error('Browser not launched');
 	}
 
 	const page = await browser.newPage();
-
-	await page.setContent(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>No Video Test Page</title>
-      </head>
-      <body>
-        <h1>Page without videos</h1>
-        <p>This page has no video elements.</p>
-      </body>
-    </html>
-  `);
-
+	await page.goto(`${TEST_SERVER_URL}/no-video.html`, { waitUntil: 'networkidle0' });
 	return page;
 }
 
-/** Create a test page with multiple video elements. */
-export async function createPageWithMultipleVideos(count: number = 3): Promise<Page> {
+/** Create a test page with multiple video elements using HTTP URL (always 3 videos). */
+export async function createPageWithMultipleVideos(): Promise<Page> {
 	if (!browser) {
 		throw new Error('Browser not launched');
 	}
 
 	const page = await browser.newPage();
-
-	const videoElements = Array.from(
-		{ length: count },
-		(_, i) => `
-        <video id="test-video-${i + 1}" width="320" height="180" controls>
-          <source src="${TEST_VIDEO_URL}" type="video/mp4">
-        </video>`
-	).join('\n');
-
-	await page.setContent(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Multiple Videos Test Page</title>
-      </head>
-      <body>
-        <h1>Page with ${count} videos</h1>
-        ${videoElements}
-        <script>
-          window.testVideos = document.querySelectorAll('video');
-        </script>
-      </body>
-    </html>
-  `);
-
+	await page.goto(`${TEST_SERVER_URL}/multi-video.html`, { waitUntil: 'networkidle0' });
 	return page;
 }
 
-/** Get the test video URL for use in inline HTML */
-export function getTestVideoURL(): string {
-	return TEST_VIDEO_URL;
+/** Get the test server URL for use in tests */
+export function getTestServerURL(): string {
+	return TEST_SERVER_URL;
 }
 
 /** Get the service worker target for the extension. */
@@ -247,16 +191,53 @@ export async function getTabId(page: Page): Promise<number> {
 	return tabId;
 }
 
-/** Create a test page by navigating to a data URL (gives a queryable URL unlike setContent). */
-export async function createPageWithDataUrl(html: string): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
+/**
+ * Manually inject the content script into a tab.
+ * Puppeteer/headless Chrome may not reliably trigger tabs.onUpdated events.
+ */
+async function injectContentScript(tabId: number): Promise<void> {
+	const swTarget = await getServiceWorkerTarget();
+	const worker = await swTarget.worker();
+
+	if (!worker) {
+		throw new Error('Could not get service worker');
 	}
 
-	const page = await browser.newPage();
-	const dataUrl = `data:text/html,${encodeURIComponent(html)}`;
-	await page.goto(dataUrl, { waitUntil: 'networkidle0' });
-	return page;
+	await worker.evaluate(async (tid: number) => {
+		await chrome.scripting.executeScript({
+			target: { tabId: tid, allFrames: true },
+			files: ['/js/contentscript.js']
+		});
+	}, tabId);
+}
+
+/**
+ * Wait for content script to be injected and ready.
+ * First manually injects the content script, then verifies it's responding.
+ */
+export async function waitForContentScript(page: Page, timeout = 5000): Promise<void> {
+	const tabId = await getTabId(page);
+
+	// Manually inject content script (Puppeteer may not trigger tabs.onUpdated reliably)
+	try {
+		await injectContentScript(tabId);
+	} catch {
+		// Injection might fail if already injected, continue to check
+	}
+
+	const start = Date.now();
+
+	while (Date.now() - start < timeout) {
+		try {
+			const response = await sendMessageToTab(tabId, { action: MessagingAction.RETRIEVE });
+			if (response !== undefined) return;
+		} catch {
+			// Content script not ready yet
+		}
+		await new Promise((r) => setTimeout(r, 200));
+	}
+
+	throw new Error('Content script injection timeout');
 }
 
 /** Get the badge text for a specific tab. */
@@ -271,43 +252,6 @@ export async function getBadgeText(tabId: number): Promise<string> {
 	return worker.evaluate(async (tid: number) => {
 		return chrome.action.getBadgeText({ tabId: tid });
 	}, tabId);
-}
-
-/**
- * Execute the context menu's video-finding logic via the service worker.
- * This tests the ACTUAL extension code by running chrome.scripting.executeScript
- * through the service worker, rather than re-implementing the logic in tests.
- */
-export async function executeScriptForContextMenu(tabId: number, srcUrl: string, playbackRate: number): Promise<void> {
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	// Execute through the actual extension's scripting API
-	await worker.evaluate(
-		async (tid: number, src: string, rate: number) => {
-			await chrome.scripting.executeScript({
-				target: { tabId: tid, allFrames: true },
-				func: (srcUrl: string, playbackRate: number) => {
-					// This is the actual logic from sw.ts contextMenus.onClicked handler
-					const videos = document.querySelectorAll('video');
-					for (const video of videos) {
-						if (video.src === srcUrl || video.currentSrc === srcUrl) {
-							video.playbackRate = playbackRate;
-							break;
-						}
-					}
-				},
-				args: [src, rate]
-			});
-		},
-		tabId,
-		srcUrl,
-		playbackRate
-	);
 }
 
 export { browser };

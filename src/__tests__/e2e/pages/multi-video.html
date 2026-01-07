@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Multiple Videos Test Page</title>
+	</head>
+	<body>
+		<h1>Page with 3 videos</h1>
+		<video id="test-video-1" width="320" height="180" controls>
+			<source src="/test-video.mp4" type="video/mp4" />
+		</video>
+		<video id="test-video-2" width="320" height="180" controls>
+			<source src="/test-video.mp4" type="video/mp4" />
+		</video>
+		<video id="test-video-3" width="320" height="180" controls>
+			<source src="/test-video.mp4" type="video/mp4" />
+		</video>
+		<script>
+			window.testVideos = document.querySelectorAll('video');
+		</script>
+	</body>
+</html>

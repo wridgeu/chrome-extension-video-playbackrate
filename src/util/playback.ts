@@ -19,8 +19,8 @@ export function findClosestOption(playbackRate: number, options: PlaybackOption[
 
 /**
  * Formats the playback rate for display in the badge.
- * Shows integers without decimals (e.g., "2"), decimals with one digit precision (e.g., "1.5").
+ * Shows the exact value chosen without unnecessary trailing zeros.
  */
 export function formatBadgeText(rate: number): string {
-	return Number.isInteger(rate) ? rate.toString() : rate.toFixed(1);
+	return rate.toString();
 }
