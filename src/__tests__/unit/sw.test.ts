@@ -139,8 +139,10 @@ describe('Service Worker', () => {
 
 		it('updates badge after setting playback rate', async () => {
 			chromeStorageMock.sync.get.mockImplementation(
-				(_: unknown, callback: (result: { badgeEnabled?: boolean }) => void) => {
-					callback({ badgeEnabled: true });
+				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
+					const result = { badgeEnabled: true };
+					if (callback) callback(result);
+					return Promise.resolve(result);
 				}
 			);
 			chromeActionMock.setBadgeText.mockClear();
@@ -160,8 +162,10 @@ describe('Service Worker', () => {
 
 		it('stores playback rate for popup sync after click', async () => {
 			chromeStorageMock.sync.get.mockImplementation(
-				(_: unknown, callback: (result: { badgeEnabled?: boolean }) => void) => {
-					callback({ badgeEnabled: true });
+				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
+					const result = { badgeEnabled: true };
+					if (callback) callback(result);
+					return Promise.resolve(result);
 				}
 			);
 
@@ -172,8 +176,10 @@ describe('Service Worker', () => {
 
 		it('does not update badge when badgeEnabled is false', async () => {
 			chromeStorageMock.sync.get.mockImplementation(
-				(_: unknown, callback: (result: { badgeEnabled?: boolean }) => void) => {
-					callback({ badgeEnabled: false });
+				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
+					const result = { badgeEnabled: false };
+					if (callback) callback(result);
+					return Promise.resolve(result);
 				}
 			);
 			chromeActionMock.setBadgeText.mockClear();
@@ -257,8 +263,10 @@ describe('Service Worker', () => {
 
 		it('uses tabId from request payload when provided (from popup)', async () => {
 			chromeStorageMock.sync.get.mockImplementation(
-				(_: unknown, callback: (result: { badgeEnabled?: boolean }) => void) => {
-					callback({ badgeEnabled: true });
+				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
+					const result = { badgeEnabled: true };
+					if (callback) callback(result);
+					return Promise.resolve(result);
 				}
 			);
 			chromeActionMock.setBadgeText.mockClear();
@@ -277,8 +285,10 @@ describe('Service Worker', () => {
 
 		it('falls back to sender.tab.id when request.tabId is not provided (from content script)', async () => {
 			chromeStorageMock.sync.get.mockImplementation(
-				(_: unknown, callback: (result: { badgeEnabled?: boolean }) => void) => {
-					callback({ badgeEnabled: true });
+				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
+					const result = { badgeEnabled: true };
+					if (callback) callback(result);
+					return Promise.resolve(result);
 				}
 			);
 			chromeActionMock.setBadgeText.mockClear();
