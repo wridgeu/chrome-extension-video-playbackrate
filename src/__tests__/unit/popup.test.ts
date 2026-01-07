@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { chromeTabsMock, chromeScriptingMock, chromeRuntimeMock, chromeStorageMock, resetChromeMocks } from './setup';
+import {
+	chromeTabsMock,
+	chromeScriptingMock,
+	chromeRuntimeMock,
+	chromeStorageMock,
+	resetChromeMocks,
+	getEventHandler
+} from './setup';
 import { initPopup } from '@src/popup';
 import { MessagingAction } from '@src/types';
 import type Slider from '@ui5/webcomponents/dist/Slider.js';
@@ -183,9 +190,7 @@ describe('Popup', () => {
 			await initPopup();
 
 			// Get the input event handler that was registered
-			const inputHandler = (slider.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-				(call) => call[0] === 'input'
-			)?.[1];
+			const inputHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'input');
 
 			expect(inputHandler).toBeDefined();
 
@@ -209,9 +214,7 @@ describe('Popup', () => {
 
 			await initPopup();
 
-			const inputHandler = (slider.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-				(call) => call[0] === 'input'
-			)?.[1];
+			const inputHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'input');
 
 			slider.value = 1.75;
 			const inputEvent = new Event('input', { bubbles: true });
@@ -236,9 +239,7 @@ describe('Popup', () => {
 
 			await initPopup();
 
-			const inputHandler = (slider.addEventListener as ReturnType<typeof vi.fn>).mock.calls.find(
-				(call) => call[0] === 'input'
-			)?.[1];
+			const inputHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'input');
 
 			slider.value = 2.5;
 			const inputEvent = new Event('input', { bubbles: true });

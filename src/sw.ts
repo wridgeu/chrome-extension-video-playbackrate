@@ -1,5 +1,10 @@
 import { default as contextMenuOptions } from './ContextMenuOptions.js';
 import { MessagingAction, type MessagingRequestPayload } from './types';
+import { findClosestOption, formatBadgeText, type PlaybackOption } from './util/playback.js';
+
+// Re-export for backwards compatibility
+export { findClosestOption, formatBadgeText };
+export type { PlaybackOption as ContextMenuOption };
 
 /** Badge background color - matches the icon's golden yellow */
 const BADGE_BACKGROUND_COLOR = '#F7B731';
@@ -7,28 +12,8 @@ const BADGE_BACKGROUND_COLOR = '#F7B731';
 const BADGE_TEXT_COLOR = '#000000';
 
 type ContextMenuStorage = {
-	contextMenuOptions: ContextMenuOption[];
+	contextMenuOptions: PlaybackOption[];
 };
-
-type ContextMenuOption = {
-	id: string;
-	title: string;
-	playbackRate: number;
-	default?: boolean;
-};
-
-/** Finds the context menu option with the closest playback rate. */
-export function findClosestOption(playbackRate: number, options: ContextMenuOption[]): ContextMenuOption | undefined {
-	if (options.length === 0) return undefined;
-
-	return options.reduce((closest, current) => {
-		const closestDiff = Math.abs(closest.playbackRate - playbackRate);
-		const currentDiff = Math.abs(current.playbackRate - playbackRate);
-		return currentDiff < closestDiff ? current : closest;
-	});
-}
-
-export type { ContextMenuOption };
 
 /** Initialize context menu with playback rate options and inject content script into existing tabs. */
 chrome.runtime.onInstalled.addListener(async () => {
@@ -68,7 +53,7 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 	if (!tab?.id) return;
 
 	const { contextMenuOptions } = <ContextMenuStorage>await chrome.storage.local.get(['contextMenuOptions']);
-	const menuItem = contextMenuOptions.find((item: ContextMenuOption) => item.id === itemData.menuItemId);
+	const menuItem = contextMenuOptions.find((item: PlaybackOption) => item.id === itemData.menuItemId);
 	if (menuItem && itemData.srcUrl) {
 		// Use executeScript to set playback rate directly, avoiding content script dependency
 		chrome.scripting.executeScript({
@@ -145,14 +130,6 @@ type GetTabIdPayload = {
 };
 
 type IncomingMessage = MessagingRequestPayload | GetTabIdPayload;
-
-/**
- * Formats the playback rate for display in the badge.
- * Shows integers without decimals (e.g., "2"), decimals with one digit precision (e.g., "1.5").
- */
-export function formatBadgeText(rate: number): string {
-	return Number.isInteger(rate) ? rate.toString() : rate.toFixed(1);
-}
 
 /** Handle messages from content script for context menu sync, badge updates, and tab ID requests. */
 chrome.runtime.onMessage.addListener((request: IncomingMessage, sender, sendResponse) => {

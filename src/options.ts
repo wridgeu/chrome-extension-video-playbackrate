@@ -55,7 +55,8 @@ async function initThemeToggle() {
 	});
 }
 
-(async () => {
+/** Initialize options page. Exported for testing. */
+export async function initOptions(): Promise<void> {
 	const defaultsCheckbox = <CheckBox>document.getElementById('defaultsEnabledCheckbox')!;
 	const defaultSpeedSelector = <Select>document.getElementById('defaultSpeedSelector')!;
 	const badgeCheckbox = <CheckBox>document.getElementById('badgeEnabledCheckbox')!;
@@ -83,4 +84,10 @@ async function initThemeToggle() {
 		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
 		await saveBadgePreference(checkboxIsChecked);
 	});
-})();
+}
+
+// Auto-initialize when loaded (not in test environment)
+// @ts-expect-error - import.meta.vitest is added by vitest
+if (typeof document !== 'undefined' && typeof chrome !== 'undefined' && !import.meta.vitest) {
+	initOptions();
+}

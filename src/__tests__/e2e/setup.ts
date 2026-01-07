@@ -247,6 +247,18 @@ export async function getTabId(page: Page): Promise<number> {
 	return tabId;
 }
 
+/** Create a test page by navigating to a data URL (gives a queryable URL unlike setContent). */
+export async function createPageWithDataUrl(html: string): Promise<Page> {
+	if (!browser) {
+		throw new Error('Browser not launched');
+	}
+
+	const page = await browser.newPage();
+	const dataUrl = `data:text/html,${encodeURIComponent(html)}`;
+	await page.goto(dataUrl, { waitUntil: 'networkidle0' });
+	return page;
+}
+
 /** Get the badge text for a specific tab. */
 export async function getBadgeText(tabId: number): Promise<string> {
 	const swTarget = await getServiceWorkerTarget();
@@ -259,6 +271,43 @@ export async function getBadgeText(tabId: number): Promise<string> {
 	return worker.evaluate(async (tid: number) => {
 		return chrome.action.getBadgeText({ tabId: tid });
 	}, tabId);
+}
+
+/**
+ * Execute the context menu's video-finding logic via the service worker.
+ * This tests the ACTUAL extension code by running chrome.scripting.executeScript
+ * through the service worker, rather than re-implementing the logic in tests.
+ */
+export async function executeScriptForContextMenu(tabId: number, srcUrl: string, playbackRate: number): Promise<void> {
+	const swTarget = await getServiceWorkerTarget();
+	const worker = await swTarget.worker();
+
+	if (!worker) {
+		throw new Error('Could not get service worker');
+	}
+
+	// Execute through the actual extension's scripting API
+	await worker.evaluate(
+		async (tid: number, src: string, rate: number) => {
+			await chrome.scripting.executeScript({
+				target: { tabId: tid, allFrames: true },
+				func: (srcUrl: string, playbackRate: number) => {
+					// This is the actual logic from sw.ts contextMenus.onClicked handler
+					const videos = document.querySelectorAll('video');
+					for (const video of videos) {
+						if (video.src === srcUrl || video.currentSrc === srcUrl) {
+							video.playbackRate = playbackRate;
+							break;
+						}
+					}
+				},
+				args: [src, rate]
+			});
+		},
+		tabId,
+		srcUrl,
+		playbackRate
+	);
 }
 
 export { browser };

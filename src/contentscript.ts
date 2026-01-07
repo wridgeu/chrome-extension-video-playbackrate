@@ -33,12 +33,12 @@ export async function applyDefaultPlaybackRate() {
 }
 
 /** Find a video element by its src attribute. Uses CSS.escape() to sanitize the selector. */
-export function findVideoElementBySrc(srcUrl: string): HTMLVideoElement | null {
+function findVideoElementBySrc(srcUrl: string): HTMLVideoElement | null {
 	return document.querySelector(`video[src='${CSS.escape(srcUrl)}']`);
 }
 
 /** Handle incoming messages from the extension. */
-export function handleMessage(
+function handleMessage(
 	request: MessagingRequestPayload,
 	sender: chrome.runtime.MessageSender,
 	sendResponse: (response?: unknown) => void
@@ -76,7 +76,7 @@ export function handleMessage(
  * Sets up a listener for playback rate changes on a video element.
  * Stores the rate in storage (for popup sync) and updates the extension badge.
  */
-export function setupRateChangeListener(video: HTMLVideoElement) {
+function setupRateChangeListener(video: HTMLVideoElement) {
 	video.addEventListener('ratechange', async () => {
 		const tabId = await getTabId();
 		if (tabId !== undefined) {
@@ -93,7 +93,7 @@ export function setupRateChangeListener(video: HTMLVideoElement) {
 let cachedTabId: number | undefined;
 
 /** Gets the current tab ID from the service worker. */
-export async function getTabId(): Promise<number | undefined> {
+async function getTabId(): Promise<number | undefined> {
 	if (cachedTabId !== undefined) return cachedTabId;
 	try {
 		const response = await chrome.runtime.sendMessage({ action: 'getTabId' });
@@ -102,11 +102,6 @@ export async function getTabId(): Promise<number | undefined> {
 	} catch {
 		return undefined;
 	}
-}
-
-/** Reset cached tab ID (useful for testing). */
-export function resetCachedTabId() {
-	cachedTabId = undefined;
 }
 
 /** Initialize content script functionality. */
