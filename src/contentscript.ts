@@ -50,36 +50,54 @@ type MessagingRequestPayload =
 	| UpdateBadgePayload
 	| UpdateContextMenuPayload;
 
+/** Load default settings from storage */
+async function getDefaultSettings(): Promise<{ enabled: boolean; playbackRate: number } | null> {
+	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
+	if (!defaults?.enabled) return null;
+
+	return {
+		enabled: true,
+		playbackRate: defaults.playbackRate || 1
+	};
+}
+
+/** Apply default playback rate to a single video element */
+function applyDefaultRateToVideo(video: HTMLVideoElement, playbackRate: number) {
+	video.playbackRate = playbackRate;
+
+	// Watch for src changes and reapply rate
+	const mutObserver = new MutationObserver((mutationList: MutationRecord[]) => {
+		for (const mutation of mutationList) {
+			if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+				video.playbackRate = playbackRate;
+			}
+		}
+	});
+
+	// Stop observing once user manually changes rate
+	video.addEventListener('ratechange', () => mutObserver.disconnect(), { once: true });
+
+	mutObserver.observe(video, {
+		attributes: true,
+		attributeFilter: ['src']
+	});
+}
+
 /** Apply default playback rate to all video elements on the page. */
 export async function applyDefaultPlaybackRate() {
-	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
-	if (!defaults?.enabled) return;
-
-	const playbackRate = defaults.playbackRate || 1;
+	const settings = await getDefaultSettings();
+	if (!settings) return;
 
 	const videoElements = document.querySelectorAll('video');
-	if (videoElements.length === 0) return;
+	videoElements.forEach((video) => applyDefaultRateToVideo(video, settings.playbackRate));
+}
 
-	// Apply to all video elements on the page
-	videoElements.forEach((videoElement) => {
-		videoElement.playbackRate = playbackRate;
-
-		const mutObserver = new MutationObserver((mutationList: MutationRecord[]) => {
-			for (const mutation of mutationList) {
-				if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
-					videoElement.playbackRate = playbackRate;
-				}
-			}
-		});
-
-		// Add ratechange listener once, outside the MutationObserver callback
-		videoElement.addEventListener('ratechange', () => mutObserver.disconnect(), { once: true });
-
-		mutObserver.observe(videoElement, {
-			attributes: true,
-			attributeFilter: ['src']
-		});
-	});
+/** Apply default rate to a dynamically added video if defaults are enabled */
+async function applyDefaultRateIfEnabled(video: HTMLVideoElement) {
+	const settings = await getDefaultSettings();
+	if (settings) {
+		applyDefaultRateToVideo(video, settings.playbackRate);
+	}
 }
 
 /** Find a video element by its src attribute. Uses CSS.escape() to sanitize the selector. */
@@ -182,8 +200,12 @@ export function initContentScript() {
 			for (const node of mutation.addedNodes) {
 				if (node instanceof HTMLVideoElement) {
 					setupRateChangeListener(node);
+					applyDefaultRateIfEnabled(node);
 				} else if (node instanceof Element) {
-					node.querySelectorAll('video').forEach(setupRateChangeListener);
+					node.querySelectorAll('video').forEach((video) => {
+						setupRateChangeListener(video);
+						applyDefaultRateIfEnabled(video);
+					});
 				}
 			}
 		}
