@@ -119,10 +119,10 @@ describe('ContentScript', () => {
 	});
 
 	describe('handleMessage', () => {
-		let sendResponse: ReturnType<typeof vi.fn>;
+		let sendResponse: (response?: unknown) => void;
 
 		beforeEach(() => {
-			sendResponse = vi.fn();
+			sendResponse = vi.fn() as (response?: unknown) => void;
 		});
 
 		it('sets playback rate on all videos with SET action', () => {

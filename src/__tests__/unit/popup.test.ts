@@ -41,7 +41,7 @@ describe('Popup', () => {
 					})
 				})
 			} as unknown as ShadowRoot
-		};
+		} as unknown as Partial<Slider>;
 
 		// Create mock tooltip element
 		tooltip = {

@@ -152,6 +152,56 @@ if (typeof CSS === 'undefined' || !CSS.escape) {
 	} as any;
 }
 
+// Set up default mocks for document.getElementById to prevent errors when modules are imported
+// Individual tests can override these in beforeEach if needed
+if (typeof document !== 'undefined') {
+	// Create default mock elements that can be returned
+	const defaultMockElements: Record<string, any> = {
+		slider: {
+			id: 'slider',
+			value: 1,
+			min: '0.25',
+			max: '4',
+			addEventListener: vi.fn(),
+			shadowRoot: {
+				querySelector: vi.fn().mockReturnValue(null)
+			}
+		},
+		tooltip: {
+			id: 'tooltip',
+			textContent: '',
+			offsetWidth: 40,
+			style: {} as CSSStyleDeclaration,
+			getBoundingClientRect: () =>
+				({
+					width: 40,
+					height: 20,
+					top: 0,
+					left: 0,
+					right: 40,
+					bottom: 20
+				}) as DOMRect,
+			showPopover: vi.fn(),
+			hidePopover: vi.fn(),
+			matches: vi.fn().mockReturnValue(false)
+		},
+		'no-videos': {
+			id: 'no-videos',
+			hidden: false
+		},
+		'slider-container': {
+			id: 'slider-container',
+			hidden: false
+		}
+	};
+
+	// Mock getElementById to return default mocks (tests can override in beforeEach)
+	const originalGetElementById = document.getElementById.bind(document);
+	document.getElementById = vi.fn((id: string) => {
+		return (defaultMockElements[id] as HTMLElement) || originalGetElementById(id);
+	}) as typeof document.getElementById;
+}
+
 // Export chrome and its sub-APIs for use in tests
 export const chromeMock = chrome;
 export const chromeStorageMock = chrome.storage;
