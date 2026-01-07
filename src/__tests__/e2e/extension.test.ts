@@ -823,8 +823,8 @@ describe('Chrome Extension E2E', () => {
 	});
 
 	describe('Context Menu executeScript Integration', () => {
-		// Tests that verify context menu uses executeScript to change playback rate
-		// This ensures context menu works without relying on content script injection
+		// Tests that verify the video-finding logic pattern used by context menu in sw.ts
+		// Note: These test the logic pattern, not the actual extension integration
 
 		it('context menu sets specific video playback rate by matching src or currentSrc', async () => {
 			// Create page with videos that have direct src attributes (not <source> elements)
@@ -844,12 +844,11 @@ describe('Chrome Extension E2E', () => {
 			await page.waitForSelector('#video-1', { timeout: 10000 });
 
 			const srcUrl = 'https://example.com/video1.mp4';
-
-			// Simulate what context menu's executeScript does
 			const newRate = 1.75;
+
+			// Test the video-finding logic pattern used by context menu in sw.ts
 			await page.evaluate(
 				(src: string, rate: number) => {
-					// This is the exact logic used in sw.ts for context menu
 					const videos = document.querySelectorAll('video');
 					for (const video of videos) {
 						if (video.src === src || video.currentSrc === src) {
@@ -921,10 +920,9 @@ describe('Chrome Extension E2E', () => {
 				videos[2].playbackRate = 2;
 			});
 
-			// Target video 2
 			const srcUrl = 'https://example.com/video2.mp4';
 
-			// Simulate context menu targeting video 2
+			// Test the video-finding logic pattern used by context menu in sw.ts
 			await page.evaluate(
 				(src: string, rate: number) => {
 					const videos = document.querySelectorAll('video');
