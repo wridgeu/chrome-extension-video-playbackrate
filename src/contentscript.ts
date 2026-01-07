@@ -72,7 +72,6 @@ export function handleMessage(
 	}
 }
 
-
 /**
  * Sets up a listener for playback rate changes on a video element.
  * Stores the rate in storage (for popup sync) and updates the extension badge.
