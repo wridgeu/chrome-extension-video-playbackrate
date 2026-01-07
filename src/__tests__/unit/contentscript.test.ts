@@ -99,12 +99,12 @@ describe('ContentScript', () => {
 			expect(chromeRuntimeMock.onMessage.addListener).toHaveBeenCalled();
 		});
 
-		it('sends initial badge update when videos are present', () => {
+		it('sends initial badge update when videos are present', async () => {
 			const video = document.createElement('video');
 			video.playbackRate = 1.5;
 			document.body.appendChild(video);
 
-			initContentScript();
+			await initContentScript();
 
 			expect(chromeRuntimeMock.sendMessage).toHaveBeenCalledWith({
 				action: MessagingAction.UPDATE_BADGE,
@@ -112,8 +112,8 @@ describe('ContentScript', () => {
 			});
 		});
 
-		it('does not send badge update when no videos are present', () => {
-			initContentScript();
+		it('does not send badge update when no videos are present', async () => {
+			await initContentScript();
 
 			// sendMessage should not be called for badge update (may be called for other reasons)
 			const badgeCall = chromeRuntimeMock.sendMessage.mock.calls.find(
@@ -130,13 +130,13 @@ describe('ContentScript', () => {
 			sendResponse: (response?: unknown) => void
 		) => void;
 
-		beforeEach(() => {
+		beforeEach(async () => {
 			chromeStorageMock.sync.get.mockResolvedValue({ defaults: { enabled: false } });
 
 			const video = document.createElement('video');
 			document.body.appendChild(video);
 
-			initContentScript();
+			await initContentScript();
 
 			// Get the registered message listener
 			messageListener = chromeRuntimeMock.onMessage.addListener.mock.calls[0][0];
@@ -275,7 +275,7 @@ describe('ContentScript', () => {
 			const video = document.createElement('video');
 			document.body.appendChild(video);
 
-			initContentScript();
+			await initContentScript();
 			chromeRuntimeMock.sendMessage.mockClear();
 
 			video.playbackRate = 1.75;
@@ -293,7 +293,7 @@ describe('ContentScript', () => {
 			const video = document.createElement('video');
 			document.body.appendChild(video);
 
-			initContentScript();
+			await initContentScript();
 			chromeRuntimeMock.sendMessage.mockClear();
 
 			video.playbackRate = 0.5;
@@ -311,7 +311,7 @@ describe('ContentScript', () => {
 			const video = document.createElement('video');
 			document.body.appendChild(video);
 
-			initContentScript();
+			await initContentScript();
 
 			video.playbackRate = 2;
 			video.dispatchEvent(new Event('ratechange'));
@@ -329,7 +329,7 @@ describe('ContentScript', () => {
 			const video = document.createElement('video');
 			document.body.appendChild(video);
 
-			initContentScript();
+			await initContentScript();
 
 			video.playbackRate = 3;
 			video.dispatchEvent(new Event('ratechange'));
