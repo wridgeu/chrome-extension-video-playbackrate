@@ -50,7 +50,7 @@ function updateVisibility(hasVideos: boolean, noVideosEl: HTMLElement, sliderCon
 }
 
 /** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
-const popup = async () => {
+export async function initPopup() {
 	await new ThemeSwitcher().init();
 	const slider = <Slider>document.getElementById('slider');
 	const tooltip = document.getElementById('tooltip') as HTMLElement;
@@ -147,6 +147,14 @@ const popup = async () => {
 			}
 		});
 	}
-};
+}
 
-popup();
+// Auto-initialize when DOM is ready (not in test environment)
+if (typeof document !== 'undefined' && typeof process === 'undefined') {
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initPopup);
+	} else {
+		// DOM already ready, execute immediately
+		initPopup();
+	}
+}
