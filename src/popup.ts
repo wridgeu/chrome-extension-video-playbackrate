@@ -150,7 +150,8 @@ export async function initPopup() {
 }
 
 // Auto-initialize when DOM is ready (not in test environment)
-if (typeof document !== 'undefined' && typeof process === 'undefined') {
+// @ts-expect-error - import.meta.vitest is added by vitest
+if (typeof document !== 'undefined' && !import.meta.vitest) {
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', initPopup);
 	} else {
