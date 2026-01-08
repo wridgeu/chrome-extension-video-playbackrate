@@ -44,18 +44,23 @@ function positionTooltip(slider: Slider, tooltip: HTMLElement) {
 }
 
 /** Shows or hides elements based on whether videos are present on the page. */
-function updateVisibility(hasVideos: boolean, noVideosEl: HTMLElement, sliderContainer: HTMLElement) {
-	noVideosEl.hidden = hasVideos;
-	sliderContainer.hidden = !hasVideos;
+function updateVisibility(hasVideos: boolean, noVideosEl: HTMLElement | null, sliderContainer: HTMLElement | null) {
+	if (noVideosEl) noVideosEl.hidden = hasVideos;
+	if (sliderContainer) sliderContainer.hidden = !hasVideos;
 }
 
 /** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
 export async function initPopup() {
 	await new ThemeSwitcher().init();
-	const slider = <Slider>document.getElementById('slider');
-	const tooltip = document.getElementById('tooltip') as HTMLElement;
-	const noVideosEl = document.getElementById('no-videos') as HTMLElement;
-	const sliderContainer = document.getElementById('slider-container') as HTMLElement;
+	const slider = document.getElementById('slider') as Slider | null;
+	const tooltip = document.getElementById('tooltip');
+	const noVideosEl = document.getElementById('no-videos');
+	const sliderContainer = document.getElementById('slider-container');
+
+	// Early return if required elements don't exist
+	if (!slider || !tooltip || !noVideosEl || !sliderContainer) {
+		return;
+	}
 	const [{ id: currentActiveTabId }] = await chrome.tabs.query({
 		active: true,
 		currentWindow: true

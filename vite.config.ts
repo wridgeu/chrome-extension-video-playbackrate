@@ -90,18 +90,17 @@ export default defineConfig({
                 resolve: { alias: aliases },
                 test: {
                     name: 'unit',
-                    globals: true,
                     environment: 'jsdom',
                     setupFiles: ['./src/__tests__/unit/setup.ts'],
                     include: ['src/__tests__/unit/**/*.test.ts'],
-                    exclude: ['node_modules', 'dist']
+                    exclude: ['node_modules', 'dist'],
+                    clearMocks: true
                 }
             },
             {
                 resolve: { alias: aliases },
                 test: {
                     name: 'e2e',
-                    globals: true,
                     include: ['src/__tests__/e2e/**/*.test.ts'],
                     exclude: ['node_modules', 'dist'],
                     testTimeout: 60000,
