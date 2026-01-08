@@ -1,13 +1,5 @@
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
-import {
-	chromeContextMenusMock,
-	chromeRuntimeMock,
-	chromeStorageMock,
-	chromeTabsMock,
-	chromeActionMock,
-	chromeWebNavigationMock,
-	resetChromeMocks
-} from './setup';
+import { chromeMock, resetChromeMocks } from './setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
 import { findClosestOption, formatBadgeText, type ContextMenuOption } from '@src/sw';
 import { MessagingAction } from '@src/types';
@@ -31,40 +23,62 @@ describe('Service Worker', () => {
 	let onRemovedCallback: ((tabId: number) => void) | undefined;
 	let onBeforeNavigateCallback: ((details: { tabId: number; frameId: number }) => void) | undefined;
 
+	// Track if listeners were registered (captured before mocks are cleared)
+	let listenersRegistered = {
+		onInstalled: false,
+		onClicked: false,
+		onUpdated: false,
+		onMessage: false,
+		onStorageChanged: false,
+		onRemoved: false,
+		onBeforeNavigate: false
+	};
+
 	beforeAll(async () => {
 		vi.resetModules();
 		resetChromeMocks();
 		await import('@src/sw');
 
-		onInstalledCallback = chromeRuntimeMock.onInstalled.addListener.mock.calls[0]?.[0];
-		onClickedCallback = chromeContextMenusMock.onClicked.addListener.mock.calls[0]?.[0];
-		onUpdatedCallback = chromeTabsMock.onUpdated.addListener.mock.calls[0]?.[0];
-		onMessageCallback = chromeRuntimeMock.onMessage.addListener.mock.calls[0]?.[0];
-		onStorageChangedCallback = chromeStorageMock.onChanged.addListener.mock.calls[0]?.[0];
-		onRemovedCallback = chromeTabsMock.onRemoved.addListener.mock.calls[0]?.[0];
-		onBeforeNavigateCallback = chromeWebNavigationMock.onBeforeNavigate.addListener.mock.calls[0]?.[0];
+		// Capture callbacks and track registration before mocks are cleared
+		onInstalledCallback = chromeMock.runtime.onInstalled.addListener.mock.calls[0]?.[0];
+		onClickedCallback = chromeMock.contextMenus.onClicked.addListener.mock.calls[0]?.[0];
+		onUpdatedCallback = chromeMock.tabs.onUpdated.addListener.mock.calls[0]?.[0];
+		onMessageCallback = chromeMock.runtime.onMessage.addListener.mock.calls[0]?.[0];
+		onStorageChangedCallback = chromeMock.storage.onChanged.addListener.mock.calls[0]?.[0];
+		onRemovedCallback = chromeMock.tabs.onRemoved.addListener.mock.calls[0]?.[0];
+		onBeforeNavigateCallback = chromeMock.webNavigation.onBeforeNavigate.addListener.mock.calls[0]?.[0];
+
+		listenersRegistered = {
+			onInstalled: chromeMock.runtime.onInstalled.addListener.mock.calls.length > 0,
+			onClicked: chromeMock.contextMenus.onClicked.addListener.mock.calls.length > 0,
+			onUpdated: chromeMock.tabs.onUpdated.addListener.mock.calls.length > 0,
+			onMessage: chromeMock.runtime.onMessage.addListener.mock.calls.length > 0,
+			onStorageChanged: chromeMock.storage.onChanged.addListener.mock.calls.length > 0,
+			onRemoved: chromeMock.tabs.onRemoved.addListener.mock.calls.length > 0,
+			onBeforeNavigate: chromeMock.webNavigation.onBeforeNavigate.addListener.mock.calls.length > 0
+		};
 	});
 
 	beforeEach(() => {
-		chromeContextMenusMock.create.mockClear();
-		chromeStorageMock.local.set.mockClear();
-		chromeStorageMock.local.get.mockClear();
-		chromeTabsMock.sendMessage.mockClear();
+		chromeMock.contextMenus.create.mockClear();
+		chromeMock.storage.local.set.mockClear();
+		chromeMock.storage.local.get.mockClear();
+		chromeMock.tabs.sendMessage.mockClear();
 	});
 
 	describe('context menu creation', () => {
 		it('registers onInstalled listener', () => {
-			expect(chromeRuntimeMock.onInstalled.addListener).toHaveBeenCalled();
+			expect(listenersRegistered.onInstalled).toBe(true);
 			expect(onInstalledCallback).toBeDefined();
 		});
 
 		it('creates menu items for video context only', () => {
 			onInstalledCallback!({ reason: 'install' });
 
-			expect(chromeContextMenusMock.create).toHaveBeenCalledTimes(contextMenuOptions.length);
+			expect(chromeMock.contextMenus.create).toHaveBeenCalledTimes(contextMenuOptions.length);
 
 			contextMenuOptions.forEach((option, index) => {
-				expect(chromeContextMenusMock.create).toHaveBeenNthCalledWith(index + 1, {
+				expect(chromeMock.contextMenus.create).toHaveBeenNthCalledWith(index + 1, {
 					id: option.id,
 					type: 'radio',
 					title: option.title,
@@ -78,7 +92,7 @@ describe('Service Worker', () => {
 			onInstalledCallback!({ reason: 'install' });
 
 			type CreateCall = [{ checked: boolean; title: string }];
-			const createCalls = chromeContextMenusMock.create.mock.calls as Array<CreateCall>;
+			const createCalls = chromeMock.contextMenus.create.mock.calls as Array<CreateCall>;
 			const checkedItems = createCalls.filter((call) => call[0].checked === true);
 
 			expect(checkedItems).toHaveLength(1);
@@ -88,7 +102,7 @@ describe('Service Worker', () => {
 		it('stores options in local storage', () => {
 			onInstalledCallback!({ reason: 'install' });
 
-			expect(chromeStorageMock.local.set).toHaveBeenCalledWith({
+			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
 				contextMenuOptions: contextMenuOptions
 			});
 		});
@@ -99,7 +113,7 @@ describe('Service Worker', () => {
 				{ id: 2, url: 'https://test.com' },
 				{ id: 3, url: 'https://other.com' }
 			];
-			chromeTabsMock.query.mockResolvedValue(existingTabs);
+			chromeMock.tabs.query.mockResolvedValue(existingTabs);
 			const executeScriptSpy = vi.spyOn(chrome.scripting, 'executeScript').mockClear();
 
 			await onInstalledCallback!({ reason: 'install' });
@@ -107,7 +121,7 @@ describe('Service Worker', () => {
 			// Wait for async operations
 			await new Promise((r) => setTimeout(r, 10));
 
-			expect(chromeTabsMock.query).toHaveBeenCalledWith({ url: ['http://*/*', 'https://*/*'] });
+			expect(chromeMock.tabs.query).toHaveBeenCalledWith({ url: ['http://*/*', 'https://*/*'] });
 			expect(executeScriptSpy).toHaveBeenCalledTimes(3);
 			existingTabs.forEach((tab) => {
 				expect(executeScriptSpy).toHaveBeenCalledWith(
@@ -122,7 +136,7 @@ describe('Service Worker', () => {
 
 		it('skips tabs without id during batch injection', async () => {
 			const existingTabs = [{ id: 1 }, { id: undefined }, { id: 3 }];
-			chromeTabsMock.query.mockResolvedValue(existingTabs);
+			chromeMock.tabs.query.mockResolvedValue(existingTabs);
 			const executeScriptSpy = vi.spyOn(chrome.scripting, 'executeScript').mockClear();
 
 			await onInstalledCallback!({ reason: 'install' });
@@ -137,12 +151,12 @@ describe('Service Worker', () => {
 		let executeScriptSpy: ReturnType<typeof vi.spyOn>;
 
 		beforeEach(() => {
-			chromeStorageMock.local.get.mockResolvedValue({ contextMenuOptions });
+			chromeMock.storage.local.get.mockResolvedValue({ contextMenuOptions });
 			executeScriptSpy = vi.spyOn(chrome.scripting, 'executeScript').mockClear();
 		});
 
 		it('registers onClicked listener', () => {
-			expect(chromeContextMenusMock.onClicked.addListener).toHaveBeenCalled();
+			expect(listenersRegistered.onClicked).toBe(true);
 			expect(onClickedCallback).toBeDefined();
 		});
 
@@ -182,30 +196,30 @@ describe('Service Worker', () => {
 		});
 
 		it('updates badge after setting playback rate', async () => {
-			chromeStorageMock.sync.get.mockImplementation(
+			chromeMock.storage.sync.get.mockImplementation(
 				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
 					const result = { badgeEnabled: true };
 					if (callback) callback(result);
 					return Promise.resolve(result);
 				}
 			);
-			chromeActionMock.setBadgeText.mockClear();
+			chromeMock.action.setBadgeText.mockClear();
 
 			await onClickedCallback!({ menuItemId: '6', srcUrl: 'https://example.com/video.mp4' }, { id: 123 });
 
 			// Wait for async storage.sync.get callback
 			await new Promise((r) => setTimeout(r, 10));
 
-			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '2', tabId: 123 });
-			expect(chromeActionMock.setBadgeBackgroundColor).toHaveBeenCalledWith({
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '2', tabId: 123 });
+			expect(chromeMock.action.setBadgeBackgroundColor).toHaveBeenCalledWith({
 				color: '#F7B731',
 				tabId: 123
 			});
-			expect(chromeActionMock.setBadgeTextColor).toHaveBeenCalledWith({ color: '#000000', tabId: 123 });
+			expect(chromeMock.action.setBadgeTextColor).toHaveBeenCalledWith({ color: '#000000', tabId: 123 });
 		});
 
 		it('stores playback rate for popup sync after click', async () => {
-			chromeStorageMock.sync.get.mockImplementation(
+			chromeMock.storage.sync.get.mockImplementation(
 				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
 					const result = { badgeEnabled: true };
 					if (callback) callback(result);
@@ -215,30 +229,30 @@ describe('Service Worker', () => {
 
 			await onClickedCallback!({ menuItemId: '5', srcUrl: 'https://example.com/video.mp4' }, { id: 456 });
 
-			expect(chromeStorageMock.local.set).toHaveBeenCalledWith({ playbackRate_456: 1.5 });
+			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({ playbackRate_456: 1.5 });
 		});
 
 		it('does not update badge when badgeEnabled is false', async () => {
-			chromeStorageMock.sync.get.mockImplementation(
+			chromeMock.storage.sync.get.mockImplementation(
 				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
 					const result = { badgeEnabled: false };
 					if (callback) callback(result);
 					return Promise.resolve(result);
 				}
 			);
-			chromeActionMock.setBadgeText.mockClear();
+			chromeMock.action.setBadgeText.mockClear();
 
 			await onClickedCallback!({ menuItemId: '6', srcUrl: 'https://example.com/video.mp4' }, { id: 123 });
 
 			await new Promise((r) => setTimeout(r, 10));
 
-			expect(chromeActionMock.setBadgeText).not.toHaveBeenCalled();
+			expect(chromeMock.action.setBadgeText).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('content script injection', () => {
 		it('registers onUpdated listener', () => {
-			expect(chromeTabsMock.onUpdated.addListener).toHaveBeenCalled();
+			expect(listenersRegistered.onUpdated).toBe(true);
 			expect(onUpdatedCallback).toBeDefined();
 		});
 
@@ -265,8 +279,8 @@ describe('Service Worker', () => {
 
 	describe('badge toggle behavior', () => {
 		beforeEach(() => {
-			chromeActionMock.setBadgeText.mockClear();
-			chromeStorageMock.sync.get.mockClear();
+			chromeMock.action.setBadgeText.mockClear();
+			chromeMock.storage.sync.get.mockClear();
 		});
 
 		it('registers message listener for badge updates', () => {
@@ -280,7 +294,7 @@ describe('Service Worker', () => {
 		});
 
 		it('clears all badges when badgeEnabled changes to false', async () => {
-			chromeTabsMock.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
+			chromeMock.tabs.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
 				callback([{ id: 1 }, { id: 2 }, { id: 3 }]);
 			});
 
@@ -288,13 +302,13 @@ describe('Service Worker', () => {
 
 			await new Promise((r) => setTimeout(r, 10));
 
-			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 1 });
-			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 2 });
-			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 3 });
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 1 });
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 2 });
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 3 });
 		});
 
 		it('does not clear badges when badgeEnabled changes to true', async () => {
-			chromeTabsMock.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
+			chromeMock.tabs.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
 				callback([{ id: 1 }]);
 			});
 
@@ -302,18 +316,18 @@ describe('Service Worker', () => {
 
 			await new Promise((r) => setTimeout(r, 10));
 
-			expect(chromeActionMock.setBadgeText).not.toHaveBeenCalled();
+			expect(chromeMock.action.setBadgeText).not.toHaveBeenCalled();
 		});
 
 		it('uses tabId from request payload when provided (from popup)', async () => {
-			chromeStorageMock.sync.get.mockImplementation(
+			chromeMock.storage.sync.get.mockImplementation(
 				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
 					const result = { badgeEnabled: true };
 					if (callback) callback(result);
 					return Promise.resolve(result);
 				}
 			);
-			chromeActionMock.setBadgeText.mockClear();
+			chromeMock.action.setBadgeText.mockClear();
 
 			// Popup sends tabId in request, sender.tab is undefined
 			onMessageCallback!(
@@ -324,18 +338,18 @@ describe('Service Worker', () => {
 
 			await new Promise((r) => setTimeout(r, 10));
 
-			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '1.5', tabId: 789 });
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '1.5', tabId: 789 });
 		});
 
 		it('falls back to sender.tab.id when request.tabId is not provided (from content script)', async () => {
-			chromeStorageMock.sync.get.mockImplementation(
+			chromeMock.storage.sync.get.mockImplementation(
 				(_: unknown, callback?: (result: { badgeEnabled?: boolean }) => void) => {
 					const result = { badgeEnabled: true };
 					if (callback) callback(result);
 					return Promise.resolve(result);
 				}
 			);
-			chromeActionMock.setBadgeText.mockClear();
+			chromeMock.action.setBadgeText.mockClear();
 
 			// Content script sends without tabId, has sender.tab
 			onMessageCallback!(
@@ -346,11 +360,11 @@ describe('Service Worker', () => {
 
 			await new Promise((r) => setTimeout(r, 10));
 
-			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '2', tabId: 456 });
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '2', tabId: 456 });
 		});
 
 		it('updates context menu when UPDATE_CONTEXT_MENU message received', () => {
-			chromeContextMenusMock.update.mockClear();
+			chromeMock.contextMenus.update.mockClear();
 
 			onMessageCallback!(
 				{ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: 2 },
@@ -359,45 +373,45 @@ describe('Service Worker', () => {
 			);
 
 			// Menu item '6' has playbackRate 2
-			expect(chromeContextMenusMock.update).toHaveBeenCalledWith('6', { checked: true });
+			expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('6', { checked: true });
 		});
 	});
 
 	describe('tab cleanup on close', () => {
 		it('registers onRemoved listener', () => {
-			expect(chromeTabsMock.onRemoved.addListener).toHaveBeenCalled();
+			expect(listenersRegistered.onRemoved).toBe(true);
 			expect(onRemovedCallback).toBeDefined();
 		});
 
 		it('clears playback rate storage when tab is closed', () => {
-			chromeStorageMock.local.remove.mockClear();
+			chromeMock.storage.local.remove.mockClear();
 
 			onRemovedCallback!(123);
 
-			expect(chromeStorageMock.local.remove).toHaveBeenCalledWith('playbackRate_123');
+			expect(chromeMock.storage.local.remove).toHaveBeenCalledWith('playbackRate_123');
 		});
 	});
 
 	describe('navigation event handling', () => {
 		it('registers onBeforeNavigate listener', () => {
-			expect(chromeWebNavigationMock.onBeforeNavigate.addListener).toHaveBeenCalled();
+			expect(listenersRegistered.onBeforeNavigate).toBe(true);
 			expect(onBeforeNavigateCallback).toBeDefined();
 		});
 
 		it('clears badge on main frame navigation', () => {
-			chromeActionMock.setBadgeText.mockClear();
+			chromeMock.action.setBadgeText.mockClear();
 
 			onBeforeNavigateCallback!({ tabId: 456, frameId: 0 });
 
-			expect(chromeActionMock.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 456 });
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 456 });
 		});
 
 		it('does not clear badge on subframe navigation', () => {
-			chromeActionMock.setBadgeText.mockClear();
+			chromeMock.action.setBadgeText.mockClear();
 
 			onBeforeNavigateCallback!({ tabId: 456, frameId: 1 });
 
-			expect(chromeActionMock.setBadgeText).not.toHaveBeenCalled();
+			expect(chromeMock.action.setBadgeText).not.toHaveBeenCalled();
 		});
 	});
 });

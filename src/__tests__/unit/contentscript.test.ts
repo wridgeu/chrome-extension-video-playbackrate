@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { chromeStorageMock, chromeRuntimeMock, resetChromeMocks } from './setup';
+import { chromeMock, resetChromeMocks } from './setup';
 import { applyDefaultPlaybackRate, initContentScript } from '@src/contentscript';
 import { MessagingAction } from '@src/types';
 
@@ -11,7 +11,7 @@ describe('ContentScript', () => {
 
 	describe('applyDefaultPlaybackRate', () => {
 		it('does nothing when defaults are not enabled', async () => {
-			chromeStorageMock.sync.get.mockResolvedValue({
+			chromeMock.storage.sync.get.mockResolvedValue({
 				defaults: { enabled: false, playbackRate: 2 }
 			});
 
@@ -24,17 +24,17 @@ describe('ContentScript', () => {
 		});
 
 		it('does nothing when no videos are present', async () => {
-			chromeStorageMock.sync.get.mockResolvedValue({
+			chromeMock.storage.sync.get.mockResolvedValue({
 				defaults: { enabled: true, playbackRate: 2 }
 			});
 
 			await applyDefaultPlaybackRate();
 
-			expect(chromeStorageMock.sync.get).toHaveBeenCalledWith('defaults');
+			expect(chromeMock.storage.sync.get).toHaveBeenCalledWith('defaults');
 		});
 
 		it('applies default playback rate to all videos', async () => {
-			chromeStorageMock.sync.get.mockResolvedValue({
+			chromeMock.storage.sync.get.mockResolvedValue({
 				defaults: { enabled: true, playbackRate: 1.5 }
 			});
 
@@ -50,7 +50,7 @@ describe('ContentScript', () => {
 		});
 
 		it('uses default rate of 1 when playbackRate is not set', async () => {
-			chromeStorageMock.sync.get.mockResolvedValue({
+			chromeMock.storage.sync.get.mockResolvedValue({
 				defaults: { enabled: true }
 			});
 
@@ -64,7 +64,7 @@ describe('ContentScript', () => {
 
 		it('sets up MutationObserver for src attribute changes', async () => {
 			vi.useFakeTimers();
-			chromeStorageMock.sync.get.mockResolvedValue({
+			chromeMock.storage.sync.get.mockResolvedValue({
 				defaults: { enabled: true, playbackRate: 2 }
 			});
 
@@ -87,7 +87,7 @@ describe('ContentScript', () => {
 	describe('initContentScript', () => {
 		beforeEach(() => {
 			// Setup default storage mock
-			chromeStorageMock.sync.get.mockResolvedValue({ defaults: { enabled: false } });
+			chromeMock.storage.sync.get.mockResolvedValue({ defaults: { enabled: false } });
 		});
 
 		it('registers message listener', () => {
@@ -96,7 +96,7 @@ describe('ContentScript', () => {
 
 			initContentScript();
 
-			expect(chromeRuntimeMock.onMessage.addListener).toHaveBeenCalled();
+			expect(chromeMock.runtime.onMessage.addListener).toHaveBeenCalled();
 		});
 
 		it('sends initial badge update when videos are present', async () => {
@@ -106,7 +106,7 @@ describe('ContentScript', () => {
 
 			await initContentScript();
 
-			expect(chromeRuntimeMock.sendMessage).toHaveBeenCalledWith({
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
 				action: MessagingAction.UPDATE_BADGE,
 				playbackRate: 1.5
 			});
@@ -116,7 +116,7 @@ describe('ContentScript', () => {
 			await initContentScript();
 
 			// sendMessage should not be called for badge update (may be called for other reasons)
-			const badgeCall = chromeRuntimeMock.sendMessage.mock.calls.find(
+			const badgeCall = chromeMock.runtime.sendMessage.mock.calls.find(
 				(call) => call[0]?.action === MessagingAction.UPDATE_BADGE
 			);
 			expect(badgeCall).toBeUndefined();
@@ -131,7 +131,7 @@ describe('ContentScript', () => {
 		) => void;
 
 		beforeEach(async () => {
-			chromeStorageMock.sync.get.mockResolvedValue({ defaults: { enabled: false } });
+			chromeMock.storage.sync.get.mockResolvedValue({ defaults: { enabled: false } });
 
 			const video = document.createElement('video');
 			document.body.appendChild(video);
@@ -139,7 +139,7 @@ describe('ContentScript', () => {
 			await initContentScript();
 
 			// Get the registered message listener
-			messageListener = chromeRuntimeMock.onMessage.addListener.mock.calls[0][0];
+			messageListener = chromeMock.runtime.onMessage.addListener.mock.calls[0][0];
 		});
 
 		it('sets playback rate on all videos with SET action', () => {
@@ -263,8 +263,8 @@ describe('ContentScript', () => {
 	describe('rate change behavior (via initContentScript)', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
-			chromeStorageMock.sync.get.mockResolvedValue({ defaults: { enabled: false } });
-			chromeRuntimeMock.sendMessage.mockResolvedValue({ tabId: 123 });
+			chromeMock.storage.sync.get.mockResolvedValue({ defaults: { enabled: false } });
+			chromeMock.runtime.sendMessage.mockResolvedValue({ tabId: 123 });
 		});
 
 		afterEach(() => {
@@ -276,14 +276,14 @@ describe('ContentScript', () => {
 			document.body.appendChild(video);
 
 			await initContentScript();
-			chromeRuntimeMock.sendMessage.mockClear();
+			chromeMock.runtime.sendMessage.mockClear();
 
 			video.playbackRate = 1.75;
 			video.dispatchEvent(new Event('ratechange'));
 
 			await vi.runAllTimersAsync();
 
-			expect(chromeRuntimeMock.sendMessage).toHaveBeenCalledWith({
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
 				action: MessagingAction.UPDATE_BADGE,
 				playbackRate: 1.75
 			});
@@ -294,14 +294,14 @@ describe('ContentScript', () => {
 			document.body.appendChild(video);
 
 			await initContentScript();
-			chromeRuntimeMock.sendMessage.mockClear();
+			chromeMock.runtime.sendMessage.mockClear();
 
 			video.playbackRate = 0.5;
 			video.dispatchEvent(new Event('ratechange'));
 
 			await vi.runAllTimersAsync();
 
-			expect(chromeRuntimeMock.sendMessage).toHaveBeenCalledWith({
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
 				action: MessagingAction.UPDATE_CONTEXT_MENU,
 				playbackRate: 0.5
 			});
@@ -318,13 +318,13 @@ describe('ContentScript', () => {
 
 			await vi.runAllTimersAsync();
 
-			expect(chromeStorageMock.local.set).toHaveBeenCalledWith({
+			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
 				playbackRate_123: 2
 			});
 		});
 
 		it('handles sendMessage errors gracefully', async () => {
-			chromeRuntimeMock.sendMessage.mockRejectedValue(new Error('Message failed'));
+			chromeMock.runtime.sendMessage.mockRejectedValue(new Error('Message failed'));
 
 			const video = document.createElement('video');
 			document.body.appendChild(video);

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { chromeStorageMock, resetChromeMocks } from './setup';
+import { chromeMock, resetChromeMocks } from './setup';
 
 describe('Options Page', () => {
 	// Mock DOM elements
@@ -59,7 +59,7 @@ describe('Options Page', () => {
 	describe('initOptions', () => {
 		it('initializes all UI controls from storage', async () => {
 			// Set up storage with existing values
-			await chromeStorageMock.sync.set({
+			await chromeMock.storage.sync.set({
 				defaults: { enabled: true, playbackRate: 2 },
 				badgeEnabled: true
 			});
@@ -82,7 +82,7 @@ describe('Options Page', () => {
 
 		it('defaults badge checkbox to enabled when not set in storage', async () => {
 			// No badgeEnabled in storage
-			await chromeStorageMock.sync.set({ defaults: { enabled: false } });
+			await chromeMock.storage.sync.set({ defaults: { enabled: false } });
 
 			const { initOptions } = await import('@src/options');
 			await initOptions();
@@ -92,7 +92,7 @@ describe('Options Page', () => {
 		});
 
 		it('disables speed selector when defaults checkbox is unchecked', async () => {
-			await chromeStorageMock.sync.set({
+			await chromeMock.storage.sync.set({
 				defaults: { enabled: false }
 			});
 
@@ -106,7 +106,7 @@ describe('Options Page', () => {
 
 	describe('defaults checkbox change handler', () => {
 		it('enables speed selector when checked', async () => {
-			await chromeStorageMock.sync.set({ defaults: { enabled: false } });
+			await chromeMock.storage.sync.set({ defaults: { enabled: false } });
 
 			const { initOptions } = await import('@src/options');
 			await initOptions();
@@ -123,7 +123,7 @@ describe('Options Page', () => {
 		});
 
 		it('disables speed selector when unchecked', async () => {
-			await chromeStorageMock.sync.set({ defaults: { enabled: true } });
+			await chromeMock.storage.sync.set({ defaults: { enabled: true } });
 
 			const { initOptions } = await import('@src/options');
 			await initOptions();
@@ -140,7 +140,7 @@ describe('Options Page', () => {
 		});
 
 		it('saves defaults to storage when checkbox changes', async () => {
-			chromeStorageMock.sync.set.mockClear();
+			chromeMock.storage.sync.set.mockClear();
 
 			const { initOptions } = await import('@src/options');
 			await initOptions();
@@ -153,7 +153,7 @@ describe('Options Page', () => {
 			// Simulate checking the checkbox
 			await changeHandler({ target: { checked: true } });
 
-			expect(chromeStorageMock.sync.set).toHaveBeenCalledWith({
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({
 				defaults: { enabled: true, playbackRate: 1.5 }
 			});
 		});
@@ -162,7 +162,7 @@ describe('Options Page', () => {
 	describe('speed selector change handler', () => {
 		it('saves selected speed to storage', async () => {
 			// Initialize with defaults enabled
-			await chromeStorageMock.sync.set({
+			await chromeMock.storage.sync.set({
 				defaults: { enabled: true, playbackRate: 1.5 }
 			});
 
@@ -170,7 +170,7 @@ describe('Options Page', () => {
 			await initOptions();
 
 			// Clear storage set calls from initialization
-			chromeStorageMock.sync.set.mockClear();
+			chromeMock.storage.sync.set.mockClear();
 
 			// Get the change handler
 			const changeHandler = mockDefaultSpeedSelector.addEventListener.mock.calls.find(
@@ -183,7 +183,7 @@ describe('Options Page', () => {
 			// Trigger change
 			await changeHandler();
 
-			expect(chromeStorageMock.sync.set).toHaveBeenCalledWith({
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({
 				defaults: { enabled: true, playbackRate: 2 }
 			});
 		});
@@ -191,7 +191,7 @@ describe('Options Page', () => {
 
 	describe('badge checkbox change handler', () => {
 		it('saves badge preference to storage when enabled', async () => {
-			chromeStorageMock.sync.set.mockClear();
+			chromeMock.storage.sync.set.mockClear();
 
 			const { initOptions } = await import('@src/options');
 			await initOptions();
@@ -204,11 +204,11 @@ describe('Options Page', () => {
 			// Simulate enabling badge
 			await changeHandler({ target: { checked: true } });
 
-			expect(chromeStorageMock.sync.set).toHaveBeenCalledWith({ badgeEnabled: true });
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ badgeEnabled: true });
 		});
 
 		it('saves badge preference to storage when disabled', async () => {
-			chromeStorageMock.sync.set.mockClear();
+			chromeMock.storage.sync.set.mockClear();
 
 			const { initOptions } = await import('@src/options');
 			await initOptions();
@@ -221,7 +221,7 @@ describe('Options Page', () => {
 			// Simulate disabling badge
 			await changeHandler({ target: { checked: false } });
 
-			expect(chromeStorageMock.sync.set).toHaveBeenCalledWith({ badgeEnabled: false });
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ badgeEnabled: false });
 		});
 	});
 });
