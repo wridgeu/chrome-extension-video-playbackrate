@@ -5,7 +5,8 @@ const MessagingAction = {
 	SETSPECIFIC: 1,
 	RETRIEVE: 2,
 	UPDATE_CONTEXT_MENU: 3,
-	UPDATE_BADGE: 4
+	UPDATE_BADGE: 4,
+	GET_TAB_ID: 5
 } as const;
 
 type MessagingAction = (typeof MessagingAction)[keyof typeof MessagingAction];
@@ -36,6 +37,10 @@ type UpdateContextMenuPayload = {
 	playbackRate: number;
 };
 
+type GetTabIdPayload = {
+	action: typeof MessagingAction.GET_TAB_ID;
+};
+
 type Defaults = {
 	defaults: {
 		enabled?: boolean;
@@ -48,7 +53,17 @@ type MessagingRequestPayload =
 	| SetActionPayload
 	| SetSpecificActionPayload
 	| UpdateBadgePayload
-	| UpdateContextMenuPayload;
+	| UpdateContextMenuPayload
+	| GetTabIdPayload;
+
+/** Send a message to the service worker, logging errors in development mode only. */
+function sendMessageSafe(message: MessagingRequestPayload): void {
+	chrome.runtime.sendMessage(message).catch((error) => {
+		if (import.meta.env?.DEV) {
+			console.warn('Message send failed:', error);
+		}
+	});
+}
 
 /** Load default settings from storage */
 async function getDefaultSettings(): Promise<{ enabled: boolean; playbackRate: number } | null> {
@@ -64,9 +79,8 @@ async function getDefaultSettings(): Promise<{ enabled: boolean; playbackRate: n
 /** Apply default playback rate to a single video element and send updates */
 function applyDefaultRateToVideo(video: HTMLVideoElement, playbackRate: number) {
 	video.playbackRate = playbackRate;
-	const payload = { playbackRate };
-	chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, ...payload }).catch(() => {});
-	chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, ...payload }).catch(() => {});
+	sendMessageSafe({ action: MessagingAction.UPDATE_BADGE, playbackRate });
+	sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate });
 }
 
 /** Apply default playback rate to all video elements on the page. */
@@ -137,9 +151,8 @@ function setupRateChangeListener(video: HTMLVideoElement) {
 			chrome.storage.local.set({ [`playbackRate_${tabId}`]: video.playbackRate });
 		}
 		// Update both badge and context menu when rate changes
-		const payload = { playbackRate: video.playbackRate };
-		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, ...payload }).catch(() => {});
-		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, ...payload }).catch(() => {});
+		sendMessageSafe({ action: MessagingAction.UPDATE_BADGE, playbackRate: video.playbackRate });
+		sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: video.playbackRate });
 	});
 }
 
@@ -150,7 +163,7 @@ let cachedTabId: number | undefined;
 async function getTabId(): Promise<number | undefined> {
 	if (cachedTabId !== undefined) return cachedTabId;
 	try {
-		const response = await chrome.runtime.sendMessage({ action: 'getTabId' });
+		const response = await chrome.runtime.sendMessage({ action: MessagingAction.GET_TAB_ID });
 		cachedTabId = response?.tabId;
 		return cachedTabId;
 	} catch {
@@ -172,9 +185,9 @@ export async function initContentScript() {
 
 	// If defaults weren't enabled or no videos exist, send current state for any existing videos
 	if (existingVideos.length > 0) {
-		const payload = { playbackRate: existingVideos[0].playbackRate };
-		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_BADGE, ...payload }).catch(() => {});
-		chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, ...payload }).catch(() => {});
+		const playbackRate = existingVideos[0].playbackRate;
+		sendMessageSafe({ action: MessagingAction.UPDATE_BADGE, playbackRate });
+		sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate });
 	}
 
 	// Observe for dynamically added videos
@@ -196,6 +209,11 @@ export async function initContentScript() {
 
 	videoObserver.observe(document.body, { childList: true, subtree: true });
 
+	// Clean up observer on page unload to prevent memory leaks
+	window.addEventListener('unload', () => {
+		videoObserver.disconnect();
+	});
+
 	// Set up context menu sync
 	document.addEventListener('contextmenu', (event) => {
 		const target = event.target as HTMLElement;
@@ -203,12 +221,7 @@ export async function initContentScript() {
 
 		if (video) {
 			const playbackRate = (video as HTMLVideoElement).playbackRate;
-			chrome.runtime
-				.sendMessage({
-					action: MessagingAction.UPDATE_CONTEXT_MENU,
-					playbackRate
-				})
-				.catch(() => {});
+			sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate });
 		}
 	});
 }

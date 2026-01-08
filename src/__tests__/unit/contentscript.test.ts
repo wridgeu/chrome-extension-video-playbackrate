@@ -204,6 +204,29 @@ describe('ContentScript', () => {
 			expect(video.playbackRate).toBe(2);
 		});
 
+		it('does not find videos with source child elements using SETSPECIFIC', () => {
+			const video = document.createElement('video');
+			const source = document.createElement('source');
+			source.src = 'https://example.com/video.mp4';
+			source.type = 'video/mp4';
+			video.appendChild(source);
+			document.body.innerHTML = '';
+			document.body.appendChild(video);
+
+			const sendResponse = () => {};
+			messageListener(
+				{
+					action: MessagingAction.SETSPECIFIC,
+					playbackRate: 2,
+					videoElementSrcAttributeValue: 'https://example.com/video.mp4'
+				},
+				{} as chrome.runtime.MessageSender,
+				sendResponse
+			);
+
+			expect(video.playbackRate).toBe(1);
+		});
+
 		it('retrieves current playback rate with RETRIEVE action', () => {
 			const video = document.createElement('video');
 			video.playbackRate = 2.5;
@@ -336,8 +359,20 @@ describe('ContentScript', () => {
 
 			await vi.runAllTimersAsync();
 
-			// Should not throw - errors are caught silently
 			expect(true).toBe(true);
+		});
+	});
+
+	describe('error scenarios', () => {
+		it('does nothing when SET action has no videos', async () => {
+			chromeMock.storage.sync.get.mockResolvedValue({ defaults: { enabled: false } });
+			document.body.innerHTML = '';
+
+			await initContentScript();
+			const messageListener = chromeMock.runtime.onMessage.addListener.mock.calls[0]?.[0];
+			if (messageListener) {
+				messageListener({ action: MessagingAction.SET, playbackRate: 2 }, {}, () => {});
+			}
 		});
 	});
 });

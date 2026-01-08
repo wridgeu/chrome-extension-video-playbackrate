@@ -294,13 +294,9 @@ describe('Service Worker', () => {
 		});
 
 		it('clears all badges when badgeEnabled changes to false', async () => {
-			chromeMock.tabs.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
-				callback([{ id: 1 }, { id: 2 }, { id: 3 }]);
-			});
+			chromeMock.tabs.query.mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]);
 
-			onStorageChangedCallback!({ badgeEnabled: { newValue: false, oldValue: true } }, 'sync');
-
-			await new Promise((r) => setTimeout(r, 10));
+			await onStorageChangedCallback!({ badgeEnabled: { newValue: false, oldValue: true } }, 'sync');
 
 			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 1 });
 			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 2 });
@@ -308,9 +304,7 @@ describe('Service Worker', () => {
 		});
 
 		it('does not clear badges when badgeEnabled changes to true', async () => {
-			chromeMock.tabs.query.mockImplementation((_: unknown, callback: (tabs: Array<{ id: number }>) => void) => {
-				callback([{ id: 1 }]);
-			});
+			chromeMock.tabs.query.mockResolvedValue([{ id: 1 }]);
 
 			onStorageChangedCallback!({ badgeEnabled: { newValue: true, oldValue: false } }, 'sync');
 
@@ -480,5 +474,24 @@ describe('formatBadgeText', () => {
 		// Decimals
 		expect(formatBadgeText(0.75)).toBe('0.75');
 		expect(formatBadgeText(1.5)).toBe('1.5');
+	});
+
+	it('handles very small decimal values', () => {
+		expect(formatBadgeText(0.25)).toBe('0.25');
+		expect(formatBadgeText(0.1)).toBe('0.1');
+	});
+
+	it('handles very large values', () => {
+		expect(formatBadgeText(4)).toBe('4');
+		expect(formatBadgeText(16)).toBe('16');
+	});
+
+	it('handles zero value', () => {
+		expect(formatBadgeText(0)).toBe('0');
+	});
+
+	it('handles values with many decimal places', () => {
+		expect(formatBadgeText(0.33)).toBe('0.33');
+		expect(formatBadgeText(1.25)).toBe('1.25');
 	});
 });

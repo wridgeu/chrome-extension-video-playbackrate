@@ -96,7 +96,17 @@ export async function initPopup() {
 	}
 
 	updateVisibility(hasVideos, noVideosEl, sliderContainer);
-	slider.value = playbackRate ?? 1;
+	let currentRate = playbackRate ?? 1;
+	slider.value = currentRate;
+
+	// Ensure badge shows correct rate when popup opens (fixes any stale badge values)
+	if (hasVideos && currentActiveTabId) {
+		chrome.runtime.sendMessage({
+			action: MessagingAction.UPDATE_BADGE,
+			playbackRate: currentRate,
+			tabId: currentActiveTabId
+		});
+	}
 
 	/** Shows the tooltip and positions it relative to the slider handle */
 	const showTooltip = () => {
@@ -114,13 +124,19 @@ export async function initPopup() {
 	document.addEventListener('mouseup', hideTooltip);
 	document.addEventListener('touchend', hideTooltip);
 
-	slider.addEventListener('input', (event: Event) => {
+	// Update tooltip position during drag
+	slider.addEventListener('input', () => {
 		if (tooltip.matches(':popover-open')) {
 			positionTooltip(slider, tooltip);
 		}
+	});
+
+	// 'change' event only fires when user finishes interacting (not on programmatic changes)
+	slider.addEventListener('change', (event: Event) => {
+		const newRate = (event.target as Slider).value;
+		currentRate = newRate;
 
 		if (currentActiveTabId) {
-			const newRate = (event.target as Slider).value;
 			chrome.scripting.executeScript({
 				target: { tabId: currentActiveTabId, allFrames: true },
 				func: (rate: number) => {
@@ -130,14 +146,12 @@ export async function initPopup() {
 				},
 				args: [newRate]
 			});
-			// Update badge and context menu directly since executeScript runs in different world
 			chrome.runtime.sendMessage({
 				action: MessagingAction.UPDATE_BADGE,
 				playbackRate: newRate,
 				tabId: currentActiveTabId
 			});
 			chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: newRate });
-			// Store rate for popup sync
 			chrome.storage.local.set({ [`playbackRate_${currentActiveTabId}`]: newRate });
 		}
 	});
@@ -147,7 +161,8 @@ export async function initPopup() {
 		const storageKey = `playbackRate_${currentActiveTabId}`;
 		chrome.storage.local.onChanged.addListener((changes) => {
 			const newRate = changes[storageKey]?.newValue as number | undefined;
-			if (newRate !== undefined) {
+			if (newRate !== undefined && newRate !== currentRate) {
+				currentRate = newRate;
 				slider.value = newRate;
 			}
 		});

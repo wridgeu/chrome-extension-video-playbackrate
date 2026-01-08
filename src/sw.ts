@@ -71,13 +71,13 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 			args: [itemData.srcUrl, menuItem.playbackRate]
 		});
 		// Update badge after setting playback rate
-		chrome.storage.sync.get('badgeEnabled', ({ badgeEnabled }) => {
-			if (badgeEnabled === false) return;
+		const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
+		if (badgeEnabled !== false) {
 			const badgeText = formatBadgeText(menuItem.playbackRate);
 			chrome.action.setBadgeText({ text: badgeText, tabId: tab.id });
 			chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId: tab.id });
 			chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId: tab.id });
-		});
+		}
 		// Store rate for popup sync
 		chrome.storage.local.set({ [`playbackRate_${tab.id}`]: menuItem.playbackRate });
 	}
@@ -125,14 +125,8 @@ chrome.webNavigation?.onBeforeNavigate?.addListener((details) => {
 	}
 });
 
-type GetTabIdPayload = {
-	action: 'getTabId';
-};
-
-type IncomingMessage = MessagingRequestPayload | GetTabIdPayload;
-
 /** Handle messages from content script for context menu sync, badge updates, and tab ID requests. */
-chrome.runtime.onMessage.addListener((request: IncomingMessage, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, sender, sendResponse) => {
 	if (request.action === MessagingAction.UPDATE_CONTEXT_MENU) {
 		const closestOption = findClosestOption(request.playbackRate, contextMenuOptions);
 		if (closestOption) {
@@ -141,9 +135,9 @@ chrome.runtime.onMessage.addListener((request: IncomingMessage, sender, sendResp
 	} else if (request.action === MessagingAction.UPDATE_BADGE) {
 		const tabId = request.tabId ?? sender.tab?.id;
 		// Check if badge is enabled (default: true)
-		chrome.storage.sync.get('badgeEnabled', ({ badgeEnabled }) => {
+		(async () => {
+			const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
 			if (badgeEnabled === false) {
-				// Clear badge if disabled
 				chrome.action.setBadgeText({ text: '', tabId });
 				return;
 			}
@@ -151,25 +145,21 @@ chrome.runtime.onMessage.addListener((request: IncomingMessage, sender, sendResp
 			chrome.action.setBadgeText({ text: badgeText, tabId });
 			chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId });
 			chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId });
-		});
-	} else if (request.action === 'getTabId') {
+		})();
+	} else if (request.action === MessagingAction.GET_TAB_ID) {
 		sendResponse({ tabId: sender.tab?.id });
 		return true;
 	}
 });
 
 /** Clear badges on all tabs when user disables badge in options. */
-chrome.storage.onChanged.addListener((changes, areaName) => {
-	if (areaName === 'sync' && changes.badgeEnabled) {
-		if (changes.badgeEnabled.newValue === false) {
-			// Clear badge on all tabs when disabled
-			chrome.tabs.query({}, (tabs) => {
-				tabs.forEach((tab) => {
-					if (tab.id) {
-						chrome.action.setBadgeText({ text: '', tabId: tab.id });
-					}
-				});
-			});
-		}
+chrome.storage.onChanged.addListener(async (changes, areaName) => {
+	if (areaName === 'sync' && changes.badgeEnabled?.newValue === false) {
+		const tabs = await chrome.tabs.query({});
+		tabs.forEach((tab) => {
+			if (tab.id) {
+				chrome.action.setBadgeText({ text: '', tabId: tab.id });
+			}
+		});
 	}
 });
