@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "sourceMap": false,
     "moduleResolution": "bundler",
+    "types": ["vite/client", "chrome"],
     "paths": {
       "@src/*": ["./src/*"],
       "@tests/*": ["./src/__tests__/*"]

@@ -175,7 +175,19 @@ describe('Popup', () => {
 		});
 	});
 
-	describe('slider input event', () => {
+	describe('slider change event', () => {
+		/** Simulates user completing slider interaction (change event) */
+		const simulateSliderChange = (
+			sliderEl: Partial<Slider>,
+			newValue: number,
+			changeHandler: ((e: Event) => void) | undefined
+		) => {
+			sliderEl.value = newValue;
+			const changeEvent = new Event('change', { bubbles: true });
+			Object.defineProperty(changeEvent, 'target', { value: sliderEl });
+			changeHandler?.(changeEvent);
+		};
+
 		it('executes script to update video playback rate', async () => {
 			const tabId = 123;
 			chromeMock.tabs.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
@@ -183,16 +195,10 @@ describe('Popup', () => {
 
 			await initPopup();
 
-			// Get the input event handler that was registered
-			const inputHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'input');
+			const changeHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'change');
+			expect(changeHandler).toBeDefined();
 
-			expect(inputHandler).toBeDefined();
-
-			// Simulate slider input event with new rate
-			slider.value = 2;
-			const inputEvent = new Event('input', { bubbles: true });
-			Object.defineProperty(inputEvent, 'target', { value: slider });
-			inputHandler?.(inputEvent);
+			simulateSliderChange(slider, 2, changeHandler);
 
 			expect(chromeMock.scripting.executeScript).toHaveBeenCalledWith({
 				target: { tabId, allFrames: true },
@@ -208,12 +214,9 @@ describe('Popup', () => {
 
 			await initPopup();
 
-			const inputHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'input');
+			const changeHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'change');
 
-			slider.value = 1.75;
-			const inputEvent = new Event('input', { bubbles: true });
-			Object.defineProperty(inputEvent, 'target', { value: slider });
-			inputHandler?.(inputEvent);
+			simulateSliderChange(slider, 1.75, changeHandler);
 
 			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
 				action: MessagingAction.UPDATE_BADGE,
@@ -233,12 +236,9 @@ describe('Popup', () => {
 
 			await initPopup();
 
-			const inputHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'input');
+			const changeHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'change');
 
-			slider.value = 2.5;
-			const inputEvent = new Event('input', { bubbles: true });
-			Object.defineProperty(inputEvent, 'target', { value: slider });
-			inputHandler?.(inputEvent);
+			simulateSliderChange(slider, 2.5, changeHandler);
 
 			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
 				[`playbackRate_${tabId}`]: 2.5
