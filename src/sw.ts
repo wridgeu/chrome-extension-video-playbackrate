@@ -11,11 +11,44 @@ const BADGE_BACKGROUND_COLOR = '#F7B731';
 /** Badge text color - black for contrast */
 const BADGE_TEXT_COLOR = '#000000';
 
+// Track tabs where content script has been injected to prevent duplicates
+const injectedTabs = new Set<number>();
+
 /** Update badge text, background color, and text color for a specific tab. */
 function updateBadge(text: string, tabId: number | undefined): void {
 	chrome.action.setBadgeText({ text, tabId });
 	chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId });
 	chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId });
+}
+
+/** Inject content script into a tab and track injection status. */
+function injectContentScript(tabId: number): void {
+	chrome.scripting.executeScript(
+		{
+			target: { tabId, allFrames: true },
+			files: ['/js/contentscript-loader.js']
+		},
+		() => {
+			if (chrome.runtime.lastError) {
+				if (import.meta.env?.DEV) {
+					console.warn('Content script injection failed:', chrome.runtime.lastError.message);
+				}
+			} else {
+				injectedTabs.add(tabId);
+			}
+		}
+	);
+}
+
+/** Handle badge update request, checking if badge is enabled. */
+function handleBadgeUpdate(playbackRate: number, tabId: number | undefined): void {
+	chrome.storage.sync.get('badgeEnabled').then(({ badgeEnabled }) => {
+		if (badgeEnabled === false) {
+			chrome.action.setBadgeText({ text: '', tabId });
+			return;
+		}
+		updateBadge(formatBadgeText(playbackRate), tabId);
+	});
 }
 
 type ContextMenuStorage = {
@@ -39,17 +72,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 	const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
 	for (const tab of tabs) {
 		if (tab.id) {
-			chrome.scripting.executeScript(
-				{
-					target: { tabId: tab.id, allFrames: true },
-					files: ['/js/contentscript-loader.js']
-				},
-				() => {
-					if (!chrome.runtime.lastError) {
-						injectedTabs.add(tab.id!);
-					}
-				}
-			);
+			injectContentScript(tab.id);
 		}
 	}
 });
@@ -87,30 +110,10 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 	}
 });
 
-// Track tabs where content script has been injected to prevent duplicates
-const injectedTabs = new Set<number>();
-
 /** Inject content script when a tab finishes loading. */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-	if (changeInfo.status === 'complete') {
-		// Prevent duplicate injections by checking if already injected
-		if (injectedTabs.has(tabId)) return;
-
-		chrome.scripting.executeScript(
-			{
-				target: { tabId: tabId, allFrames: true },
-				files: ['/js/contentscript-loader.js']
-			},
-			() => {
-				if (chrome.runtime.lastError) {
-					console.warn('Error occurred when trying to insert/execute the contentscript!', [
-						chrome.runtime.lastError?.message
-					]);
-				} else {
-					injectedTabs.add(tabId);
-				}
-			}
-		);
+	if (changeInfo.status === 'complete' && !injectedTabs.has(tabId)) {
+		injectContentScript(tabId);
 	}
 });
 
@@ -137,16 +140,7 @@ chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, sender, 
 			chrome.contextMenus.update(closestOption.id, { checked: true });
 		}
 	} else if (request.action === MessagingAction.UPDATE_BADGE) {
-		const tabId = request.tabId ?? sender.tab?.id;
-		// Check if badge is enabled (default: true)
-		(async () => {
-			const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
-			if (badgeEnabled === false) {
-				chrome.action.setBadgeText({ text: '', tabId });
-				return;
-			}
-			updateBadge(formatBadgeText(request.playbackRate), tabId);
-		})();
+		handleBadgeUpdate(request.playbackRate, request.tabId ?? sender.tab?.id);
 	} else if (request.action === MessagingAction.GET_TAB_ID) {
 		sendResponse({ tabId: sender.tab?.id });
 		return true;
