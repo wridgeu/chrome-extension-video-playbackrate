@@ -1,4 +1,4 @@
-import { startServer, stopServer } from './server';
+import { startServer, stopServer } from '@tests/e2e/server';
 
 /** Vitest global setup - starts HTTP server before all e2e tests */
 export async function setup() {

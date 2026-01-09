@@ -1,5 +1,5 @@
 import { vi, afterEach } from 'vitest';
-import { createChromeMock } from './mocks/chrome';
+import { createChromeMock } from '@tests/unit/mocks/chrome';
 
 // Create a single mock context for the test suite
 const mockContext = createChromeMock();

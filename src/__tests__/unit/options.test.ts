@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { chromeMock, resetChromeMocks } from './setup';
+import { chromeMock, resetChromeMocks } from '@tests/unit/setup';
 
 describe('Options Page', () => {
 	// Mock DOM elements

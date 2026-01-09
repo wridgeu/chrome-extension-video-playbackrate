@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { chromeMock, resetChromeMocks } from './setup';
-import { getEventHandler } from './utils/dom';
+import { chromeMock, resetChromeMocks } from '@tests/unit/setup';
+import { getEventHandler } from '@tests/unit/utils/dom';
 import { initPopup } from '@src/popup';
 import { MessagingAction } from '@src/types';
 import type Slider from '@ui5/webcomponents/dist/Slider.js';
