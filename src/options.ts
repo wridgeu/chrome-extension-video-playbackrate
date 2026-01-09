@@ -57,9 +57,13 @@ async function initThemeToggle() {
 
 /** Initialize options page. Exported for testing. */
 export async function initOptions(): Promise<void> {
-	const defaultsCheckbox = <CheckBox>document.getElementById('defaultsEnabledCheckbox')!;
-	const defaultSpeedSelector = <Select>document.getElementById('defaultSpeedSelector')!;
-	const badgeCheckbox = <CheckBox>document.getElementById('badgeEnabledCheckbox')!;
+	const defaultsCheckbox = document.getElementById('defaultsEnabledCheckbox') as CheckBox | null;
+	const defaultSpeedSelector = document.getElementById('defaultSpeedSelector') as Select | null;
+	const badgeCheckbox = document.getElementById('badgeEnabledCheckbox') as CheckBox | null;
+
+	if (!defaultsCheckbox || !defaultSpeedSelector || !badgeCheckbox) {
+		return;
+	}
 
 	await initDefaults(defaultsCheckbox, defaultSpeedSelector);
 	await initBadgePreference(badgeCheckbox);
@@ -67,11 +71,7 @@ export async function initOptions(): Promise<void> {
 
 	defaultsCheckbox.addEventListener('change', async (event: Event) => {
 		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
-		if (checkboxIsChecked === true) {
-			defaultSpeedSelector.disabled = false;
-		} else {
-			defaultSpeedSelector.disabled = true;
-		}
+		defaultSpeedSelector.disabled = !checkboxIsChecked;
 
 		await saveDefaults(checkboxIsChecked, defaultSpeedSelector.selectedOption!.innerText);
 	});

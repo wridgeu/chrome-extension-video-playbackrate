@@ -11,6 +11,13 @@ const BADGE_BACKGROUND_COLOR = '#F7B731';
 /** Badge text color - black for contrast */
 const BADGE_TEXT_COLOR = '#000000';
 
+/** Update badge text, background color, and text color for a specific tab. */
+function updateBadge(text: string, tabId: number | undefined): void {
+	chrome.action.setBadgeText({ text, tabId });
+	chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId });
+	chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId });
+}
+
 type ContextMenuStorage = {
 	contextMenuOptions: PlaybackOption[];
 };
@@ -73,10 +80,7 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 		// Update badge after setting playback rate
 		const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
 		if (badgeEnabled !== false) {
-			const badgeText = formatBadgeText(menuItem.playbackRate);
-			chrome.action.setBadgeText({ text: badgeText, tabId: tab.id });
-			chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId: tab.id });
-			chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId: tab.id });
+			updateBadge(formatBadgeText(menuItem.playbackRate), tab.id);
 		}
 		// Store rate for popup sync
 		chrome.storage.local.set({ [`playbackRate_${tab.id}`]: menuItem.playbackRate });
@@ -141,10 +145,7 @@ chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, sender, 
 				chrome.action.setBadgeText({ text: '', tabId });
 				return;
 			}
-			const badgeText = formatBadgeText(request.playbackRate);
-			chrome.action.setBadgeText({ text: badgeText, tabId });
-			chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId });
-			chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId });
+			updateBadge(formatBadgeText(request.playbackRate), tabId);
 		})();
 	} else if (request.action === MessagingAction.GET_TAB_ID) {
 		sendResponse({ tabId: sender.tab?.id });

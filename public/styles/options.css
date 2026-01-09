@@ -10,7 +10,6 @@
     display: flex;
     flex-flow: column;
     align-items: flex-start;
-    flex-direction: column;
     margin-bottom: 12vh;
 }
 

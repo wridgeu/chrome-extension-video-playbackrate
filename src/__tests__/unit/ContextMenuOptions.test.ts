@@ -39,11 +39,13 @@ describe('ContextMenuOptions', () => {
 			expect(option).toHaveProperty('id');
 			expect(option).toHaveProperty('title');
 			expect(option).toHaveProperty('playbackRate');
-			expect(option).toHaveProperty('default');
 			expect(typeof option.id).toBe('string');
 			expect(typeof option.title).toBe('string');
 			expect(typeof option.playbackRate).toBe('number');
-			expect(typeof option.default).toBe('boolean');
+			// default is optional - only the default option needs it
+			if ('default' in option) {
+				expect(typeof option.default).toBe('boolean');
+			}
 		});
 	});
 
