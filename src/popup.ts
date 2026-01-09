@@ -2,8 +2,8 @@ import type Slider from '@ui5/webcomponents/dist/Slider.js';
 import '@ui5/webcomponents/dist/Slider.js';
 import '@ui5/webcomponents/dist/Text.js';
 
-import { ThemeSwitcher } from './util/ThemeSwitcher.js';
-import { MessagingAction } from './types.js';
+import { ThemeSwitcher } from '@src/util/ThemeSwitcher';
+import { MessagingAction } from '@src/types';
 
 /**
  * Positions tooltip relative to slider handle.

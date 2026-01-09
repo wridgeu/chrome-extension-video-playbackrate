@@ -1,7 +1,7 @@
 import puppeteer, { Browser, Page, Target } from 'puppeteer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { TEST_SERVER_URL } from './server';
+import { TEST_SERVER_URL } from '@tests/e2e/server';
 import { MessagingAction } from '@src/types';
 
 const __filename = fileURLToPath(import.meta.url);

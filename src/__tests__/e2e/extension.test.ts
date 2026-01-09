@@ -14,7 +14,7 @@ import {
 	sendMessageToTab,
 	waitForContentScript,
 	getBadgeText
-} from './setup';
+} from '@tests/e2e/setup';
 import { MessagingAction } from '@src/types';
 
 describe('Chrome Extension E2E', () => {

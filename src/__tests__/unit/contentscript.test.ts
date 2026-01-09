@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { chromeMock, resetChromeMocks } from './setup';
+import { chromeMock, resetChromeMocks } from '@tests/unit/setup';
 import { applyDefaultPlaybackRate, initContentScript } from '@src/contentscript';
 import { MessagingAction } from '@src/types';
 

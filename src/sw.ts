@@ -1,6 +1,6 @@
-import { default as contextMenuOptions } from './ContextMenuOptions.js';
-import { MessagingAction, type MessagingRequestPayload } from './types';
-import { findClosestOption, formatBadgeText, type PlaybackOption } from './util/playback.js';
+import { default as contextMenuOptions } from '@src/ContextMenuOptions';
+import { MessagingAction, type MessagingRequestPayload } from '@src/types';
+import { findClosestOption, formatBadgeText, type PlaybackOption } from '@src/util/playback';
 
 // Re-export for backwards compatibility
 export { findClosestOption, formatBadgeText };

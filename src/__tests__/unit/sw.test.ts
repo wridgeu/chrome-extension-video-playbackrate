@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
-import { chromeMock, resetChromeMocks } from './setup';
+import { chromeMock, resetChromeMocks } from '@tests/unit/setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
 import { findClosestOption, formatBadgeText, type ContextMenuOption } from '@src/sw';
 import { MessagingAction } from '@src/types';

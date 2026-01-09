@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { resetChromeMocks, mockStorage } from './setup';
+import { resetChromeMocks, mockStorage } from '@tests/unit/setup';
 
 // Mock UI5 theme functions before importing ThemeSwitcher
 vi.mock('@ui5/webcomponents/dist/Assets.js', () => ({}));
