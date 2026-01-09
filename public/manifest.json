@@ -37,5 +37,11 @@
     "32": "./img/icon_32.png",
     "48": "./img/icon_64.png",
     "128": "./img/icon_128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["js/contentscript.js", "js/types.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

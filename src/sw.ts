@@ -42,7 +42,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 			chrome.scripting.executeScript(
 				{
 					target: { tabId: tab.id, allFrames: true },
-					files: ['/js/contentscript.js']
+					files: ['/js/contentscript-loader.js']
 				},
 				() => {
 					if (!chrome.runtime.lastError) {
@@ -99,7 +99,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 		chrome.scripting.executeScript(
 			{
 				target: { tabId: tabId, allFrames: true },
-				files: ['/js/contentscript.js']
+				files: ['/js/contentscript-loader.js']
 			},
 			() => {
 				if (chrome.runtime.lastError) {

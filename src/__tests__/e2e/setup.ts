@@ -206,7 +206,7 @@ async function injectContentScript(tabId: number): Promise<void> {
 	await worker.evaluate(async (tid: number) => {
 		await chrome.scripting.executeScript({
 			target: { tabId: tid, allFrames: true },
-			files: ['/js/contentscript.js']
+			files: ['/js/contentscript-loader.js']
 		});
 	}, tabId);
 }
