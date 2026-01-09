@@ -9,7 +9,7 @@ This extension is primarily for _chrome_ and (so far) mostly based on the gettin
 Well ... quite simple:
 
 - I wanted to check out how a browser extension is made (a bit more hands-on)
-- Wanted to explore some new things (e.g. Typescript, Rollup, Prettier, Linting, Workflows, GH-Hooks and so on...)
+- Wanted to explore some new things (e.g. Typescript, Vite, Prettier, Linting, Workflows, GH-Hooks and so on...)
 - Even though there are already extensions out there to increase the speed of a video, I wanted my own 🤪
 
 I'm just getting started with this and build it in public in order to hold myself accountable and actually pull through. 🪅 Progress will be slow due to lots of other thing going on in my life.
@@ -30,7 +30,7 @@ What else could I do with it?
   - [x] Configure [prettier](https://prettier.io/docs/en/install.html)
   - [x] Add and configure ESLint
   - [x] Rethink the folder structure
-  - [x] Configure [rollup.js](https://rollupjs.org/guide/en/) for building the project
+  - [x] Configure [Vite](https://vitejs.dev/) for building the project
     - TS => JS => bundle/build/merge JS + Public folder => Dist
   - [?] Make extension cross-browser compatible
   - [?] Refactoring & Creation of Types 

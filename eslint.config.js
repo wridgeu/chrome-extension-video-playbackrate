@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   // Global ignores
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/docs/**', 'rollup.config.js', 'vitest*.config.ts'],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/docs/**', 'vitest*.config.ts'],
   },
 
   // Base ESLint recommended
