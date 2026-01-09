@@ -127,7 +127,7 @@ describe('Service Worker', () => {
 				expect(executeScriptSpy).toHaveBeenCalledWith(
 					{
 						target: { tabId: tab.id, allFrames: true },
-						files: ['/js/contentscript.js']
+						files: ['/js/contentscript-loader.js']
 					},
 					expect.any(Function)
 				);
@@ -262,7 +262,7 @@ describe('Service Worker', () => {
 			onUpdatedCallback!(123, { status: 'complete' });
 
 			expect(executeSpy).toHaveBeenCalledWith(
-				{ target: { tabId: 123, allFrames: true }, files: ['/js/contentscript.js'] },
+				{ target: { tabId: 123, allFrames: true }, files: ['/js/contentscript-loader.js'] },
 				expect.any(Function)
 			);
 		});
