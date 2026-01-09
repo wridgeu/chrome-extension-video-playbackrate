@@ -81,18 +81,14 @@ export async function initPopup() {
 			});
 
 			// Aggregate results from all frames - find first frame with videos
-			for (const result of results) {
-				if (result.result && result.result.videoCount > 0) {
-					playbackRate = result.result.playbackRate;
-					hasVideos = true;
-					break;
-				}
+			const frameWithVideo = results.find((r) => r.result && r.result.videoCount > 0);
+			if (frameWithVideo?.result) {
+				playbackRate = frameWithVideo.result.playbackRate;
+				hasVideos = true;
 			}
 		}
 	} catch {
 		// Scripting not available on this tab (e.g., chrome:// pages)
-		playbackRate = undefined;
-		hasVideos = false;
 	}
 
 	updateVisibility(hasVideos, noVideosEl, sliderContainer);

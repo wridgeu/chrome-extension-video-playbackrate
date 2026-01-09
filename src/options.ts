@@ -48,7 +48,7 @@ async function initDefaults(defaultsCheckbox: CheckBox, defaultSpeedSelector: Se
 /** Initialize theme toggle switch from storage and system preference. */
 async function initThemeToggle() {
 	const themeSwitcher = await new ThemeSwitcher().init();
-	const themeToggleCheckbox = <Switch>document.getElementById('themeToggle')!;
+	const themeToggleCheckbox = document.getElementById('themeToggle') as Switch;
 	themeToggleCheckbox.checked = await themeSwitcher.isDarkModeActive();
 	themeToggleCheckbox.addEventListener('change', async () => {
 		await themeSwitcher.toggle();

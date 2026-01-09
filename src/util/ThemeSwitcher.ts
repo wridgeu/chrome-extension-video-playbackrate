@@ -24,19 +24,14 @@ type ThemeId =
 export class ThemeSwitcher {
 	/** Initialize theme from storage or system preference. Returns this for chaining. */
 	public async init(): Promise<ThemeSwitcher> {
-		const activeTheme = await this.getLatestTheme();
-		if (!activeTheme) {
-			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-				this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
-			} else {
-				this.setTheme(Theme.light, ThemeBackgroundColor.light);
-			}
-		} else {
-			this.setTheme(
-				activeTheme,
-				activeTheme === Theme.dark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light
-			);
-		}
+		const storedTheme = await this.getLatestTheme();
+		const isDark = storedTheme
+			? storedTheme === Theme.dark
+			: window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+		const theme = isDark ? Theme.dark : Theme.light;
+		const backgroundColor = isDark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light;
+		this.setTheme(theme, backgroundColor);
 		return this;
 	}
 
