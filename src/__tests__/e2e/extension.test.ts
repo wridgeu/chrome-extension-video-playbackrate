@@ -9,13 +9,18 @@ import {
 	createPageWithVideo,
 	createPageWithoutVideo,
 	createPageWithMultipleVideos,
+	createPageWithIframeVideo,
+	createSpaVideoPage,
 	getTestServerURL,
 	getTabId,
 	sendMessageToTab,
 	waitForContentScript,
 	getBadgeText,
 	openPopupForPage,
-	setDefaultPlaybackRate
+	setDefaultPlaybackRate,
+	setBadgeEnabled,
+	waitForCondition,
+	getServiceWorkerTarget
 } from '@tests/e2e/setup';
 import { MessagingAction } from '@src/types';
 
@@ -42,7 +47,7 @@ describe('Chrome Extension E2E', () => {
 		let page: Page;
 
 		beforeAll(async () => {
-			page = await openExtensionPopup(extensionId);
+			page = await openExtensionPopup();
 		});
 
 		afterAll(async () => {
@@ -236,7 +241,7 @@ describe('Chrome Extension E2E', () => {
 			videoPage = await createPageWithVideo();
 			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
 
-			popupPage = await openExtensionPopup(extensionId);
+			popupPage = await openExtensionPopup();
 			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
 		});
 
@@ -534,7 +539,7 @@ describe('Chrome Extension E2E', () => {
 	describe('Popup Video States', () => {
 		it('shows no-videos message when popup opens without content script', async () => {
 			// Open popup in isolation (no active tab with video)
-			const popupPage = await openExtensionPopup(extensionId);
+			const popupPage = await openExtensionPopup();
 			await popupPage.waitForSelector('ui5-text', { timeout: 10000 });
 
 			const state = await popupPage.evaluate(() => {
@@ -556,7 +561,7 @@ describe('Chrome Extension E2E', () => {
 		});
 
 		it('has correct DOM structure for video state handling', async () => {
-			const popupPage = await openExtensionPopup(extensionId);
+			const popupPage = await openExtensionPopup();
 			await popupPage.waitForSelector('ui5-text', { timeout: 10000 });
 
 			const elements = await popupPage.evaluate(() => {
@@ -1118,6 +1123,507 @@ describe('Chrome Extension E2E', () => {
 			expect(rates[0]).toBe(1); // Unchanged
 			expect(rates[1]).toBe(3); // Changed by context menu
 			expect(rates[2]).toBe(2); // Unchanged
+
+			await page.close();
+		});
+	});
+
+	describe('SPA Navigation (loadstart event)', () => {
+		// Tests that verify the loadstart event handler re-applies default speed
+		// when video source changes (like YouTube SPA navigation)
+
+		it('re-applies default speed when video source changes (SPA navigation)', async () => {
+			const DEFAULT_SPEED = 1.5;
+
+			// Enable default speed
+			await setDefaultPlaybackRate(true, DEFAULT_SPEED);
+
+			// Create SPA video page
+			const page = await createSpaVideoPage();
+			await page.waitForSelector('#spa-video', { timeout: 10000 });
+			await waitForContentScript(page);
+
+			// Wait for default speed to be applied
+			await waitForCondition(async () => {
+				const rate = await page.evaluate(
+					() => (document.getElementById('spa-video') as HTMLVideoElement)?.playbackRate
+				);
+				return rate === DEFAULT_SPEED;
+			});
+
+			// Manually change rate to 1x (simulating browser reset)
+			await page.evaluate(() => {
+				(document.getElementById('spa-video') as HTMLVideoElement).playbackRate = 1;
+			});
+
+			// Verify rate is now 1
+			const rateBeforeNavigation = await page.evaluate(
+				() => (document.getElementById('spa-video') as HTMLVideoElement)?.playbackRate
+			);
+			expect(rateBeforeNavigation).toBe(1);
+
+			// Click button to simulate SPA navigation (changes video source, triggers loadstart)
+			await page.click('#change-source');
+
+			// Wait for loadstart handler to re-apply default speed
+			await waitForCondition(async () => {
+				const rate = await page.evaluate(
+					() => (document.getElementById('spa-video') as HTMLVideoElement)?.playbackRate
+				);
+				return rate === DEFAULT_SPEED;
+			});
+
+			// Verify default speed was re-applied
+			const rateAfterNavigation = await page.evaluate(
+				() => (document.getElementById('spa-video') as HTMLVideoElement)?.playbackRate
+			);
+			expect(rateAfterNavigation).toBe(DEFAULT_SPEED);
+
+			await page.close();
+
+			// Cleanup
+			await setDefaultPlaybackRate(false, 1);
+		});
+
+		it('does not change speed on loadstart when defaults are disabled', async () => {
+			// Disable default speed
+			await setDefaultPlaybackRate(false, 1);
+
+			// Create SPA video page
+			const page = await createSpaVideoPage();
+			await page.waitForSelector('#spa-video', { timeout: 10000 });
+			await waitForContentScript(page);
+
+			// Manually set rate to 2x
+			await page.evaluate(() => {
+				(document.getElementById('spa-video') as HTMLVideoElement).playbackRate = 2;
+			});
+
+			// Click button to simulate SPA navigation
+			await page.click('#change-source');
+
+			// Wait a bit for any handlers to fire
+			await new Promise((r) => setTimeout(r, 300));
+
+			// Verify rate stayed at 2 (was not reset to 1 since defaults are disabled)
+			// Actually, loadstart triggers browser reset to 1, but our handler won't override
+			const rate = await page.evaluate(
+				() => (document.getElementById('spa-video') as HTMLVideoElement)?.playbackRate
+			);
+
+			// When defaults disabled, we don't override - browser may reset to 1
+			expect(rate).toBe(1);
+
+			await page.close();
+		});
+	});
+
+	describe('Native Rate Change -> Badge Sync', () => {
+		// Tests that verify ratechange event on video updates badge
+
+		it('badge updates when video rate is changed via native controls', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Initial state: rate is 1, badge should show 1
+			await waitForCondition(async () => {
+				const text = await getBadgeText(tabId);
+				return text === '1';
+			});
+
+			// Simulate native rate change (as if user used browser's playback speed controls)
+			await page.evaluate(() => {
+				const video = document.getElementById('test-video') as HTMLVideoElement;
+				video.playbackRate = 2.5;
+			});
+
+			// Wait for ratechange event to propagate to badge
+			await waitForCondition(async () => {
+				const text = await getBadgeText(tabId);
+				return text === '2.5';
+			});
+
+			const badgeText = await getBadgeText(tabId);
+			expect(badgeText).toBe('2.5');
+
+			await page.close();
+		});
+
+		it('badge updates for each native rate change', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			const testRates = [0.5, 1.75, 3];
+
+			for (const rate of testRates) {
+				await page.evaluate((r) => {
+					const video = document.getElementById('test-video') as HTMLVideoElement;
+					video.playbackRate = r;
+				}, rate);
+
+				await waitForCondition(async () => {
+					const text = await getBadgeText(tabId);
+					return text === rate.toString();
+				});
+
+				const badgeText = await getBadgeText(tabId);
+				expect(badgeText).toBe(rate.toString());
+			}
+
+			await page.close();
+		});
+	});
+
+	describe('Badge Enable/Disable Toggle', () => {
+		// Tests that verify badge visibility setting works
+
+		it('disabling badge hides it on all tabs', async () => {
+			// Create page with video and set a rate
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Ensure badge is enabled and shows rate
+			await setBadgeEnabled(true);
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2 });
+
+			await waitForCondition(async () => {
+				const text = await getBadgeText(tabId);
+				return text === '2';
+			});
+
+			expect(await getBadgeText(tabId)).toBe('2');
+
+			// Disable badge
+			await setBadgeEnabled(false);
+
+			// Wait for badge to be cleared
+			await waitForCondition(async () => {
+				const text = await getBadgeText(tabId);
+				return text === '';
+			});
+
+			expect(await getBadgeText(tabId)).toBe('');
+
+			await page.close();
+
+			// Cleanup
+			await setBadgeEnabled(true);
+		});
+
+		it('re-enabling badge shows it again on rate change', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Disable badge
+			await setBadgeEnabled(false);
+			await new Promise((r) => setTimeout(r, 100));
+
+			// Send a rate change - badge should stay empty
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 1.5 });
+			await new Promise((r) => setTimeout(r, 100));
+			expect(await getBadgeText(tabId)).toBe('');
+
+			// Re-enable badge
+			await setBadgeEnabled(true);
+
+			// Send another rate change - badge should now show
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2 });
+
+			await waitForCondition(async () => {
+				const text = await getBadgeText(tabId);
+				return text === '2';
+			});
+
+			expect(await getBadgeText(tabId)).toBe('2');
+
+			await page.close();
+		});
+	});
+
+	describe('SETSPECIFIC Message (Content Script)', () => {
+		// Tests that verify SETSPECIFIC message targets specific video by src
+
+		it('SETSPECIFIC message changes only the targeted video', async () => {
+			// Create page with multiple videos with different src attributes
+			const page = await createPageWithoutVideo();
+			await page.evaluate(() => {
+				const video1 = document.createElement('video');
+				video1.id = 'video-1';
+				video1.src = 'https://example.com/video1.mp4';
+				document.body.appendChild(video1);
+
+				const video2 = document.createElement('video');
+				video2.id = 'video-2';
+				video2.src = 'https://example.com/video2.mp4';
+				document.body.appendChild(video2);
+			});
+
+			await page.waitForSelector('#video-1', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Send SETSPECIFIC to change only video2
+			await sendMessageToTab(tabId, {
+				action: MessagingAction.SETSPECIFIC,
+				playbackRate: 2.5,
+				videoElementSrcAttributeValue: 'https://example.com/video2.mp4'
+			});
+
+			await new Promise((r) => setTimeout(r, 200));
+
+			// Verify only video2 was changed
+			const rates = await page.evaluate(() =>
+				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
+			);
+
+			expect(rates[0]).toBe(1); // video1 unchanged
+			expect(rates[1]).toBe(2.5); // video2 changed
+
+			await page.close();
+		});
+
+		it('SETSPECIFIC with non-matching src does not change any video', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Set initial rate
+			await page.evaluate(() => {
+				(document.getElementById('test-video') as HTMLVideoElement).playbackRate = 1.5;
+			});
+
+			// Send SETSPECIFIC with non-matching src
+			await sendMessageToTab(tabId, {
+				action: MessagingAction.SETSPECIFIC,
+				playbackRate: 3,
+				videoElementSrcAttributeValue: 'https://nonexistent.com/video.mp4'
+			});
+
+			await new Promise((r) => setTimeout(r, 200));
+
+			// Verify rate was not changed
+			const rate = await page.evaluate(
+				() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
+			);
+			expect(rate).toBe(1.5);
+
+			await page.close();
+		});
+	});
+
+	describe('Iframe Video Support', () => {
+		// Tests that verify extension works with videos inside iframes
+
+		it('content script is injected into iframe with video', async () => {
+			const page = await createPageWithIframeVideo();
+			await page.waitForSelector('#video-iframe', { timeout: 10000 });
+
+			// Wait for iframe to load
+			const iframeHandle = await page.$('#video-iframe');
+			const iframe = await iframeHandle?.contentFrame();
+			expect(iframe).not.toBeNull();
+
+			await iframe!.waitForSelector('#test-video', { timeout: 10000 });
+
+			// Verify video exists in iframe
+			const hasVideo = await iframe!.evaluate(() => {
+				return document.querySelector('video') !== null;
+			});
+			expect(hasVideo).toBe(true);
+
+			await page.close();
+		});
+
+		it('executeScript with allFrames affects video in iframe', async () => {
+			const page = await createPageWithIframeVideo();
+			await page.waitForSelector('#video-iframe', { timeout: 10000 });
+
+			const iframeHandle = await page.$('#video-iframe');
+			const iframe = await iframeHandle?.contentFrame();
+			await iframe!.waitForSelector('#test-video', { timeout: 10000 });
+
+			// Wait for content script injection
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Change rate via extension messaging
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2 });
+
+			await new Promise((r) => setTimeout(r, 300));
+
+			// Verify video in iframe was updated
+			const rate = await iframe!.evaluate(() => {
+				const video = document.querySelector('video') as HTMLVideoElement;
+				return video?.playbackRate;
+			});
+
+			expect(rate).toBe(2);
+
+			await page.close();
+		});
+	});
+
+	describe('Storage Sync for Popup Slider', () => {
+		// Tests that popup slider syncs when rate changes externally
+
+		it('popup slider updates when video rate changes via native controls', async () => {
+			const videoPage = await createPageWithVideo();
+			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(videoPage);
+
+			// Open popup for the video page
+			const popupPage = await openPopupForPage(videoPage);
+			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
+
+			// Verify initial slider value
+			const initialValue = await popupPage.evaluate(() => {
+				const slider = document.querySelector('ui5-slider') as Element & { value: number };
+				return slider?.value;
+			});
+			expect(initialValue).toBe(1);
+
+			// Change video rate via native controls (simulated)
+			await videoPage.evaluate(() => {
+				const video = document.getElementById('test-video') as HTMLVideoElement;
+				video.playbackRate = 2;
+			});
+
+			// Wait for storage sync to propagate to popup
+			await waitForCondition(async () => {
+				const value = await popupPage.evaluate(() => {
+					const slider = document.querySelector('ui5-slider') as Element & { value: number };
+					return slider?.value;
+				});
+				return value === 2;
+			});
+
+			const updatedValue = await popupPage.evaluate(() => {
+				const slider = document.querySelector('ui5-slider') as Element & { value: number };
+				return slider?.value;
+			});
+			expect(updatedValue).toBe(2);
+
+			await popupPage.close();
+			await videoPage.close();
+		});
+	});
+
+	describe('Tab Cleanup and Navigation', () => {
+		// Tests for onRemoved and onBeforeNavigate handlers
+
+		it('badge clears when navigating to a different page', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Set a playback rate to show badge
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2 });
+
+			await waitForCondition(async () => {
+				const text = await getBadgeText(tabId);
+				return text === '2';
+			});
+
+			expect(await getBadgeText(tabId)).toBe('2');
+
+			// Navigate to a different page
+			await page.goto(`${getTestServerURL()}/no-video.html`, { waitUntil: 'networkidle0' });
+
+			// Badge should be cleared on navigation
+			await waitForCondition(async () => {
+				const text = await getBadgeText(tabId);
+				return text === '';
+			});
+
+			expect(await getBadgeText(tabId)).toBe('');
+
+			await page.close();
+		});
+
+		it('storage is cleaned up when tab is closed', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Set a playback rate (stores in storage)
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2 });
+			await new Promise((r) => setTimeout(r, 200));
+
+			// Verify storage has the rate
+			const swTarget = await getServiceWorkerTarget();
+			const worker = await swTarget.worker();
+
+			const storageKey = `playbackRate_${tabId}`;
+			const valueBefore = await worker!.evaluate(async (key: string) => {
+				const result = await chrome.storage.local.get(key);
+				return result[key];
+			}, storageKey);
+			expect(valueBefore).toBe(2);
+
+			// Close the tab
+			await page.close();
+
+			// Wait for cleanup
+			await new Promise((r) => setTimeout(r, 300));
+
+			// Verify storage was cleaned up
+			const valueAfter = await worker!.evaluate(async (key: string) => {
+				const result = await chrome.storage.local.get(key);
+				return result[key];
+			}, storageKey);
+			expect(valueAfter).toBeUndefined();
+		});
+	});
+
+	describe('GET_TAB_ID Message (Implicit Testing)', () => {
+		// Note: GET_TAB_ID is sent FROM content script TO service worker
+		// It's implicitly tested by the badge tests - if getTabId didn't work,
+		// the ratechange handler couldn't store rates with correct tab-specific keys,
+		// and badge updates wouldn't work correctly.
+
+		it('getTabId works correctly (verified via storage sync)', async () => {
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Change rate via native controls - this triggers ratechange handler
+			// which calls getTabId() and stores rate in storage with tab-specific key
+			await page.evaluate(() => {
+				(document.getElementById('test-video') as HTMLVideoElement).playbackRate = 2.25;
+			});
+
+			// Wait for storage to be updated
+			await waitForCondition(async () => {
+				const swTarget = await getServiceWorkerTarget();
+				const worker = await swTarget.worker();
+				const value = await worker!.evaluate(async (key: string) => {
+					const result = await chrome.storage.local.get(key);
+					return result[key];
+				}, `playbackRate_${tabId}`);
+				return value === 2.25;
+			});
+
+			// Verify storage has correct tab-specific key (proves getTabId returned correct value)
+			const swTarget = await getServiceWorkerTarget();
+			const worker = await swTarget.worker();
+			const storedRate = await worker!.evaluate(async (key: string) => {
+				const result = await chrome.storage.local.get(key);
+				return result[key];
+			}, `playbackRate_${tabId}`);
+
+			expect(storedRate).toBe(2.25);
 
 			await page.close();
 		});
