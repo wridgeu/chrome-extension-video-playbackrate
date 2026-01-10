@@ -35,7 +35,7 @@ async function initBadgePreference(badgeCheckbox: CheckBox): Promise<void> {
 
 /** Initialize default settings UI from storage. */
 async function initDefaults(defaultsCheckbox: CheckBox, defaultSpeedSelector: Select): Promise<void> {
-	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
+	const { defaults } = (await chrome.storage.sync.get('defaults')) as Defaults;
 	defaultsCheckbox.checked = defaults?.enabled || false;
 	if (defaultsCheckbox.checked) {
 		defaultSpeedSelector.disabled = false;
