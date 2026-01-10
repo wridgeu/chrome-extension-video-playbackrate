@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+	<head>
+		<title>SPA Video Test Page</title>
+	</head>
+	<body>
+		<h1>SPA Video Navigation Simulation</h1>
+		<video id="spa-video" width="640" height="360" controls>
+			<source src="/test-video.mp4" type="video/mp4" />
+		</video>
+		<button id="change-source">Simulate SPA Navigation</button>
+		<script>
+			const video = document.getElementById('spa-video');
+			const button = document.getElementById('change-source');
+
+			// Simulate SPA navigation by changing video source (triggers loadstart)
+			button.addEventListener('click', () => {
+				// Setting src directly triggers loadstart event
+				video.src = '/test-video.mp4?t=' + Date.now();
+				video.load();
+			});
+
+			window.testVideo = video;
+		</script>
+	</body>
+</html>

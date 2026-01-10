@@ -69,7 +69,7 @@ export async function getExtensionId(): Promise<string> {
 }
 
 /** Open the extension popup page using chrome.action.openPopup() per Puppeteer docs. */
-export async function openExtensionPopup(_extensionId: string): Promise<Page> {
+export async function openExtensionPopup(): Promise<Page> {
 	if (!browser) {
 		throw new Error('Browser not launched');
 	}
@@ -334,6 +334,56 @@ export async function openPopupForPage(page: Page): Promise<Page> {
 	await popupPage.waitForSelector('body', { timeout: 10000 });
 
 	return popupPage;
+}
+
+/** Create a test page with video in an iframe using HTTP URL. */
+export async function createPageWithIframeVideo(): Promise<Page> {
+	if (!browser) {
+		throw new Error('Browser not launched');
+	}
+
+	const page = await browser.newPage();
+	await page.goto(`${TEST_SERVER_URL}/iframe-video.html`, { waitUntil: 'networkidle0' });
+	return page;
+}
+
+/** Create a test page for SPA navigation simulation. */
+export async function createSpaVideoPage(): Promise<Page> {
+	if (!browser) {
+		throw new Error('Browser not launched');
+	}
+
+	const page = await browser.newPage();
+	await page.goto(`${TEST_SERVER_URL}/spa-video.html`, { waitUntil: 'networkidle0' });
+	return page;
+}
+
+/** Set badge enabled state directly via storage. */
+export async function setBadgeEnabled(enabled: boolean): Promise<void> {
+	const swTarget = await getServiceWorkerTarget();
+	const worker = await swTarget.worker();
+
+	if (!worker) {
+		throw new Error('Could not get service worker');
+	}
+
+	await worker.evaluate(async (en: boolean) => {
+		await chrome.storage.sync.set({ badgeEnabled: en });
+	}, enabled);
+}
+
+/** Wait for a condition to be true, with timeout. */
+export async function waitForCondition(
+	conditionFn: () => Promise<boolean>,
+	timeout = 5000,
+	interval = 100
+): Promise<void> {
+	const start = Date.now();
+	while (Date.now() - start < timeout) {
+		if (await conditionFn()) return;
+		await new Promise((r) => setTimeout(r, interval));
+	}
+	throw new Error('Condition not met within timeout');
 }
 
 export { browser };
