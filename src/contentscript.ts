@@ -9,38 +9,33 @@ function sendMessageSafe(message: MessagingRequestPayload): void {
 	});
 }
 
-/** Load default settings from storage */
-async function getDefaultSettings(): Promise<{ enabled: boolean; playbackRate: number } | null> {
-	const { defaults } = <Defaults>await chrome.storage.sync.get('defaults');
+/** Load default playback rate from storage, or null if defaults are disabled. */
+async function getDefaultPlaybackRate(): Promise<number | null> {
+	const { defaults } = (await chrome.storage.sync.get('defaults')) as Defaults;
 	if (!defaults?.enabled) return null;
-
-	return {
-		enabled: true,
-		playbackRate: defaults.playbackRate || 1
-	};
+	return defaults.playbackRate || 1;
 }
 
 /** Apply default playback rate to a single video element and send updates */
 function applyDefaultRateToVideo(video: HTMLVideoElement, playbackRate: number) {
 	video.playbackRate = playbackRate;
-	sendMessageSafe({ action: MessagingAction.UPDATE_BADGE, playbackRate });
-	sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate });
+	sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate });
 }
 
 /** Apply default playback rate to all video elements on the page. */
 export async function applyDefaultPlaybackRate() {
-	const settings = await getDefaultSettings();
-	if (!settings) return;
+	const playbackRate = await getDefaultPlaybackRate();
+	if (playbackRate === null) return;
 
 	const videoElements = document.querySelectorAll('video');
-	videoElements.forEach((video) => applyDefaultRateToVideo(video, settings.playbackRate));
+	videoElements.forEach((video) => applyDefaultRateToVideo(video, playbackRate));
 }
 
 /** Apply default rate to a dynamically added video if defaults are enabled */
 async function applyDefaultRateIfEnabled(video: HTMLVideoElement) {
-	const settings = await getDefaultSettings();
-	if (settings) {
-		applyDefaultRateToVideo(video, settings.playbackRate);
+	const playbackRate = await getDefaultPlaybackRate();
+	if (playbackRate !== null) {
+		applyDefaultRateToVideo(video, playbackRate);
 	}
 }
 
@@ -50,11 +45,7 @@ function findVideoElementBySrc(srcUrl: string): HTMLVideoElement | null {
 }
 
 /** Handle incoming messages from the extension. */
-function handleMessage(
-	request: MessagingRequestPayload,
-	sender: chrome.runtime.MessageSender,
-	sendResponse: (response?: unknown) => void
-) {
+function handleMessage(request: MessagingRequestPayload, sendResponse: (response?: unknown) => void) {
 	const videoElements = document.querySelectorAll('video');
 	const [firstVideoElement] = videoElements;
 
@@ -85,18 +76,24 @@ function handleMessage(
 }
 
 /**
- * Sets up a listener for playback rate changes on a video element.
- * Stores the rate in storage (for popup sync) and updates the extension badge.
+ * Sets up listeners for a video element:
+ * - ratechange: Syncs rate to storage/badge/context menu
+ * - loadstart: Re-applies default speed when video source changes (SPA navigation fix)
  */
-function setupRateChangeListener(video: HTMLVideoElement) {
+function setupVideoListeners(video: HTMLVideoElement) {
+	// Sync rate changes to storage, badge, and context menu
 	video.addEventListener('ratechange', async () => {
 		const tabId = await getTabId();
 		if (tabId !== undefined) {
 			chrome.storage.local.set({ [`playbackRate_${tabId}`]: video.playbackRate });
 		}
-		// Update both badge and context menu when rate changes
-		sendMessageSafe({ action: MessagingAction.UPDATE_BADGE, playbackRate: video.playbackRate });
-		sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: video.playbackRate });
+		sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate: video.playbackRate });
+	});
+
+	// Re-apply default speed when video source changes (fixes SPA navigation like YouTube)
+	// When a video loads a new source, playbackRate resets to 1 - we need to re-apply defaults
+	video.addEventListener('loadstart', () => {
+		applyDefaultRateIfEnabled(video);
 	});
 }
 
@@ -118,11 +115,11 @@ async function getTabId(): Promise<number | undefined> {
 /** Initialize content script functionality. */
 export async function initContentScript() {
 	// Register message listener first (needed immediately for popup/context menu)
-	chrome.runtime.onMessage.addListener(handleMessage);
+	chrome.runtime.onMessage.addListener((request, sender, sendResponse) => handleMessage(request, sendResponse));
 
 	// Set up ratechange listeners for existing videos
 	const existingVideos = document.querySelectorAll('video');
-	existingVideos.forEach(setupRateChangeListener);
+	existingVideos.forEach(setupVideoListeners);
 
 	// Apply default playback rate (this also sends badge/context menu updates)
 	await applyDefaultPlaybackRate();
@@ -130,8 +127,7 @@ export async function initContentScript() {
 	// If defaults weren't enabled or no videos exist, send current state for any existing videos
 	if (existingVideos.length > 0) {
 		const playbackRate = existingVideos[0].playbackRate;
-		sendMessageSafe({ action: MessagingAction.UPDATE_BADGE, playbackRate });
-		sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate });
+		sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate });
 	}
 
 	// Observe for dynamically added videos
@@ -139,11 +135,11 @@ export async function initContentScript() {
 		for (const mutation of mutations) {
 			for (const node of mutation.addedNodes) {
 				if (node instanceof HTMLVideoElement) {
-					setupRateChangeListener(node);
+					setupVideoListeners(node);
 					applyDefaultRateIfEnabled(node);
 				} else if (node instanceof Element) {
 					node.querySelectorAll('video').forEach((video) => {
-						setupRateChangeListener(video);
+						setupVideoListeners(video);
 						applyDefaultRateIfEnabled(video);
 					});
 				}

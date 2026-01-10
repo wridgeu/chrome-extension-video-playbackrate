@@ -68,17 +68,33 @@ export async function getExtensionId(): Promise<string> {
 	return waitForServiceWorker();
 }
 
-/** Open the extension popup page. */
-export async function openExtensionPopup(extensionId: string): Promise<Page> {
+/** Open the extension popup page using chrome.action.openPopup() per Puppeteer docs. */
+export async function openExtensionPopup(_extensionId: string): Promise<Page> {
 	if (!browser) {
 		throw new Error('Browser not launched');
 	}
 
-	const popupUrl = `chrome-extension://${extensionId}/popup.html`;
-	const page = await browser.newPage();
-	await page.goto(popupUrl, { waitUntil: 'networkidle0' });
+	// Get the service worker
+	const swTarget = await getServiceWorkerTarget();
+	const worker = await swTarget.worker();
 
-	return page;
+	if (!worker) {
+		throw new Error('Could not get service worker');
+	}
+
+	// Trigger the popup to open via Chrome API
+	await worker.evaluate(() => chrome.action.openPopup());
+
+	// Wait for and access the popup page
+	const popupTarget = await browser.waitForTarget(
+		(target) => target.type() === 'page' && target.url().endsWith('popup.html'),
+		{ timeout: 10000 }
+	);
+
+	const popupPage = await popupTarget.asPage();
+	await popupPage.waitForSelector('body', { timeout: 10000 });
+
+	return popupPage;
 }
 
 /** Open the extension options page. */
@@ -252,6 +268,72 @@ export async function getBadgeText(tabId: number): Promise<string> {
 	return worker.evaluate(async (tid: number) => {
 		return chrome.action.getBadgeText({ tabId: tid });
 	}, tabId);
+}
+
+/** Bring a page to the foreground (make it the active tab). */
+export async function bringToFront(page: Page): Promise<void> {
+	await page.bringToFront();
+}
+
+/** Set default playback rate settings directly via storage (bypasses UI). */
+export async function setDefaultPlaybackRate(enabled: boolean, playbackRate: number): Promise<void> {
+	const swTarget = await getServiceWorkerTarget();
+	const worker = await swTarget.worker();
+
+	if (!worker) {
+		throw new Error('Could not get service worker');
+	}
+
+	await worker.evaluate(
+		async (en: boolean, rate: number) => {
+			await chrome.storage.sync.set({
+				defaults: {
+					enabled: en,
+					playbackRate: rate
+				}
+			});
+		},
+		enabled,
+		playbackRate
+	);
+}
+
+/**
+ * Open popup for a specific page (ensures the page is the active tab first).
+ * This is the recommended way to test popup interaction with a specific page.
+ */
+export async function openPopupForPage(page: Page): Promise<Page> {
+	if (!browser) {
+		throw new Error('Browser not launched');
+	}
+
+	// Bring the page to front so it's the active tab
+	await page.bringToFront();
+
+	// Small delay to ensure tab activation is processed
+	await new Promise((r) => setTimeout(r, 100));
+
+	// Get the service worker
+	const swTarget = await getServiceWorkerTarget();
+	const worker = await swTarget.worker();
+
+	if (!worker) {
+		throw new Error('Could not get service worker');
+	}
+
+	// Trigger the popup to open via Chrome API
+	await worker.evaluate(() => chrome.action.openPopup());
+
+	// Wait for and access the popup page
+	const popupTarget = await browser.waitForTarget(
+		(target) => target.type() === 'page' && target.url().endsWith('popup.html'),
+		{ timeout: 10000 }
+	);
+
+	const popupPage = await popupTarget.asPage();
+	await popupPage.waitForSelector('body', { timeout: 10000 });
+
+	return popupPage;
 }
 
 export { browser };

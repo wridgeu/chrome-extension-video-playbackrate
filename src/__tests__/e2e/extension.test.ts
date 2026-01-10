@@ -13,7 +13,9 @@ import {
 	getTabId,
 	sendMessageToTab,
 	waitForContentScript,
-	getBadgeText
+	getBadgeText,
+	openPopupForPage,
+	setDefaultPlaybackRate
 } from '@tests/e2e/setup';
 import { MessagingAction } from '@src/types';
 
@@ -690,35 +692,306 @@ describe('Chrome Extension E2E', () => {
 		});
 	});
 
-	describe('Popup executeScript Integration', () => {
-		// Tests that verify popup uses executeScript to change playback rate
-		// This ensures the popup works without relying on content script injection
+	describe('Popup-Video Integration', () => {
+		// Tests that verify the popup properly controls video playback rate
+		// Uses openPopupForPage to ensure popup opens for the correct active tab
 
-		it('popup slider change sets all video playback rates via executeScript pattern', async () => {
-			const page = await createPageWithMultipleVideos();
-			await page.waitForSelector('#test-video-1', { timeout: 10000 });
+		it('popup shows slider when opened on page with video', async () => {
+			const videoPage = await createPageWithVideo();
+			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
 
-			// Verify initial rates are 1 (multi-video.html has 3 videos)
-			const initialRates = await page.evaluate(() =>
+			// Open popup for this specific video page
+			const popupPage = await openPopupForPage(videoPage);
+			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
+
+			// Verify slider container is visible and no-videos is hidden
+			const state = await popupPage.evaluate(() => {
+				const noVideosEl = document.getElementById('no-videos');
+				const sliderContainer = document.getElementById('slider-container');
+				return {
+					noVideosHidden: noVideosEl?.hidden ?? false,
+					sliderContainerHidden: sliderContainer?.hidden ?? true
+				};
+			});
+
+			expect(state.noVideosHidden).toBe(true);
+			expect(state.sliderContainerHidden).toBe(false);
+
+			await popupPage.close();
+			await videoPage.close();
+		});
+
+		it('popup shows no-videos message when opened on page without video', async () => {
+			const noVideoPage = await createPageWithoutVideo();
+
+			// Open popup for this page without videos
+			const popupPage = await openPopupForPage(noVideoPage);
+			await popupPage.waitForSelector('ui5-text', { timeout: 10000 });
+
+			// Verify no-videos is visible and slider container is hidden
+			const state = await popupPage.evaluate(() => {
+				const noVideosEl = document.getElementById('no-videos');
+				const sliderContainer = document.getElementById('slider-container');
+				return {
+					noVideosHidden: noVideosEl?.hidden ?? true,
+					sliderContainerHidden: sliderContainer?.hidden ?? false,
+					noVideosText: noVideosEl?.textContent?.trim() ?? ''
+				};
+			});
+
+			expect(state.noVideosHidden).toBe(false);
+			expect(state.sliderContainerHidden).toBe(true);
+			expect(state.noVideosText).toBe('No videos found on this page');
+
+			await popupPage.close();
+			await noVideoPage.close();
+		});
+
+		it('popup slider change affects single video playback rate', async () => {
+			const videoPage = await createPageWithVideo();
+			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
+
+			// Verify initial rate is 1
+			const initialRate = await videoPage.evaluate(
+				() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
+			);
+			expect(initialRate).toBe(1);
+
+			// Open popup for the video page
+			const popupPage = await openPopupForPage(videoPage);
+			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
+
+			// Change slider value and trigger change event (simulates user finishing drag)
+			await popupPage.evaluate(() => {
+				const slider = document.querySelector('ui5-slider') as Element & {
+					value: number;
+					dispatchEvent: (e: Event) => boolean;
+				};
+				if (slider) {
+					slider.value = 2.5;
+					slider.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			});
+
+			// Wait for executeScript to complete
+			await new Promise((r) => setTimeout(r, 300));
+
+			// Verify video rate was changed
+			const newRate = await videoPage.evaluate(
+				() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
+			);
+			expect(newRate).toBe(2.5);
+
+			await popupPage.close();
+			await videoPage.close();
+		});
+
+		it('popup slider change affects ALL videos on multi-video page', async () => {
+			const multiVideoPage = await createPageWithMultipleVideos();
+			await multiVideoPage.waitForSelector('#test-video-1', { timeout: 10000 });
+
+			// Verify initial rates are all 1
+			const initialRates = await multiVideoPage.evaluate(() =>
 				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
 			);
 			expect(initialRates).toEqual([1, 1, 1]);
 
-			// Simulate what popup's executeScript does when slider changes
-			const newRate = 2.5;
-			await page.evaluate((rate: number) => {
-				document.querySelectorAll('video').forEach((v) => {
-					v.playbackRate = rate;
-				});
-			}, newRate);
+			// Open popup for the multi-video page
+			const popupPage = await openPopupForPage(multiVideoPage);
+			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
 
-			// Verify all videos were updated
-			const updatedRates = await page.evaluate(() =>
+			// Change slider value and trigger change event
+			await popupPage.evaluate(() => {
+				const slider = document.querySelector('ui5-slider') as Element & {
+					value: number;
+					dispatchEvent: (e: Event) => boolean;
+				};
+				if (slider) {
+					slider.value = 1.75;
+					slider.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			});
+
+			// Wait for executeScript to complete
+			await new Promise((r) => setTimeout(r, 300));
+
+			// Verify ALL video rates were changed
+			const newRates = await multiVideoPage.evaluate(() =>
 				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
 			);
-			expect(updatedRates).toEqual([2.5, 2.5, 2.5]);
+			expect(newRates).toEqual([1.75, 1.75, 1.75]);
+
+			await popupPage.close();
+			await multiVideoPage.close();
+		});
+
+		it('popup displays current video playback rate in slider', async () => {
+			const videoPage = await createPageWithVideo();
+			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
+
+			// Set video to a specific rate before opening popup
+			await videoPage.evaluate(() => {
+				(document.getElementById('test-video') as HTMLVideoElement).playbackRate = 2;
+			});
+
+			// Open popup for the video page
+			const popupPage = await openPopupForPage(videoPage);
+			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
+
+			// Verify slider shows the current video rate
+			const sliderValue = await popupPage.evaluate(() => {
+				const slider = document.querySelector('ui5-slider') as Element & { value: number };
+				return slider?.value;
+			});
+			expect(sliderValue).toBe(2);
+
+			await popupPage.close();
+			await videoPage.close();
+		});
+
+		it('multiple slider changes update video rate correctly', async () => {
+			const videoPage = await createPageWithVideo();
+			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
+
+			const popupPage = await openPopupForPage(videoPage);
+			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
+
+			const testRates = [0.5, 1.5, 3, 0.25];
+
+			for (const rate of testRates) {
+				// Change slider
+				await popupPage.evaluate((r) => {
+					const slider = document.querySelector('ui5-slider') as Element & {
+						value: number;
+						dispatchEvent: (e: Event) => boolean;
+					};
+					if (slider) {
+						slider.value = r;
+						slider.dispatchEvent(new Event('change', { bubbles: true }));
+					}
+				}, rate);
+
+				await new Promise((r) => setTimeout(r, 200));
+
+				// Verify video rate
+				const videoRate = await videoPage.evaluate(
+					() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
+				);
+				expect(videoRate).toBe(rate);
+			}
+
+			await popupPage.close();
+			await videoPage.close();
+		});
+
+		it('opening popup does not reset badge to 1 (stays in sync with video rate)', async () => {
+			const videoPage = await createPageWithVideo();
+			await videoPage.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(videoPage);
+			const tabId = await getTabId(videoPage);
+
+			// Set video to 2.5x via content script messaging
+			await sendMessageToTab(tabId, { action: MessagingAction.SET, playbackRate: 2.5 });
+			await new Promise((r) => setTimeout(r, 200));
+
+			// Verify badge shows 2.5 before opening popup
+			const badgeBefore = await getBadgeText(tabId);
+			expect(badgeBefore).toBe('2.5');
+
+			// Open popup for the video page
+			const popupPage = await openPopupForPage(videoPage);
+			await popupPage.waitForSelector('ui5-slider', { timeout: 10000 });
+
+			// Wait for popup initialization
+			await new Promise((r) => setTimeout(r, 300));
+
+			// Verify badge still shows 2.5 (not reset to 1)
+			const badgeAfter = await getBadgeText(tabId);
+			expect(badgeAfter).toBe('2.5');
+
+			// Verify slider also shows the correct value
+			const sliderValue = await popupPage.evaluate(() => {
+				const slider = document.querySelector('ui5-slider') as Element & { value: number };
+				return slider?.value;
+			});
+			expect(sliderValue).toBe(2.5);
+
+			await popupPage.close();
+			await videoPage.close();
+		});
+
+		it('in-place navigation applies default speed to new video page', async () => {
+			const DEFAULT_SPEED = 1.75;
+
+			// Set default speed directly via storage (bypasses UI5 component issues)
+			await setDefaultPlaybackRate(true, DEFAULT_SPEED);
+
+			// Create first video page
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+
+			// Wait for default speed to be applied
+			await new Promise((r) => setTimeout(r, 500));
+
+			// Verify first video has default speed
+			const firstVideoRate = await page.evaluate(
+				() => (document.getElementById('test-video') as HTMLVideoElement)?.playbackRate
+			);
+			expect(firstVideoRate).toBe(DEFAULT_SPEED);
+
+			// Navigate in-place to multi-video page (same tab)
+			await page.goto(`${getTestServerURL()}/multi-video.html`, { waitUntil: 'networkidle0' });
+			await page.waitForSelector('#test-video-1', { timeout: 10000 });
+			await waitForContentScript(page);
+
+			// Wait for default speed to be applied to new page
+			await new Promise((r) => setTimeout(r, 500));
+
+			// Verify ALL videos on new page have default speed applied
+			const newPageRates = await page.evaluate(() =>
+				Array.from(document.querySelectorAll('video')).map((v) => v.playbackRate)
+			);
+			expect(newPageRates).toEqual([DEFAULT_SPEED, DEFAULT_SPEED, DEFAULT_SPEED]);
 
 			await page.close();
+		});
+
+		it('in-place navigation updates badge correctly with default speed', async () => {
+			const DEFAULT_SPEED = 2.25;
+
+			// Set default speed directly via storage (bypasses UI5 component issues)
+			await setDefaultPlaybackRate(true, DEFAULT_SPEED);
+
+			// Create video page
+			const page = await createPageWithVideo();
+			await page.waitForSelector('#test-video', { timeout: 10000 });
+			await waitForContentScript(page);
+			const tabId = await getTabId(page);
+
+			// Wait for default speed to be applied
+			await new Promise((r) => setTimeout(r, 500));
+
+			// Verify badge shows default speed
+			const badgeBefore = await getBadgeText(tabId);
+			expect(badgeBefore).toBe(DEFAULT_SPEED.toString());
+
+			// Navigate in-place to another video page
+			await page.goto(`${getTestServerURL()}/multi-video.html`, { waitUntil: 'networkidle0' });
+			await page.waitForSelector('#test-video-1', { timeout: 10000 });
+			await waitForContentScript(page);
+
+			// Wait for default speed to be applied
+			await new Promise((r) => setTimeout(r, 500));
+
+			// Verify badge still shows default speed after navigation
+			const badgeAfter = await getBadgeText(tabId);
+			expect(badgeAfter).toBe(DEFAULT_SPEED.toString());
+
+			await page.close();
+
+			// Cleanup: Disable default playback rate to prevent test pollution
+			await setDefaultPlaybackRate(false, 1);
 		});
 	});
 

@@ -95,10 +95,10 @@ export async function initPopup() {
 	let currentRate = playbackRate ?? 1;
 	slider.value = currentRate;
 
-	// Ensure badge shows correct rate when popup opens (fixes any stale badge values)
+	// Ensure UI shows correct rate when popup opens (fixes any stale badge/context menu values)
 	if (hasVideos && currentActiveTabId) {
 		chrome.runtime.sendMessage({
-			action: MessagingAction.UPDATE_BADGE,
+			action: MessagingAction.UPDATE_UI,
 			playbackRate: currentRate,
 			tabId: currentActiveTabId
 		});
@@ -143,11 +143,10 @@ export async function initPopup() {
 				args: [newRate]
 			});
 			chrome.runtime.sendMessage({
-				action: MessagingAction.UPDATE_BADGE,
+				action: MessagingAction.UPDATE_UI,
 				playbackRate: newRate,
 				tabId: currentActiveTabId
 			});
-			chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: newRate });
 			chrome.storage.local.set({ [`playbackRate_${currentActiveTabId}`]: newRate });
 		}
 	});

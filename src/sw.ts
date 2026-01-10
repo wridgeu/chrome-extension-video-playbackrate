@@ -82,7 +82,7 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 	// Guard against missing tab ID
 	if (!tab?.id) return;
 
-	const { contextMenuOptions } = <ContextMenuStorage>await chrome.storage.local.get(['contextMenuOptions']);
+	const { contextMenuOptions } = (await chrome.storage.local.get(['contextMenuOptions'])) as ContextMenuStorage;
 	const menuItem = contextMenuOptions.find((item: PlaybackOption) => item.id === itemData.menuItemId);
 	if (menuItem && itemData.srcUrl) {
 		// Use executeScript to set playback rate directly, avoiding content script dependency
@@ -132,15 +132,24 @@ chrome.webNavigation?.onBeforeNavigate?.addListener((details) => {
 	}
 });
 
+/** Update context menu to reflect current playback rate. */
+function handleContextMenuUpdate(playbackRate: number): void {
+	const closestOption = findClosestOption(playbackRate, contextMenuOptions);
+	if (closestOption) {
+		chrome.contextMenus.update(closestOption.id, { checked: true });
+	}
+}
+
 /** Handle messages from content script for context menu sync, badge updates, and tab ID requests. */
 chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, sender, sendResponse) => {
 	if (request.action === MessagingAction.UPDATE_CONTEXT_MENU) {
-		const closestOption = findClosestOption(request.playbackRate, contextMenuOptions);
-		if (closestOption) {
-			chrome.contextMenus.update(closestOption.id, { checked: true });
-		}
+		handleContextMenuUpdate(request.playbackRate);
 	} else if (request.action === MessagingAction.UPDATE_BADGE) {
 		handleBadgeUpdate(request.playbackRate, request.tabId ?? sender.tab?.id);
+	} else if (request.action === MessagingAction.UPDATE_UI) {
+		// Combined update for both badge and context menu
+		handleBadgeUpdate(request.playbackRate, request.tabId ?? sender.tab?.id);
+		handleContextMenuUpdate(request.playbackRate);
 	} else if (request.action === MessagingAction.GET_TAB_ID) {
 		sendResponse({ tabId: sender.tab?.id });
 		return true;

@@ -65,7 +65,7 @@ export class ThemeSwitcher {
 
 	/** Set body background color (not handled by UI5 theming). */
 	private setBackgroundColor(color: string): void {
-		const currentHtmlBody = <HTMLBodyElement>document.querySelector('body')!;
+		const currentHtmlBody = document.querySelector('body') as HTMLBodyElement;
 		currentHtmlBody.style.backgroundColor = color;
 	}
 

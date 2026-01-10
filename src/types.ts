@@ -11,7 +11,8 @@ export const MessagingAction = {
 	RETRIEVE: 2,
 	UPDATE_CONTEXT_MENU: 3,
 	UPDATE_BADGE: 4,
-	GET_TAB_ID: 5
+	GET_TAB_ID: 5,
+	UPDATE_UI: 6
 } as const;
 
 export type MessagingAction = (typeof MessagingAction)[keyof typeof MessagingAction];
@@ -46,6 +47,12 @@ type GetTabIdPayload = {
 	action: typeof MessagingAction.GET_TAB_ID;
 };
 
+type UpdateUiPayload = {
+	action: typeof MessagingAction.UPDATE_UI;
+	playbackRate: number;
+	tabId?: number;
+};
+
 /** User's default playback rate configuration stored in sync storage. */
 export type Defaults = {
 	defaults: {
@@ -61,7 +68,8 @@ export type MessagingRequestPayload =
 	| SetSpecificActionPayload
 	| UpdateBadgePayload
 	| UpdateContextMenuPayload
-	| GetTabIdPayload;
+	| GetTabIdPayload
+	| UpdateUiPayload;
 
 export type RetrieveResponse = {
 	playbackRate: number;

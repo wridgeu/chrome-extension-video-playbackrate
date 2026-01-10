@@ -99,7 +99,7 @@ describe('ContentScript', () => {
 			expect(chromeMock.runtime.onMessage.addListener).toHaveBeenCalled();
 		});
 
-		it('sends initial badge update when videos are present', async () => {
+		it('sends initial UI update when videos are present', async () => {
 			const video = document.createElement('video');
 			video.playbackRate = 1.5;
 			document.body.appendChild(video);
@@ -107,19 +107,19 @@ describe('ContentScript', () => {
 			await initContentScript();
 
 			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
-				action: MessagingAction.UPDATE_BADGE,
+				action: MessagingAction.UPDATE_UI,
 				playbackRate: 1.5
 			});
 		});
 
-		it('does not send badge update when no videos are present', async () => {
+		it('does not send UI update when no videos are present', async () => {
 			await initContentScript();
 
-			// sendMessage should not be called for badge update (may be called for other reasons)
-			const badgeCall = chromeMock.runtime.sendMessage.mock.calls.find(
-				(call) => call[0]?.action === MessagingAction.UPDATE_BADGE
+			// sendMessage should not be called for UI update (may be called for other reasons)
+			const uiUpdateCall = chromeMock.runtime.sendMessage.mock.calls.find(
+				(call) => call[0]?.action === MessagingAction.UPDATE_UI
 			);
-			expect(badgeCall).toBeUndefined();
+			expect(uiUpdateCall).toBeUndefined();
 		});
 	});
 
@@ -294,7 +294,7 @@ describe('ContentScript', () => {
 			vi.useRealTimers();
 		});
 
-		it('sends UPDATE_BADGE message when video rate changes', async () => {
+		it('sends UPDATE_UI message when video rate changes', async () => {
 			const video = document.createElement('video');
 			document.body.appendChild(video);
 
@@ -307,26 +307,8 @@ describe('ContentScript', () => {
 			await vi.runAllTimersAsync();
 
 			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
-				action: MessagingAction.UPDATE_BADGE,
+				action: MessagingAction.UPDATE_UI,
 				playbackRate: 1.75
-			});
-		});
-
-		it('sends UPDATE_CONTEXT_MENU message when video rate changes', async () => {
-			const video = document.createElement('video');
-			document.body.appendChild(video);
-
-			await initContentScript();
-			chromeMock.runtime.sendMessage.mockClear();
-
-			video.playbackRate = 0.5;
-			video.dispatchEvent(new Event('ratechange'));
-
-			await vi.runAllTimersAsync();
-
-			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
-				action: MessagingAction.UPDATE_CONTEXT_MENU,
-				playbackRate: 0.5
 			});
 		});
 

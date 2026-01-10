@@ -207,7 +207,7 @@ describe('Popup', () => {
 			});
 		});
 
-		it('sends UPDATE_BADGE and UPDATE_CONTEXT_MENU messages', async () => {
+		it('sends UPDATE_UI message', async () => {
 			const tabId = 456;
 			chromeMock.tabs.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
 			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
@@ -219,13 +219,9 @@ describe('Popup', () => {
 			simulateSliderChange(slider, 1.75, changeHandler);
 
 			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
-				action: MessagingAction.UPDATE_BADGE,
+				action: MessagingAction.UPDATE_UI,
 				playbackRate: 1.75,
 				tabId
-			});
-			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
-				action: MessagingAction.UPDATE_CONTEXT_MENU,
-				playbackRate: 1.75
 			});
 		});
 
