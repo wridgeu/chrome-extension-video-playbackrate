@@ -84,9 +84,7 @@ describe('Chrome Extension E2E', () => {
 			const importedChunks = extractImportedChunks(contentScript);
 
 			// Verify each chunk matches at least one pattern
-			const uncovered = importedChunks.filter(
-				(chunk) => !patterns.some((p) => globToRegex(p).test(chunk))
-			);
+			const uncovered = importedChunks.filter((chunk) => !patterns.some((p) => globToRegex(p).test(chunk)));
 
 			if (uncovered.length > 0) {
 				throw new Error(

@@ -329,6 +329,7 @@ describe('ContentScript', () => {
 		});
 
 		it('handles sendMessage errors gracefully', async () => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 			chromeMock.runtime.sendMessage.mockRejectedValue(new Error('Message failed'));
 
 			const video = document.createElement('video');
@@ -341,7 +342,10 @@ describe('ContentScript', () => {
 
 			await vi.runAllTimersAsync();
 
-			expect(true).toBe(true);
+			// Verify error was logged (in dev mode) rather than thrown
+			expect(consoleWarnSpy).toHaveBeenCalledWith('Message send failed:', expect.any(Error));
+
+			consoleWarnSpy.mockRestore();
 		});
 	});
 
