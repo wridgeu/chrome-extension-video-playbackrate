@@ -2,4 +2,4 @@ node_modules/
 *.dist.zip
 .git
 dist
-.claude/
+.claude/nul
