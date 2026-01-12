@@ -10,9 +10,8 @@ export const MessagingAction = {
 	SETSPECIFIC: 1,
 	RETRIEVE: 2,
 	UPDATE_CONTEXT_MENU: 3,
-	UPDATE_BADGE: 4,
-	GET_TAB_ID: 5,
-	UPDATE_UI: 6
+	GET_TAB_ID: 4,
+	UPDATE_UI: 5
 } as const;
 
 export type MessagingAction = (typeof MessagingAction)[keyof typeof MessagingAction];
@@ -30,12 +29,6 @@ type SetSpecificActionPayload = {
 	action: typeof MessagingAction.SETSPECIFIC;
 	playbackRate: number;
 	videoElementSrcAttributeValue: string;
-};
-
-type UpdateBadgePayload = {
-	action: typeof MessagingAction.UPDATE_BADGE;
-	playbackRate: number;
-	tabId?: number;
 };
 
 type UpdateContextMenuPayload = {
@@ -66,7 +59,6 @@ export type MessagingRequestPayload =
 	| RetrieveActionPayload
 	| SetActionPayload
 	| SetSpecificActionPayload
-	| UpdateBadgePayload
 	| UpdateContextMenuPayload
 	| GetTabIdPayload
 	| UpdateUiPayload;

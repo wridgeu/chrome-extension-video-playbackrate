@@ -24,3 +24,11 @@ export function findClosestOption(playbackRate: number, options: PlaybackOption[
 export function formatBadgeText(rate: number): string {
 	return rate.toString();
 }
+
+/**
+ * Generates the storage key for per-tab playback rate.
+ * Centralizes the key pattern to avoid duplication across files.
+ */
+export function getPlaybackRateStorageKey(tabId: number): string {
+	return `playbackRate_${tabId}`;
+}

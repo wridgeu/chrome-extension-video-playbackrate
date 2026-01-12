@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 import { chromeMock, resetChromeMocks } from '@tests/unit/setup';
 import contextMenuOptions from '@src/ContextMenuOptions';
-import { findClosestOption, formatBadgeText, type ContextMenuOption } from '@src/sw';
+import { findClosestOption, formatBadgeText, type PlaybackOption } from '@src/util/playback';
 import { MessagingAction } from '@src/types';
 
 describe('Service Worker', () => {
@@ -325,7 +325,7 @@ describe('Service Worker', () => {
 
 			// Popup sends tabId in request, sender.tab is undefined
 			onMessageCallback!(
-				{ action: MessagingAction.UPDATE_BADGE, playbackRate: 1.5, tabId: 789 },
+				{ action: MessagingAction.UPDATE_UI, playbackRate: 1.5, tabId: 789 },
 				{}, // No sender.tab (message from popup)
 				() => {}
 			);
@@ -347,7 +347,7 @@ describe('Service Worker', () => {
 
 			// Content script sends without tabId, has sender.tab
 			onMessageCallback!(
-				{ action: MessagingAction.UPDATE_BADGE, playbackRate: 2 },
+				{ action: MessagingAction.UPDATE_UI, playbackRate: 2 },
 				{ tab: { id: 456 } }, // sender.tab from content script
 				() => {}
 			);
@@ -411,7 +411,7 @@ describe('Service Worker', () => {
 });
 
 describe('findClosestOption', () => {
-	const testOptions: ContextMenuOption[] = [
+	const testOptions: PlaybackOption[] = [
 		{ id: '1', title: 'Slow', playbackRate: 0.5, default: false },
 		{ id: '2', title: 'Normal', playbackRate: 1, default: true },
 		{ id: '3', title: 'Fast', playbackRate: 1.5, default: false },
