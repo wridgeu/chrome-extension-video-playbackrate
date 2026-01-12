@@ -40,7 +40,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["js/contentscript.js", "js/types.js"],
+      "resources": ["js/contentscript.js", "js/types.js", "js/playback-*.js"],
       "matches": ["<all_urls>"]
     }
   ]
