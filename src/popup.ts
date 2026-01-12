@@ -4,6 +4,7 @@ import '@ui5/webcomponents/dist/Text.js';
 
 import { ThemeSwitcher } from '@src/util/ThemeSwitcher';
 import { MessagingAction } from '@src/types';
+import { getPlaybackRateStorageKey } from '@src/util/playback';
 
 /**
  * Positions tooltip relative to slider handle.
@@ -147,13 +148,13 @@ export async function initPopup() {
 				playbackRate: newRate,
 				tabId: currentActiveTabId
 			});
-			chrome.storage.local.set({ [`playbackRate_${currentActiveTabId}`]: newRate });
+			chrome.storage.local.set({ [getPlaybackRateStorageKey(currentActiveTabId)]: newRate });
 		}
 	});
 
 	// Sync slider when video rate changes via native controls or context menu
 	if (currentActiveTabId) {
-		const storageKey = `playbackRate_${currentActiveTabId}`;
+		const storageKey = getPlaybackRateStorageKey(currentActiveTabId);
 		chrome.storage.local.onChanged.addListener((changes) => {
 			const newRate = changes[storageKey]?.newValue as number | undefined;
 			if (newRate !== undefined && newRate !== currentRate) {

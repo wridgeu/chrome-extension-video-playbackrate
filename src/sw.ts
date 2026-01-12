@@ -1,10 +1,6 @@
 import { default as contextMenuOptions } from '@src/ContextMenuOptions';
 import { MessagingAction, type MessagingRequestPayload } from '@src/types';
-import { findClosestOption, formatBadgeText, type PlaybackOption } from '@src/util/playback';
-
-// Re-export for backwards compatibility
-export { findClosestOption, formatBadgeText };
-export type { PlaybackOption as ContextMenuOption };
+import { findClosestOption, formatBadgeText, getPlaybackRateStorageKey, type PlaybackOption } from '@src/util/playback';
 
 /** Badge background color - matches the icon's golden yellow */
 const BADGE_BACKGROUND_COLOR = '#F7B731';
@@ -106,7 +102,7 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 			updateBadge(formatBadgeText(menuItem.playbackRate), tab.id);
 		}
 		// Store rate for popup sync
-		chrome.storage.local.set({ [`playbackRate_${tab.id}`]: menuItem.playbackRate });
+		chrome.storage.local.set({ [getPlaybackRateStorageKey(tab.id)]: menuItem.playbackRate });
 	}
 });
 
@@ -120,7 +116,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 // Clean up tracking and storage when tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
 	injectedTabs.delete(tabId);
-	chrome.storage.local.remove(`playbackRate_${tabId}`);
+	chrome.storage.local.remove(getPlaybackRateStorageKey(tabId));
 });
 
 chrome.webNavigation?.onBeforeNavigate?.addListener((details) => {
@@ -144,8 +140,6 @@ function handleContextMenuUpdate(playbackRate: number): void {
 chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, sender, sendResponse) => {
 	if (request.action === MessagingAction.UPDATE_CONTEXT_MENU) {
 		handleContextMenuUpdate(request.playbackRate);
-	} else if (request.action === MessagingAction.UPDATE_BADGE) {
-		handleBadgeUpdate(request.playbackRate, request.tabId ?? sender.tab?.id);
 	} else if (request.action === MessagingAction.UPDATE_UI) {
 		// Combined update for both badge and context menu
 		handleBadgeUpdate(request.playbackRate, request.tabId ?? sender.tab?.id);

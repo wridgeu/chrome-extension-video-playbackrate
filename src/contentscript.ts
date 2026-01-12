@@ -1,4 +1,11 @@
 import { MessagingAction, type MessagingRequestPayload, type Defaults } from '@src/types';
+import { getPlaybackRateStorageKey } from '@src/util/playback';
+
+/** Symbol to mark video elements that already have listeners attached */
+const LISTENER_ATTACHED = Symbol('listenerAttached');
+
+/** Reference to active MutationObserver for cleanup */
+let videoObserver: MutationObserver | null = null;
 
 /** Send a message to the service worker, logging errors in development mode only. */
 function sendMessageSafe(message: MessagingRequestPayload): void {
@@ -44,34 +51,34 @@ function findVideoElementBySrc(srcUrl: string): HTMLVideoElement | null {
 	return document.querySelector(`video[src='${CSS.escape(srcUrl)}']`);
 }
 
-/** Handle incoming messages from the extension. */
-function handleMessage(request: MessagingRequestPayload, sendResponse: (response?: unknown) => void) {
+/** Handle incoming messages from the extension. Returns true if sendResponse will be called. */
+function handleMessage(request: MessagingRequestPayload, sendResponse: (response?: unknown) => void): boolean {
 	const videoElements = document.querySelectorAll('video');
 	const [firstVideoElement] = videoElements;
 
 	switch (request.action) {
 		case MessagingAction.SET:
-			if (!firstVideoElement) return;
+			if (!firstVideoElement) return false;
 			// Apply to all video elements on the page
 			videoElements.forEach((video) => {
 				video.playbackRate = request.playbackRate;
 			});
-			break;
+			return false;
 		case MessagingAction.SETSPECIFIC: {
 			const targetVideo = findVideoElementBySrc(request.videoElementSrcAttributeValue);
 			if (targetVideo) {
 				targetVideo.playbackRate = request.playbackRate;
 			}
-			break;
+			return false;
 		}
 		case MessagingAction.RETRIEVE:
 			sendResponse({
 				playbackRate: firstVideoElement?.playbackRate ?? 1,
 				videoCount: videoElements.length
 			});
-			break;
+			return true;
 		default:
-			break;
+			return false;
 	}
 }
 
@@ -79,13 +86,19 @@ function handleMessage(request: MessagingRequestPayload, sendResponse: (response
  * Sets up listeners for a video element:
  * - ratechange: Syncs rate to storage/badge/context menu
  * - loadstart: Re-applies default speed when video source changes (SPA navigation fix)
+ *
+ * Uses a Symbol marker to prevent duplicate listeners on re-injection.
  */
 function setupVideoListeners(video: HTMLVideoElement) {
+	// Prevent duplicate listeners if script is re-injected
+	if ((video as unknown as Record<symbol, boolean>)[LISTENER_ATTACHED]) return;
+	(video as unknown as Record<symbol, boolean>)[LISTENER_ATTACHED] = true;
+
 	// Sync rate changes to storage, badge, and context menu
 	video.addEventListener('ratechange', async () => {
 		const tabId = await getTabId();
 		if (tabId !== undefined) {
-			chrome.storage.local.set({ [`playbackRate_${tabId}`]: video.playbackRate });
+			chrome.storage.local.set({ [getPlaybackRateStorageKey(tabId)]: video.playbackRate });
 		}
 		sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate: video.playbackRate });
 	});
@@ -114,8 +127,17 @@ async function getTabId(): Promise<number | undefined> {
 
 /** Initialize content script functionality. */
 export async function initContentScript() {
+	// Clean up any existing observer from previous execution context
+	if (videoObserver) {
+		videoObserver.disconnect();
+		videoObserver = null;
+	}
+
 	// Register message listener first (needed immediately for popup/context menu)
-	chrome.runtime.onMessage.addListener((request, sender, sendResponse) => handleMessage(request, sendResponse));
+	// Return true to keep the message channel open when sendResponse is used
+	chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+		return handleMessage(request, sendResponse);
+	});
 
 	// Set up ratechange listeners for existing videos
 	const existingVideos = document.querySelectorAll('video');
@@ -131,7 +153,7 @@ export async function initContentScript() {
 	}
 
 	// Observe for dynamically added videos
-	const videoObserver = new MutationObserver((mutations) => {
+	videoObserver = new MutationObserver((mutations) => {
 		for (const mutation of mutations) {
 			for (const node of mutation.addedNodes) {
 				if (node instanceof HTMLVideoElement) {
@@ -149,9 +171,13 @@ export async function initContentScript() {
 
 	videoObserver.observe(document.body, { childList: true, subtree: true });
 
-	// Clean up observer on page unload to prevent memory leaks
-	window.addEventListener('unload', () => {
-		videoObserver.disconnect();
+	// Clean up observer on page hide (pagehide is more reliable than unload for bfcache)
+	// See: https://developer.chrome.com/docs/web-platform/deprecating-unload
+	window.addEventListener('pagehide', () => {
+		if (videoObserver) {
+			videoObserver.disconnect();
+			videoObserver = null;
+		}
 	});
 
 	// Set up context menu sync

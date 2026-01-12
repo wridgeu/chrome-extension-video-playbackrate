@@ -51,7 +51,13 @@ async function initThemeToggle() {
 	const themeToggleCheckbox = document.getElementById('themeToggle') as Switch;
 	themeToggleCheckbox.checked = await themeSwitcher.isDarkModeActive();
 	themeToggleCheckbox.addEventListener('change', async () => {
-		await themeSwitcher.toggle();
+		try {
+			await themeSwitcher.toggle();
+		} catch (error) {
+			if (import.meta.env?.DEV) {
+				console.error('Theme toggle failed:', error);
+			}
+		}
 	});
 }
 
@@ -73,11 +79,13 @@ export async function initOptions(): Promise<void> {
 		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
 		defaultSpeedSelector.disabled = !checkboxIsChecked;
 
-		await saveDefaults(checkboxIsChecked, defaultSpeedSelector.selectedOption!.innerText);
+		const selectedText = defaultSpeedSelector.selectedOption?.innerText ?? '1';
+		await saveDefaults(checkboxIsChecked, selectedText);
 	});
 
 	defaultSpeedSelector.addEventListener('change', async () => {
-		await saveDefaults(defaultsCheckbox.checked, defaultSpeedSelector.selectedOption!.innerText);
+		const selectedText = defaultSpeedSelector.selectedOption?.innerText ?? '1';
+		await saveDefaults(defaultsCheckbox.checked, selectedText);
 	});
 
 	badgeCheckbox.addEventListener('change', async (event: Event) => {
