@@ -367,7 +367,7 @@ describe('Service Worker', () => {
 			);
 
 			// Menu item '6' has playbackRate 2
-			expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('6', { checked: true });
+			expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('6', { checked: true }, expect.any(Function));
 		});
 	});
 

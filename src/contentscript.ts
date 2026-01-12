@@ -20,7 +20,7 @@ function sendMessageSafe(message: MessagingRequestPayload): void {
 async function getDefaultPlaybackRate(): Promise<number | null> {
 	const { defaults } = (await chrome.storage.sync.get('defaults')) as Defaults;
 	if (!defaults?.enabled) return null;
-	return defaults.playbackRate || 1;
+	return defaults.playbackRate ?? 1;
 }
 
 /** Apply default playback rate to a single video element and send updates */
@@ -169,7 +169,7 @@ export async function initContentScript() {
 		}
 	});
 
-	videoObserver.observe(document.body, { childList: true, subtree: true });
+	videoObserver.observe(document.documentElement, { childList: true, subtree: true });
 
 	// Clean up observer on page hide (pagehide is more reliable than unload for bfcache)
 	// See: https://developer.chrome.com/docs/web-platform/deprecating-unload
@@ -182,12 +182,9 @@ export async function initContentScript() {
 
 	// Set up context menu sync
 	document.addEventListener('contextmenu', (event) => {
-		const target = event.target as HTMLElement;
-		const video = target.closest('video') || (target.tagName === 'VIDEO' ? target : null);
-
+		const video = (event.target as HTMLElement).closest('video');
 		if (video) {
-			const playbackRate = (video as HTMLVideoElement).playbackRate;
-			sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate });
+			sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: video.playbackRate });
 		}
 	});
 }
