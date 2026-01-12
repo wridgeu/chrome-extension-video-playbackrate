@@ -127,16 +127,16 @@ async function getTabId(): Promise<number | undefined> {
 
 /** Initialize content script functionality. */
 export async function initContentScript() {
-	// Clean up any existing observer from previous execution context
+	// Defensive cleanup in case initContentScript is called multiple times
 	if (videoObserver) {
 		videoObserver.disconnect();
 		videoObserver = null;
 	}
 
-	// Register message listener first (needed immediately for popup/context menu)
-	// Return true to keep the message channel open when sendResponse is used
-	chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-		return handleMessage(request, sendResponse);
+	// Register message listener (needed immediately for popup/context menu)
+	// Chrome automatically cleans up listeners when the execution context is destroyed
+	chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+		return handleMessage(request as MessagingRequestPayload, sendResponse);
 	});
 
 	// Set up ratechange listeners for existing videos
@@ -171,8 +171,9 @@ export async function initContentScript() {
 
 	videoObserver.observe(document.documentElement, { childList: true, subtree: true });
 
-	// Clean up observer on page hide (pagehide is more reliable than unload for bfcache)
+	// Clean up MutationObserver on page hide (pagehide is more reliable than unload for bfcache)
 	// See: https://developer.chrome.com/docs/web-platform/deprecating-unload
+	// Note: chrome.runtime.onMessage listeners are automatically cleaned up by Chrome
 	window.addEventListener('pagehide', () => {
 		if (videoObserver) {
 			videoObserver.disconnect();

@@ -62,8 +62,3 @@ export type MessagingRequestPayload =
 	| UpdateContextMenuPayload
 	| GetTabIdPayload
 	| UpdateUiPayload;
-
-export type RetrieveResponse = {
-	playbackRate: number;
-	videoCount: number;
-};

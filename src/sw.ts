@@ -136,8 +136,8 @@ function handleContextMenuUpdate(playbackRate: number): void {
 	if (closestOption) {
 		// Callback handles case where menu item doesn't exist after service worker restart
 		chrome.contextMenus.update(closestOption.id, { checked: true }, () => {
-			if (chrome.runtime.lastError) {
-				// Menu item may not exist yet, ignore gracefully
+			if (chrome.runtime.lastError && import.meta.env?.DEV) {
+				console.warn('Context menu update skipped:', chrome.runtime.lastError.message);
 			}
 		});
 	}
