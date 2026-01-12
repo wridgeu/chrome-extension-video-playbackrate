@@ -19,6 +19,8 @@ function updateBadge(text: string, tabId: number | undefined): void {
 
 /** Inject content script into a tab and track injection status. */
 function injectContentScript(tabId: number): void {
+	// Add to set immediately to prevent race condition with onUpdated
+	injectedTabs.add(tabId);
 	chrome.scripting.executeScript(
 		{
 			target: { tabId, allFrames: true },
@@ -26,11 +28,11 @@ function injectContentScript(tabId: number): void {
 		},
 		() => {
 			if (chrome.runtime.lastError) {
+				// Remove from set on failure so retry is possible
+				injectedTabs.delete(tabId);
 				if (import.meta.env?.DEV) {
 					console.warn('Content script injection failed:', chrome.runtime.lastError.message);
 				}
-			} else {
-				injectedTabs.add(tabId);
 			}
 		}
 	);
@@ -132,7 +134,12 @@ chrome.webNavigation?.onBeforeNavigate?.addListener((details) => {
 function handleContextMenuUpdate(playbackRate: number): void {
 	const closestOption = findClosestOption(playbackRate, contextMenuOptions);
 	if (closestOption) {
-		chrome.contextMenus.update(closestOption.id, { checked: true });
+		// Callback handles case where menu item doesn't exist after service worker restart
+		chrome.contextMenus.update(closestOption.id, { checked: true }, () => {
+			if (chrome.runtime.lastError) {
+				// Menu item may not exist yet, ignore gracefully
+			}
+		});
 	}
 }
 
