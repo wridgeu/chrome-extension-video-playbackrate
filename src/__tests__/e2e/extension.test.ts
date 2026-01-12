@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Page } from 'puppeteer';
 import {
 	launchBrowserWithExtension,
@@ -40,6 +42,61 @@ describe('Chrome Extension E2E', () => {
 		it('loads with valid ID', async () => {
 			expect(extensionId).toBeDefined();
 			expect(extensionId).toMatch(/^[a-z]{32}$/);
+		});
+	});
+
+	describe('Build Artifacts', () => {
+		const distDir = join(import.meta.dirname, '../../../dist');
+		const jsDir = join(distDir, 'js');
+
+		/** Convert glob pattern to regex (supports * and ? wildcards) */
+		function globToRegex(pattern: string): RegExp {
+			const escaped = pattern
+				.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+				.replace(/\*/g, '[^/]*')
+				.replace(/\?/g, '[^/]');
+			return new RegExp(`^${escaped}$`);
+		}
+
+		/** Extract imported chunk filenames from built JS content */
+		function extractImportedChunks(jsContent: string): string[] {
+			const importPattern = /from\s*["']\.\/([^"']+\.js)["']/g;
+			const chunks: string[] = [];
+			let match;
+			while ((match = importPattern.exec(jsContent)) !== null) {
+				chunks.push(match[1]);
+			}
+			return chunks;
+		}
+
+		it('contentscript chunks are covered by web_accessible_resources', () => {
+			// Read manifest and extract patterns
+			const manifest = JSON.parse(readFileSync(join(distDir, 'manifest.json'), 'utf-8'));
+			const patterns: string[] = [];
+			for (const entry of manifest.web_accessible_resources || []) {
+				if (entry.resources) {
+					patterns.push(...entry.resources.map((p: string) => (p.startsWith('js/') ? p.slice(3) : p)));
+				}
+			}
+
+			// Read contentscript.js and find its chunk imports
+			const contentScript = readFileSync(join(jsDir, 'contentscript.js'), 'utf-8');
+			const importedChunks = extractImportedChunks(contentScript);
+
+			// Verify each chunk matches at least one pattern
+			const uncovered = importedChunks.filter(
+				(chunk) => !patterns.some((p) => globToRegex(p).test(chunk))
+			);
+
+			if (uncovered.length > 0) {
+				throw new Error(
+					`Content script imports chunks not in web_accessible_resources:\n` +
+						uncovered.map((c) => `  - js/${c}`).join('\n') +
+						`\n\nAdd patterns to public/manifest.json to fix this.`
+				);
+			}
+
+			expect(uncovered).toEqual([]);
 		});
 	});
 
