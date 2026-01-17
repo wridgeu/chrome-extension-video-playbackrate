@@ -1,45 +1,21 @@
 name: Test
 
-on:
-  push:
-    branches: [master, main, 'feature/**']
-  pull_request:
-    branches: [master, main]
+on: [push, pull_request]
+
+env:
+  NODE_VERSION: 24.x
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24.x
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.x
-          cache: 'npm'
-      - run: npm ci
       - run: npm run build
-      - run: npm run test:coverage
-
-  e2e-tests:
-    needs: unit-tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.x
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
+      - run: npm run test:unit
       - run: npm run test:e2e
-
