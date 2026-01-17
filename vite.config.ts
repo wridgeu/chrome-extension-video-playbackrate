@@ -30,6 +30,9 @@ export default defineConfig({
         alias: aliases
     },
 
+    // Disable Vite's default public dir copying (viteStaticCopy handles this)
+    publicDir: false,
+
     build: {
         // Output directory for JS files
         outDir: 'dist/js',
