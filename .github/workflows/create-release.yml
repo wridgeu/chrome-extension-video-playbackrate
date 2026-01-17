@@ -13,50 +13,58 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
     steps:
+    - name: check if triggered by tag
+      id: check-tag
+      env:
+        HEAD_REF: ${{ github.event.workflow_run.head_branch }}
+      run: |
+        # Check if the workflow_run was triggered by a tag (not a branch)
+        TAG_EXISTS=$(git ls-remote --tags https://github.com/${{ github.repository }} refs/tags/$HEAD_REF | wc -l)
+        if [ "$TAG_EXISTS" -eq "0" ]; then
+          echo "Workflow was triggered by branch push, not a tag. Skipping release."
+          echo "is_tag=false" >> $GITHUB_OUTPUT
+        else
+          echo "Workflow was triggered by tag: $HEAD_REF"
+          echo "is_tag=true" >> $GITHUB_OUTPUT
+          echo "tag=$HEAD_REF" >> $GITHUB_OUTPUT
+        fi
+
     - uses: actions/checkout@v4
+      if: steps.check-tag.outputs.is_tag == 'true'
       with:
         ref: ${{ github.event.workflow_run.head_sha }}
         fetch-depth: 0
 
-    - name: validate tag on default branch
+    - name: verify tag is on default branch
+      if: steps.check-tag.outputs.is_tag == 'true'
       env:
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
       run: |
-        TAG=$(git describe --tags --exact-match $COMMIT_SHA 2>/dev/null || true)
-        if [ -z "$TAG" ]; then
-          echo "No tag found for commit $COMMIT_SHA, skipping release"
-          exit 0
-        fi
-        echo "Found tag: $TAG"
-
         if ! git branch -a --contains $COMMIT_SHA | grep -qE "(^|\s)${DEFAULT_BRANCH}$|origin/${DEFAULT_BRANCH}$"; then
           echo "Error: Tag must be on default branch (${DEFAULT_BRANCH})"
           exit 1
         fi
 
-        echo "TAG=$TAG" >> $GITHUB_ENV
-
     - uses: actions/setup-node@v4
-      if: env.TAG != ''
+      if: steps.check-tag.outputs.is_tag == 'true'
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
 
-    - if: env.TAG != ''
+    - if: steps.check-tag.outputs.is_tag == 'true'
       run: npm ci
 
     - name: build and release
-      if: env.TAG != ''
+      if: steps.check-tag.outputs.is_tag == 'true'
       run: |
         npm run build
         npm run zip
 
     - name: create release
-      if: env.TAG != ''
+      if: steps.check-tag.outputs.is_tag == 'true'
       uses: ncipollo/release-action@v1
       with:
         artifacts: "*.dist.zip"
         token: ${{ secrets.GITHUB_TOKEN }}
-        tag: ${{ env.TAG }}
-        skipIfReleaseExists: true
+        tag: ${{ steps.check-tag.outputs.tag }}
