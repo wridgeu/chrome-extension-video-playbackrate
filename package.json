@@ -47,7 +47,7 @@
     "glob": "^13.0.0",
     "globals": "^17.0.0",
     "husky": "^9.1.7",
-    "jsdom": "^27.0.1",
+    "jsdom": "^27.4.0",
     "npm-build-zip": "^1.0.4",
     "prettier": "^3.7.4",
     "puppeteer": "^24.34.0",
