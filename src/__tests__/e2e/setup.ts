@@ -93,7 +93,13 @@ export async function openPopupForPage(page: Page): Promise<Page> {
 	);
 	const popupPage = await popupTarget.asPage();
 	openedPages.add(popupPage);
-	await popupPage.waitForSelector('ui5-text, ui5-slider', { timeout: 10000 });
+	// Both elements start hidden; initPopup() reveals exactly one once it has queried the tab
+	await popupPage.waitForFunction(
+		() =>
+			!document.querySelector<HTMLElement>('#no-videos')?.hidden ||
+			!document.querySelector<HTMLElement>('#slider-container')?.hidden,
+		{ timeout: 10000 }
+	);
 	return popupPage;
 }
 
