@@ -1,0 +1,68 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "jsdoc", "promise", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "globals": {
+    "chrome": "readonly"
+  },
+  "ignorePatterns": ["dist/**", "docs/**"],
+  "rules": {
+    "import/no-unassigned-import": ["error", { "allow": ["@ui5/webcomponents/dist/*.js"] }],
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "typescript/no-explicit-any": "error",
+    "typescript/ban-ts-comment": "error",
+    "prefer-const": "error",
+
+    "complexity": ["error", { "max": 10 }],
+    "max-depth": ["error", { "max": 3 }],
+    "max-params": ["error", { "max": 3 }],
+    "max-nested-callbacks": ["error", { "max": 3 }],
+    "max-lines-per-function": ["error", { "max": 60, "skipBlankLines": true, "skipComments": true }],
+    "max-lines": ["error", { "max": 250, "skipBlankLines": true, "skipComments": true }],
+
+    "jsdoc/require-param": "off",
+    "jsdoc/require-returns": "off",
+    "jsdoc/check-access": "error",
+    "jsdoc/check-property-names": "error",
+    "jsdoc/check-tag-names": "error",
+    "jsdoc/empty-tags": "error",
+    "jsdoc/implements-on-classes": "error",
+    "jsdoc/no-defaults": "error",
+    "jsdoc/require-property": "error",
+    "jsdoc/require-property-description": "error",
+    "jsdoc/require-property-name": "error",
+    "jsdoc/require-yields": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/__tests__/**"],
+      "env": { "node": true },
+      "rules": {
+        "max-lines": ["error", { "max": 2000 }],
+        "max-lines-per-function": ["error", { "max": 1800 }],
+        "max-nested-callbacks": ["error", { "max": 5 }],
+        "vitest/expect-expect": ["error", { "assertFunctionNames": ["expect", "expectBadge", "expectRates"] }],
+        "vitest/no-identical-title": "error",
+        "vitest/no-conditional-expect": "error",
+        "vitest/no-conditional-tests": "error",
+        "vitest/no-disabled-tests": "error",
+        "vitest/no-focused-tests": "error",
+        "vitest/valid-expect": "error",
+        "vitest/valid-title": "error"
+      }
+    },
+    {
+      "files": ["vite.config.ts"],
+      "env": { "node": true }
+    }
+  ]
+}
