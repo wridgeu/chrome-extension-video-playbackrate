@@ -21,12 +21,25 @@ export function callsOf<Args extends unknown[]>(fn: { mock: { calls: unknown[] }
 	return fn.mock.calls as Args[];
 }
 
-/** Mock window.matchMedia (missing in jsdom); `prefersDark` controls the `(prefers-color-scheme: dark)` result. */
+const colorScheme = { prefersDark: false, listeners: new Set<() => void>() };
+
+/** Mock window.matchMedia (missing in jsdom); `prefersDark` drives `(prefers-color-scheme: dark)` and notifies listeners. */
 export function mockColorScheme(prefersDark: boolean): void {
-	Object.defineProperty(window, 'matchMedia', {
-		writable: true,
-		value: (query: string) => ({ matches: prefersDark && query === '(prefers-color-scheme: dark)', media: query })
-	});
+	colorScheme.prefersDark = prefersDark;
+	colorScheme.listeners.forEach((listener) => listener());
 }
 
-mockColorScheme(false);
+Object.defineProperty(window, 'matchMedia', {
+	writable: true,
+	value: (query: string) => ({
+		get matches() {
+			return colorScheme.prefersDark && query === '(prefers-color-scheme: dark)';
+		},
+		media: query,
+		addEventListener: (_type: 'change', listener: () => void) => colorScheme.listeners.add(listener)
+	})
+});
+afterEach(() => {
+	colorScheme.prefersDark = false;
+	colorScheme.listeners.clear();
+});

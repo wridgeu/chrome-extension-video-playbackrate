@@ -63,6 +63,7 @@ function createChromeMockObject(syncStorage: Record<string, unknown>, localStora
 		contextMenus: {
 			create: vi.fn<MockFn>(),
 			update: resolved(),
+			removeAll: resolved(),
 			onClicked: createMockEvent()
 		},
 		webNavigation: {

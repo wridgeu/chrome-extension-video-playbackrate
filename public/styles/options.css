@@ -1,24 +1,22 @@
 body {
+	margin: 0;
+	padding: 1rem;
 	background-color: var(--sapBackgroundColor);
+	color: var(--sapTextColor);
+	font-family: var(--sapFontFamily);
 }
 
-.mb-tiny {
-	margin-bottom: 2vh;
+[hidden] {
+	display: none !important;
 }
 
-.mb-medium {
-	margin-bottom: 5vh;
+#saveError {
+	margin-bottom: 1rem;
 }
 
-.options-container {
-	display: flex;
-	flex-flow: column;
-	align-items: flex-start;
-	margin-bottom: 12vh;
-}
-
-.input-group {
-	display: flex;
-	flex-flow: column;
-	padding-left: 3vw;
+/* ui5-form stretches field content to the full row; keep compact controls at their natural size */
+#badgeToggle,
+#themeMode {
+	justify-self: start;
+	width: fit-content;
 }

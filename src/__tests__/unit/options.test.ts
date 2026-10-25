@@ -1,123 +1,137 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { chromeMock, mockStorage } from '@tests/unit/setup';
 import { initOptions } from '@src/options';
+import { PLAYBACK_RATES } from '@src/util/playback';
 
 const themeSwitcher = vi.hoisted(() => ({
-	init: vi.fn<() => Promise<unknown>>(() => Promise.resolve()),
-	isDarkModeActive: vi.fn<() => boolean>(),
-	toggle: vi.fn<() => Promise<void>>()
+	getMode: vi.fn<() => string>(() => 'system'),
+	setMode: vi.fn<(mode: string) => Promise<void>>(() => Promise.resolve())
 }));
 vi.mock('@src/util/ThemeSwitcher.js', () => ({
 	ThemeSwitcher: class {
-		init = () => themeSwitcher.init().then(() => this);
-		isDarkModeActive = themeSwitcher.isDarkModeActive;
-		toggle = themeSwitcher.toggle;
+		getMode = themeSwitcher.getMode;
+		setMode = themeSwitcher.setMode;
+		init() {
+			return Promise.resolve(this);
+		}
 	}
 }));
 
-type Control = HTMLElement & { checked: boolean; disabled: boolean; value: string };
+type Control = HTMLElement & { checked: boolean; value: string; selected: boolean };
 
 describe('Options Page', () => {
-	let defaultsCheckbox: Control;
-	let speedSelector: Control;
-	let badgeCheckbox: Control;
-	let themeToggle: Control;
+	let speedSelect: Control;
+	let badgeToggle: Control;
+	let themeMode: HTMLElement & { selectedItems: Control[] };
+	let saveError: HTMLElement;
 
-	/** Toggle a checkbox/switch like a user click would, then let async handlers settle. */
-	const toggle = (control: Control) => {
-		control.checked = !control.checked;
-		control.dispatchEvent(new Event('change'));
+	const themeItem = (mode: string) => themeMode.querySelector<Control>(`[data-mode="${mode}"]`)!;
+	const choose = (value: string) => {
+		speedSelect.value = value;
+		speedSelect.dispatchEvent(new Event('change'));
 	};
 
 	beforeEach(() => {
 		document.body.innerHTML = `
-			<div id="defaultsEnabledCheckbox"></div>
-			<div id="defaultSpeedSelector"></div>
-			<div id="badgeEnabledCheckbox"></div>
-			<div id="themeToggle"></div>`;
-		[defaultsCheckbox, speedSelector, badgeCheckbox, themeToggle] = Array.from(document.body.children) as [
-			Control,
-			Control,
-			Control,
-			Control
-		];
-		speedSelector.value = '1';
+			<div id="saveError" hidden></div>
+			<div id="defaultSpeed"></div>
+			<div id="badgeToggle"></div>
+			<div id="themeMode">
+				<div data-mode="system"></div><div data-mode="light"></div><div data-mode="dark"></div>
+			</div>`;
+		saveError = document.querySelector('#saveError')!;
+		speedSelect = document.querySelector('#defaultSpeed')!;
+		badgeToggle = document.querySelector('#badgeToggle')!;
+		themeMode = document.querySelector('#themeMode')!;
+		themeMode.selectedItems = [];
 	});
 
 	describe('initialization', () => {
-		it('restores enabled defaults, the chosen speed and the badge setting', async () => {
+		it('offers "Don\'t change" plus every shared rate', async () => {
+			await initOptions();
+
+			const values = Array.from(speedSelect.children, (option) => (option as Control).value);
+			expect(values).toEqual(['off', ...PLAYBACK_RATES.map(String)]);
+			expect(speedSelect.children[0]!.textContent).toBe("Don't change (site default)");
+		});
+
+		it('selects the stored default speed and badge setting', async () => {
 			Object.assign(mockStorage, { defaults: { enabled: true, playbackRate: 2 }, badgeEnabled: false });
 
 			await initOptions();
 
-			expect(defaultsCheckbox.checked).toBe(true);
-			expect(speedSelector.disabled).toBe(false);
-			expect(speedSelector.value).toBe('2');
-			expect(badgeCheckbox.checked).toBe(false);
+			expect(speedSelect.value).toBe('2');
+			expect(badgeToggle.checked).toBe(false);
 		});
 
-		it('starts with defaults off, selector disabled at 1x and badge on when nothing is stored', async () => {
+		it('selects "Don\'t change" and the badge when nothing is stored', async () => {
 			await initOptions();
 
-			expect(defaultsCheckbox.checked).toBe(false);
-			expect(speedSelector.disabled).toBe(true);
-			expect(speedSelector.value).toBe('1');
-			expect(badgeCheckbox.checked).toBe(true);
+			expect(speedSelect.value).toBe('off');
+			expect(badgeToggle.checked).toBe(true);
 		});
 
-		it('reflects the active theme in the dark mode switch', async () => {
-			themeSwitcher.isDarkModeActive.mockReturnValue(true);
+		it('marks the active theme mode', async () => {
+			themeSwitcher.getMode.mockReturnValue('dark');
 
 			await initOptions();
 
-			expect(themeToggle.checked).toBe(true);
+			expect([themeItem('system').selected, themeItem('light').selected, themeItem('dark').selected]).toEqual([
+				false,
+				false,
+				true
+			]);
 		});
 	});
 
 	describe('saving', () => {
 		beforeEach(async () => {
+			mockStorage.defaults = { enabled: false, playbackRate: 1.5 };
 			await initOptions();
 			chromeMock.storage.sync.set.mockClear();
 		});
 
-		it('enables the selector and saves defaults with the selected speed when defaults get enabled', () => {
-			speedSelector.value = '1.5';
-			toggle(defaultsCheckbox);
+		it('saves a chosen speed as enabled defaults', () => {
+			choose('2.5');
 
-			expect(speedSelector.disabled).toBe(false);
-			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ defaults: { enabled: true, playbackRate: 1.5 } });
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ defaults: { enabled: true, playbackRate: 2.5 } });
 		});
 
-		it('disables the selector again when defaults get disabled', () => {
-			toggle(defaultsCheckbox);
-			toggle(defaultsCheckbox);
+		it('"Don\'t change" disables defaults but keeps the last speed', () => {
+			choose('2');
+			choose('off');
 
-			expect(speedSelector.disabled).toBe(true);
-			expect(chromeMock.storage.sync.set).toHaveBeenLastCalledWith({ defaults: { enabled: false, playbackRate: 1 } });
-		});
-
-		it('saves a newly selected speed', () => {
-			speedSelector.value = '2.5';
-			speedSelector.dispatchEvent(new Event('change'));
-
-			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ defaults: { enabled: false, playbackRate: 2.5 } });
+			expect(chromeMock.storage.sync.set).toHaveBeenLastCalledWith({ defaults: { enabled: false, playbackRate: 2 } });
 		});
 
 		it('saves the badge preference', () => {
-			toggle(badgeCheckbox);
+			badgeToggle.checked = false;
+			badgeToggle.dispatchEvent(new Event('change'));
 
 			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ badgeEnabled: false });
 		});
 
-		it('toggles the theme from the dark mode switch', () => {
-			toggle(themeToggle);
+		it('switches the theme mode on selection', () => {
+			themeMode.selectedItems = [themeItem('light')];
+			themeMode.dispatchEvent(new Event('selection-change'));
 
-			expect(themeSwitcher.toggle).toHaveBeenCalledOnce();
+			expect(themeSwitcher.setMode).toHaveBeenCalledWith('light');
+		});
+
+		it('shows a failed save and hides the message after the next successful one', async () => {
+			chromeMock.storage.sync.set.mockRejectedValueOnce(new Error('MAX_WRITE_OPERATIONS_PER_MINUTE'));
+
+			choose('2');
+			await vi.waitFor(() => expect(saveError.hidden).toBe(false));
+			expect(saveError.textContent).toBe("Couldn't save settings: MAX_WRITE_OPERATIONS_PER_MINUTE");
+
+			choose('3');
+			await vi.waitFor(() => expect(saveError.hidden).toBe(true));
 		});
 	});
 
 	it('does nothing when the page is missing a control', async () => {
-		themeToggle.remove();
+		themeMode.remove();
 
 		await initOptions();
 

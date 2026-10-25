@@ -1,6 +1,5 @@
-import contextMenuOptions from '@src/ContextMenuOptions';
 import { MessagingAction, type MessagingRequestPayload } from '@src/types';
-import { findClosestOption, getPlaybackRateStorageKey } from '@src/util/playback';
+import { PLAYBACK_RATES, findClosestRate, formatRate, getPlaybackRateStorageKey } from '@src/util/playback';
 
 /** Badge background color - matches the icon's golden yellow */
 const BADGE_BACKGROUND_COLOR = '#F7B731';
@@ -31,12 +30,10 @@ function injectContentScript(tabId: number): void {
 	);
 }
 
-/** Check the context menu entry closest to the given playback rate. */
+/** Check the context menu entry (id = the rate) closest to the given playback rate. */
 function updateContextMenu(playbackRate: number): void {
-	const closestOption = findClosestOption(playbackRate, contextMenuOptions);
-	if (!closestOption) return;
 	// Callback handles case where menu item doesn't exist after service worker restart
-	chrome.contextMenus.update(closestOption.id, { checked: true }, () => {
+	chrome.contextMenus.update(String(findClosestRate(playbackRate)), { checked: true }, () => {
 		if (chrome.runtime.lastError && import.meta.env.DEV) {
 			console.warn('Context menu update skipped:', chrome.runtime.lastError.message);
 		}
@@ -51,7 +48,12 @@ async function handleRateUpdate(playbackRate: number, tabId: number | undefined)
 	chrome.storage.local.set({ [getPlaybackRateStorageKey(tabId)]: playbackRate });
 
 	const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
-	if (badgeEnabled === false) {
+	setBadge(badgeEnabled === false ? undefined : playbackRate, tabId);
+}
+
+/** Show `playbackRate` on the tab's badge, or clear the badge when it is undefined. */
+function setBadge(playbackRate: number | undefined, tabId: number): void {
+	if (playbackRate === undefined) {
 		chrome.action.setBadgeText({ text: '', tabId });
 		return;
 	}
@@ -71,13 +73,15 @@ export function setRateOfVideoWithSrc(srcUrl: string, rate: number): void {
 
 /** Initialize context menu with playback rate options and inject content script into existing tabs. */
 chrome.runtime.onInstalled.addListener(async () => {
-	contextMenuOptions.forEach((option) => {
+	// Menu items survive extension updates; start fresh so renamed or removed entries don't linger
+	await chrome.contextMenus.removeAll();
+	PLAYBACK_RATES.forEach((rate) => {
 		chrome.contextMenus.create({
-			id: option.id,
+			id: String(rate),
 			type: 'radio',
-			title: option.title,
+			title: formatRate(rate),
 			contexts: ['video'],
-			checked: Boolean(option.default)
+			checked: rate === 1
 		});
 	});
 
@@ -92,16 +96,16 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 /** Set playback rate when context menu item is clicked. */
 chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
-	const menuItem = contextMenuOptions.find((item) => item.id === itemData.menuItemId);
-	if (!tab?.id || !menuItem || !itemData.srcUrl) return;
+	const rate = Number(itemData.menuItemId);
+	if (!tab?.id || !PLAYBACK_RATES.includes(rate) || !itemData.srcUrl) return;
 
 	// Use executeScript to set playback rate directly, avoiding content script dependency
 	chrome.scripting.executeScript({
 		target: { tabId: tab.id, allFrames: true },
 		func: setRateOfVideoWithSrc,
-		args: [itemData.srcUrl, menuItem.playbackRate]
+		args: [itemData.srcUrl, rate]
 	});
-	await handleRateUpdate(menuItem.playbackRate, tab.id);
+	await handleRateUpdate(rate, tab.id);
 });
 
 /** Inject content script when a tab finishes loading. */
@@ -136,14 +140,15 @@ chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, sender) 
 	}
 });
 
-/** Clear badges on all tabs when user disables badge in options. */
+/** Apply the badge setting to all open tabs right away: clear the badges, or restore them from the stored rates. */
 chrome.storage.onChanged.addListener(async (changes, areaName) => {
-	if (areaName === 'sync' && changes.badgeEnabled?.newValue === false) {
-		const tabs = await chrome.tabs.query({});
-		tabs.forEach((tab) => {
-			if (tab.id) {
-				chrome.action.setBadgeText({ text: '', tabId: tab.id });
-			}
-		});
+	if (areaName !== 'sync' || !changes.badgeEnabled) return;
+
+	const enabled = changes.badgeEnabled.newValue !== false;
+	const tabIds = (await chrome.tabs.query({})).flatMap((tab) => (tab.id ? [tab.id] : []));
+	const storedRates = await chrome.storage.local.get(tabIds.map((tabId) => getPlaybackRateStorageKey(tabId)));
+	for (const tabId of tabIds) {
+		const rate = storedRates[getPlaybackRateStorageKey(tabId)];
+		setBadge(enabled && typeof rate === 'number' ? rate : undefined, tabId);
 	}
 });
