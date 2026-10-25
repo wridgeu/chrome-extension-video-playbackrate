@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { callsOf, chromeMock, mockStorage } from '@tests/unit/setup';
-import contextMenuOptions from '@src/ContextMenuOptions';
-import { findClosestOption, type PlaybackOption } from '@src/util/playback';
+import { PLAYBACK_RATES, formatRate } from '@src/util/playback';
 import { MessagingAction, type MessagingRequestPayload } from '@src/types';
 
 type Listener<Args extends unknown[]> = (...args: Args) => unknown;
@@ -38,18 +37,19 @@ describe('Service Worker', () => {
 	});
 
 	describe('onInstalled', () => {
-		it('creates one radio menu item per option for videos, with only the default checked', async () => {
+		it('replaces the menu with one radio item per shared rate for videos, only 1× checked', async () => {
 			await onInstalled();
 
+			expect(chromeMock.contextMenus.removeAll).toHaveBeenCalledBefore(chromeMock.contextMenus.create);
 			expect(
 				callsOf<[chrome.contextMenus.CreateProperties]>(chromeMock.contextMenus.create).map(([item]) => item)
 			).toEqual(
-				contextMenuOptions.map((option) => ({
-					id: option.id,
+				PLAYBACK_RATES.map((rate) => ({
+					id: String(rate),
 					type: 'radio',
-					title: option.title,
+					title: formatRate(rate),
 					contexts: ['video'],
-					checked: Boolean(option.default)
+					checked: rate === 1
 				}))
 			);
 		});
@@ -71,7 +71,7 @@ describe('Service Worker', () => {
 		const srcUrl = 'https://example.com/video.mp4';
 
 		it('sets the rate on the clicked video and syncs badge and storage', async () => {
-			await onClicked({ menuItemId: '6', srcUrl }, { id: 123 });
+			await onClicked({ menuItemId: '2', srcUrl }, { id: 123 });
 
 			expect(chromeMock.scripting.executeScript).toHaveBeenCalledWith({
 				target: { tabId: 123, allFrames: true },
@@ -84,8 +84,9 @@ describe('Service Worker', () => {
 
 		it.each([
 			['unknown menu item', { menuItemId: 'invalid', srcUrl }, { id: 1 }],
-			['missing srcUrl', { menuItemId: '6' }, { id: 1 }],
-			['missing tab', { menuItemId: '6', srcUrl }, undefined]
+			['rate outside the shared list', { menuItemId: '7', srcUrl }, { id: 1 }],
+			['missing srcUrl', { menuItemId: '2' }, { id: 1 }],
+			['missing tab', { menuItemId: '2', srcUrl }, undefined]
 		])('ignores clicks with %s', async (_, itemData, tab) => {
 			await onClicked(itemData, tab);
 
@@ -142,7 +143,7 @@ describe('Service Worker', () => {
 				expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '2', tabId: 456 });
 			});
 			expect(chromeMock.action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F7B731', tabId: 456 });
-			expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('6', { checked: true }, expect.any(Function));
+			expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('2', { checked: true }, expect.any(Function));
 			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({ playbackRate_456: 2 });
 		});
 
@@ -182,8 +183,7 @@ describe('Service Worker', () => {
 	it('UPDATE_CONTEXT_MENU checks the closest menu item without touching the badge', () => {
 		onMessage({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: 1.3 }, { tab: { id: 1 } });
 
-		// 1.25x is menu item '4'
-		expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('4', { checked: true }, expect.any(Function));
+		expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('1.25', { checked: true }, expect.any(Function));
 		expect(chromeMock.action.setBadgeText).not.toHaveBeenCalled();
 	});
 
@@ -198,10 +198,21 @@ describe('Service Worker', () => {
 			expect(chromeMock.action.setBadgeText.mock.calls).toEqual([[{ text: '', tabId: 1 }], [{ text: '', tabId: 2 }]]);
 		});
 
+		it('restores the badge from the stored rates right away when the badge gets re-enabled', async () => {
+			chromeMock.storage.local.get.mockResolvedValue({ playbackRate_1: 1.75 });
+
+			await onStorageChanged({ badgeEnabled: { newValue: true } }, 'sync');
+
+			expect(chromeMock.action.setBadgeText.mock.calls).toEqual([
+				[{ text: '1.75', tabId: 1 }],
+				[{ text: '', tabId: 2 }]
+			]);
+		});
+
 		it.each([
-			['enabled', { badgeEnabled: { newValue: true } }, 'sync'],
-			['changed in local storage', { badgeEnabled: { newValue: false } }, 'local']
-		])('leaves badges alone when the badge gets %s', async (_, changes, area) => {
+			['another sync setting changes', { theme: { newValue: 'sap_horizon' } }, 'sync'],
+			['the change is in local storage', { badgeEnabled: { newValue: false } }, 'local']
+		])('leaves badges alone when %s', async (_, changes, area) => {
 			await onStorageChanged(changes, area);
 
 			expect(chromeMock.action.setBadgeText).not.toHaveBeenCalled();
@@ -222,30 +233,5 @@ describe('Service Worker', () => {
 
 			expect(chromeMock.scripting.executeScript).toHaveBeenCalledOnce();
 		});
-	});
-});
-
-describe('findClosestOption', () => {
-	const options: PlaybackOption[] = [
-		{ id: '1', title: 'Slow', playbackRate: 0.5 },
-		{ id: '2', title: 'Normal', playbackRate: 1 },
-		{ id: '3', title: 'Fast', playbackRate: 1.5 },
-		{ id: '4', title: 'Faster', playbackRate: 2 }
-	];
-
-	it.each([
-		[1.5, '3'],
-		[1.2, '2'],
-		[1.3, '3'],
-		// 1.25 is equidistant from 1 and 1.5: the first match wins
-		[1.25, '2'],
-		[0.1, '1'],
-		[10, '4']
-	])('maps %d to option %s', (rate, expectedId) => {
-		expect(findClosestOption(rate, options)?.id).toBe(expectedId);
-	});
-
-	it('returns undefined for an empty list', () => {
-		expect(findClosestOption(1.5, [])).toBeUndefined();
 	});
 });

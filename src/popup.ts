@@ -4,7 +4,10 @@ import '@ui5/webcomponents/dist/Text.js';
 
 import { ThemeSwitcher } from '@src/util/ThemeSwitcher';
 import { MessagingAction } from '@src/types';
-import { getPlaybackRateStorageKey } from '@src/util/playback';
+import { MAX_RATE, MIN_RATE, RATE_STEP, getPlaybackRateStorageKey } from '@src/util/playback';
+
+/** Labelled positions on the slider scale */
+const SLIDER_LABELS = [MIN_RATE, 1, 2, 3, MAX_RATE];
 
 /**
  * Positions tooltip relative to slider handle.
@@ -13,7 +16,7 @@ import { getPlaybackRateStorageKey } from '@src/util/playback';
 function positionTooltip(slider: Slider, tooltip: HTMLElement): void {
 	const percent = (slider.value - slider.min) / (slider.max - slider.min);
 
-	tooltip.textContent = `${slider.value}x`;
+	tooltip.textContent = `${slider.value}×`;
 
 	// Get the actual handle element from shadow DOM for precise positioning
 	const handle = slider.shadowRoot?.querySelector<HTMLElement>('[part="handle"]');
@@ -91,6 +94,12 @@ export async function initPopup(): Promise<void> {
 	const noVideosEl = document.querySelector<HTMLElement>('#no-videos');
 	const sliderContainer = document.querySelector<HTMLElement>('#slider-container');
 	if (!slider || !tooltip || !noVideosEl || !sliderContainer) return;
+	Object.assign(slider, {
+		min: MIN_RATE,
+		max: MAX_RATE,
+		step: RATE_STEP,
+		tickmarks: SLIDER_LABELS.map((value) => ({ value, label: `${value}×` }))
+	});
 
 	const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 	const tabId = activeTab?.id;

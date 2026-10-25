@@ -80,6 +80,8 @@ describe('Popup', () => {
 			expect(noVideosEl.hidden).toBe(true);
 			expect(sliderContainer.hidden).toBe(false);
 			expect(slider.value).toBe(2);
+			expect(slider).toMatchObject({ min: 0.25, max: 4, step: 0.25 });
+			expect(slider.tickmarks.map((tick) => tick.label)).toEqual(['0.25×', '1×', '2×', '3×', '4×']);
 			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
 				action: MessagingAction.UPDATE_UI,
 				playbackRate: 2,
@@ -137,7 +139,7 @@ describe('Popup', () => {
 			slider.dispatchEvent(new Event('mousedown'));
 
 			expect(tooltip.showPopover).toHaveBeenCalled();
-			expect(tooltip.textContent).toBe('0.5x');
+			expect(tooltip.textContent).toBe('0.5×');
 			expect(tooltip.style.left).toBe('104px');
 			expect(tooltip.style.top).toBe('10px');
 
@@ -160,7 +162,7 @@ describe('Popup', () => {
 
 			isOpen.mockReturnValue(true);
 			slider.dispatchEvent(new Event('input'));
-			expect(tooltip.textContent).toBe('2x');
+			expect(tooltip.textContent).toBe('2×');
 		});
 	});
 

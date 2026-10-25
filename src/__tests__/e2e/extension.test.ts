@@ -56,6 +56,21 @@ async function openTwoVideoPage() {
 	return ready;
 }
 
+/** Pick a default speed in the options page like a user: open the select and click the option with `label`. */
+async function pickDefaultSpeed(optionsPage: Page, label: string): Promise<void> {
+	await clickIn(optionsPage, '#defaultSpeed');
+	await optionsPage.locator(`ui5-option::-p-text(${label})`).click();
+}
+
+/** Click like a user who first switches to that tab (background tabs don't render, so clicks would stall). */
+async function clickIn(page: Page, selector: string): Promise<void> {
+	await page.bringToFront();
+	await page.click(selector);
+}
+
+/** Computed page background, which follows the active UI5 theme. */
+const backgroundOf = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
 /** Convert a web_accessible_resources glob to a regex (supports * and ? wildcards) */
 function globToRegex(pattern: string): RegExp {
 	const escaped = pattern
@@ -112,32 +127,112 @@ describe('Chrome Extension E2E', () => {
 
 		beforeEach(async () => {
 			page = await openExtensionOptions(extensionId);
-			await page.waitForSelector('#badgeEnabledCheckbox', { timeout: 10000 });
+			await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+			await page.waitForSelector('#defaultSpeed ui5-option', { timeout: 10000 });
 		});
 
-		it('renders all controls', async () => {
-			const missing = await page.evaluate(() =>
-				['#defaultsEnabledCheckbox', '#defaultSpeedSelector', '#themeToggle'].filter((s) => !document.querySelector(s))
+		it('groups the settings under Playback and Appearance', async () => {
+			const headers = await page.$$eval('ui5-form-group', (groups) => groups.map((g) => g.getAttribute('header-text')));
+			expect(headers).toEqual(['Playback', 'Appearance']);
+		});
+
+		it('saves a picked default speed; turning it off keeps the speed for later', async () => {
+			expect(await page.$eval('#defaultSpeed', (el) => (el as HTMLElement & { value: string }).value)).toBe('off');
+
+			await pickDefaultSpeed(page, '1.5×');
+			await vi.waitFor(
+				async () => expect(await getStorageValue('sync', 'defaults')).toEqual({ enabled: true, playbackRate: 1.5 }),
+				WAIT
 			);
-			expect(missing).toEqual([]);
+
+			await pickDefaultSpeed(page, "Don't change");
+			await vi.waitFor(
+				async () => expect(await getStorageValue('sync', 'defaults')).toEqual({ enabled: false, playbackRate: 1.5 }),
+				WAIT
+			);
 		});
 
-		it('switches the page theme and remembers it', async () => {
-			const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-			const before = await background();
+		it('switches the theme explicitly, back to the system, and then follows OS changes', async () => {
+			const light = await backgroundOf(page);
 
-			await page.click('#themeToggle');
+			await page.click('[data-mode="dark"]');
+			await vi.waitFor(async () => expect(await backgroundOf(page)).not.toBe(light), WAIT);
+			expect(await getStorageValue('sync', 'theme')).toBe('sap_horizon_dark');
+			const dark = await backgroundOf(page);
 
-			await vi.waitFor(async () => expect(await background()).not.toBe(before), WAIT);
-			expect(await getStorageValue('sync', 'theme')).toMatch(/^sap_horizon/u);
+			await page.click('[data-mode="system"]');
+			await vi.waitFor(async () => expect(await backgroundOf(page)).toBe(light), WAIT);
+			expect(await getStorageValue('sync', 'theme')).toBeUndefined();
+
+			await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+			await vi.waitFor(async () => expect(await backgroundOf(page)).toBe(dark), WAIT);
 		});
 
 		it('has the badge enabled by default and saves turning it off', async () => {
-			expect(await page.$eval('#badgeEnabledCheckbox', (el) => (el as HTMLInputElement).checked)).toBe(true);
+			expect(await page.$eval('#badgeToggle', (el) => (el as HTMLInputElement).checked)).toBe(true);
 
-			await page.click('#badgeEnabledCheckbox');
+			await page.click('#badgeToggle');
 
 			await vi.waitFor(async () => expect(await getStorageValue('sync', 'badgeEnabled')).toBe(false), WAIT);
+		});
+	});
+
+	describe('Settings take effect', () => {
+		let options: Page;
+
+		beforeEach(async () => {
+			options = await openExtensionOptions(extensionId);
+			await options.waitForSelector('#defaultSpeed ui5-option', { timeout: 10000 });
+		});
+
+		it('a default speed picked in the options applies to videos opened afterwards; turning it off stops it', async () => {
+			await pickDefaultSpeed(options, '1.5×');
+			await vi.waitFor(
+				async () => expect(await getStorageValue('sync', 'defaults')).toMatchObject({ enabled: true }),
+				WAIT
+			);
+
+			const { page, tabId } = await openReadyPage('video.html');
+			await expectRates(page, [1.5]);
+			await expectBadge(tabId, '1.5');
+
+			await pickDefaultSpeed(options, "Don't change");
+			await vi.waitFor(
+				async () => expect(await getStorageValue('sync', 'defaults')).toMatchObject({ enabled: false }),
+				WAIT
+			);
+
+			const { page: next } = await openReadyPage('spa-video.html');
+			await next.waitForFunction(() => document.querySelector('video')!.readyState > 0);
+			expect(await getVideoRates(next)).toEqual([1]);
+		});
+
+		it('switching the badge off and on in the options updates open tabs immediately', async () => {
+			const { page, tabId } = await openReadyPage('video.html');
+			await setRateNatively(page, 2);
+			await expectBadge(tabId, '2');
+
+			await clickIn(options, '#badgeToggle');
+			await expectBadge(tabId, '');
+
+			await clickIn(options, '#badgeToggle');
+			await expectBadge(tabId, '2');
+		});
+
+		it('the theme picked in the options is used by the popup', async () => {
+			await clickIn(options, '[data-mode="dark"]');
+			await vi.waitFor(async () => expect(await getStorageValue('sync', 'theme')).toBe('sap_horizon_dark'), WAIT);
+			const dark = await backgroundOf(options);
+			const videoPage = await openTestPage('video.html');
+			const darkPopup = await openPopupForPage(videoPage);
+			expect(await backgroundOf(darkPopup)).toBe(dark);
+			await darkPopup.close();
+
+			await clickIn(options, '[data-mode="light"]');
+			await vi.waitFor(async () => expect(await getStorageValue('sync', 'theme')).toBe('sap_horizon'), WAIT);
+			const light = await backgroundOf(options);
+			expect(await backgroundOf(await openPopupForPage(videoPage))).toBe(light);
+			expect(light).not.toBe(dark);
 		});
 	});
 
@@ -235,7 +330,7 @@ describe('Chrome Extension E2E', () => {
 			expect((await readTooltip()).open).toBe(false);
 
 			await press();
-			expect(await readTooltip()).toMatchObject({ open: true, text: '1x' });
+			expect(await readTooltip()).toMatchObject({ open: true, text: '1×' });
 
 			await release();
 			expect((await readTooltip()).open).toBe(false);
@@ -245,7 +340,7 @@ describe('Chrome Extension E2E', () => {
 			await press();
 			await moveSlider(popup, 2, 'input');
 
-			await vi.waitFor(async () => expect((await readTooltip()).text).toBe('2x'), WAIT);
+			await vi.waitFor(async () => expect((await readTooltip()).text).toBe('2×'), WAIT);
 		});
 
 		it.each([
@@ -293,8 +388,8 @@ describe('Chrome Extension E2E', () => {
 			await page.click('#test-video', { button: 'right' });
 			await page.keyboard.press('Escape');
 
-			// Item '8' is "Ludicrous Speed (2.5x)"
-			await vi.waitFor(async () => expect(await checkedItems()).toContain('8'), WAIT);
+			// Menu item ids are the rates
+			await vi.waitFor(async () => expect(await checkedItems()).toContain('2.5'), WAIT);
 		});
 
 		it('choosing a speed changes only the right-clicked video and updates the badge', async () => {
@@ -303,13 +398,13 @@ describe('Chrome Extension E2E', () => {
 				videos.map((v) => (v as HTMLVideoElement).currentSrc)
 			);
 
-			// Video with a src attribute; item '6' is "Ludicrous Speed (2x)"
-			await chooseContextMenuItem(tabId, '6', srcAttrSrc!);
+			// Video with a src attribute
+			await chooseContextMenuItem(tabId, '2', srcAttrSrc!);
 			await expectRates(page, [1, 2]);
 			await expectBadge(tabId, '2');
 
-			// Video with a <source> child (matched via currentSrc); item '5' is "High Speed (1.5x)"
-			await chooseContextMenuItem(tabId, '5', sourceChildSrc!);
+			// Video with a <source> child (matched via currentSrc)
+			await chooseContextMenuItem(tabId, '1.5', sourceChildSrc!);
 			await expectRates(page, [1.5, 2]);
 			await expectBadge(tabId, '1.5');
 		});
@@ -326,7 +421,7 @@ describe('Chrome Extension E2E', () => {
 			await expectBadge(tabId, '');
 		});
 
-		it('while disabled no badge is shown; re-enabling shows it on the next change', async () => {
+		it('while disabled no badge is shown; re-enabling restores it right away', async () => {
 			await setSyncStorage({ badgeEnabled: false });
 			const { page, tabId } = await openReadyPage('video.html');
 
@@ -335,8 +430,7 @@ describe('Chrome Extension E2E', () => {
 			expect(await getBadgeText(tabId)).toBe('');
 
 			await setSyncStorage({ badgeEnabled: true });
-			await setRateNatively(page, 2);
-			await expectBadge(tabId, '2');
+			await expectBadge(tabId, '1.5');
 		});
 	});
 
