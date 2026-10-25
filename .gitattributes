@@ -1,2 +1,8 @@
-# Enforce LF line endings for all text files
+# Enforce LF line endings for all text files (overrides a global core.autocrlf=true)
 * text=auto eol=lf
+
+# Binary assets: never normalize line endings or diff as text
+*.png binary
+*.mp4 binary
+*.afphoto binary
+*.zip binary
