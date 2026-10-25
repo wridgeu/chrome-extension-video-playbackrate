@@ -1,4 +1,4 @@
-import { MessagingAction, type MessagingRequestPayload, type Defaults } from '@src/types';
+import { MessagingAction, type MessagingRequestPayload, type DefaultsStorage } from '@src/types';
 
 /** Symbol to mark video elements that already have listeners attached */
 const LISTENER_ATTACHED = Symbol('listenerAttached');
@@ -19,23 +19,24 @@ function sendMessageSafe(message: MessagingRequestPayload): void {
 
 /** Load default playback rate from storage, or null if defaults are disabled. */
 async function getDefaultPlaybackRate(): Promise<number | null> {
-	const { defaults } = (await chrome.storage.sync.get('defaults')) as Defaults;
+	const { defaults } = (await chrome.storage.sync.get('defaults')) as DefaultsStorage;
 	if (!defaults?.enabled) return null;
 	return defaults.playbackRate ?? 1;
 }
 
-/** Apply the default playback rate (if enabled) to the given videos and report it to the service worker. */
+/** Apply the default playback rate (if enabled) to the given videos and report it; resolves whether it was applied. */
 export async function applyDefaultPlaybackRate(
 	videos: ArrayLike<HTMLVideoElement> = document.querySelectorAll('video')
-): Promise<void> {
-	if (videos.length === 0) return;
+): Promise<boolean> {
+	if (videos.length === 0) return false;
 	const playbackRate = await getDefaultPlaybackRate();
-	if (playbackRate === null) return;
+	if (playbackRate === null) return false;
 
 	for (const video of Array.from(videos)) {
 		video.playbackRate = playbackRate;
 	}
 	sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate });
+	return true;
 }
 
 /**
@@ -74,11 +75,11 @@ export async function initContentScript(): Promise<void> {
 
 	const existingVideos = document.querySelectorAll('video');
 	existingVideos.forEach((video) => setupVideoListeners(video));
-	await applyDefaultPlaybackRate(existingVideos);
+	const appliedDefault = await applyDefaultPlaybackRate(existingVideos);
 
-	// Report the current state so the badge/context menu are correct even when defaults are disabled
+	// Without a default, report the current rate so the badge and context menu still match the page
 	const [firstVideo] = existingVideos;
-	if (firstVideo) {
+	if (firstVideo && !appliedDefault) {
 		sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate: firstVideo.playbackRate });
 	}
 

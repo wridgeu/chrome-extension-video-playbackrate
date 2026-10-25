@@ -4,7 +4,7 @@ import { initPopup } from '@src/popup';
 import { MessagingAction } from '@src/types';
 import type Slider from '@ui5/webcomponents/dist/Slider.js';
 
-vi.mock('@src/util/ThemeSwitcher.js', () => ({
+vi.mock('@src/util/ThemeSwitcher', () => ({
 	ThemeSwitcher: class {
 		init() {
 			return Promise.resolve(this);

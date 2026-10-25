@@ -7,7 +7,7 @@ const themeSwitcher = vi.hoisted(() => ({
 	getMode: vi.fn<() => string>(() => 'system'),
 	setMode: vi.fn<(mode: string) => Promise<void>>(() => Promise.resolve())
 }));
-vi.mock('@src/util/ThemeSwitcher.js', () => ({
+vi.mock('@src/util/ThemeSwitcher', () => ({
 	ThemeSwitcher: class {
 		getMode = themeSwitcher.getMode;
 		setMode = themeSwitcher.setMode;
@@ -95,6 +95,12 @@ describe('Options Page', () => {
 			choose('2.5');
 
 			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ defaults: { enabled: true, playbackRate: 2.5 } });
+		});
+
+		it('"Don\'t change" keeps the stored speed for later', () => {
+			choose('off');
+
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ defaults: { enabled: false, playbackRate: 1.5 } });
 		});
 
 		it('"Don\'t change" disables defaults but keeps the last speed', () => {

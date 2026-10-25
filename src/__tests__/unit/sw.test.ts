@@ -126,10 +126,23 @@ describe('Service Worker', () => {
 			);
 		});
 
-		it('re-injects after a main frame navigation', () => {
+		it('re-injects after a main frame navigation and forgets the old page rate', () => {
 			onUpdated(501, { status: 'complete' });
 			onBeforeNavigate({ tabId: 501, frameId: 0 });
 			onUpdated(501, { status: 'complete' });
+
+			expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2);
+			expect(chromeMock.storage.local.remove).toHaveBeenCalledExactlyOnceWith('playbackRate_501');
+		});
+
+		it('retries on the next load when an injection failed', () => {
+			chromeMock.scripting.executeScript.mockImplementationOnce((_details: unknown, callback: () => void) => {
+				chromeMock.runtime.lastError = { message: 'Cannot access this page' };
+				callback();
+				chromeMock.runtime.lastError = null;
+			});
+			onUpdated(503, { status: 'complete' });
+			onUpdated(503, { status: 'complete' });
 
 			expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2);
 		});
@@ -226,12 +239,13 @@ describe('Service Worker', () => {
 			expect(chromeMock.storage.local.remove).toHaveBeenCalledWith('playbackRate_123');
 		});
 
-		it('does not re-inject after a subframe navigation', () => {
+		it('does not re-inject or forget the rate after a subframe navigation', () => {
 			onUpdated(502, { status: 'complete' });
 			onBeforeNavigate({ tabId: 502, frameId: 1 });
 			onUpdated(502, { status: 'complete' });
 
 			expect(chromeMock.scripting.executeScript).toHaveBeenCalledOnce();
+			expect(chromeMock.storage.local.remove).not.toHaveBeenCalled();
 		});
 	});
 });

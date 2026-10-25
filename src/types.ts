@@ -22,7 +22,7 @@ type UpdateUiPayload = {
 };
 
 /** User's default playback rate configuration stored in sync storage. */
-export type Defaults = {
+export type DefaultsStorage = {
 	defaults?: {
 		enabled?: boolean;
 		playbackRate?: number;

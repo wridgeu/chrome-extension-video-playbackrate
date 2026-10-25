@@ -4,7 +4,9 @@
 		<title>Iframe Video Test Page</title>
 	</head>
 	<body>
-		<h1>Page with video in iframe</h1>
+		<h1>Page with videos only in iframes</h1>
 		<iframe id="video-iframe" src="/video.html" width="660" height="400"></iframe>
+		<!-- localhost vs. 127.0.0.1 is a different site, so this frame runs out of process like a real embed -->
+		<iframe id="cross-site-iframe" src="http://localhost:3333/video.html" width="660" height="400"></iframe>
 	</body>
 </html>

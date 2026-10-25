@@ -109,27 +109,22 @@ export async function initPopup(): Promise<void> {
 	sliderContainer.hidden = playbackRate === null;
 	if (tabId === undefined || playbackRate === null) return;
 
-	let currentRate = playbackRate;
-	slider.value = currentRate;
+	slider.value = playbackRate;
 	// Ensure UI shows correct rate when popup opens (fixes any stale badge/context menu values)
-	sendUiUpdate(currentRate, tabId);
+	sendUiUpdate(playbackRate, tabId);
 	setupTooltip(slider, tooltip);
 
 	// 'change' event only fires when user finishes interacting (not on programmatic changes)
 	slider.addEventListener('change', () => {
-		currentRate = slider.value;
-		setTabPlaybackRate(tabId, currentRate);
-		sendUiUpdate(currentRate, tabId);
+		setTabPlaybackRate(tabId, slider.value);
+		sendUiUpdate(slider.value, tabId);
 	});
 
 	// Sync slider when video rate changes via native controls or context menu
 	const storageKey = getPlaybackRateStorageKey(tabId);
 	chrome.storage.local.onChanged.addListener((changes) => {
 		const newRate = changes[storageKey]?.newValue;
-		if (typeof newRate === 'number' && newRate !== currentRate) {
-			currentRate = newRate;
-			slider.value = newRate;
-		}
+		if (typeof newRate === 'number') slider.value = newRate;
 	});
 }
 
