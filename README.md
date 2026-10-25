@@ -16,24 +16,24 @@ I'm just getting started with this and build it in public in order to hold mysel
 
 ## ToDo
 
-- [X] Actually implement the core/base functionality (KISS)
-- [X] How is an extension being deployed?
+- [x] Actually implement the core/base functionality (KISS)
+- [x] How is an extension being deployed?
 - [x] How is a third party library being added (npm)?
   - Kind of answered this myself, although not really using a third party library but WebComponents instead
 
 What else could I do with it?
-  - [x] Rework UI & use ShadowParts (Shadow DOM CSS)
-  - [x] Add proper error-handling
-  - [X] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
-  - [X] Learn more about .d.ts files and how to declare & add them into the project
-  - [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
-  - [x] Configure [prettier](https://prettier.io/docs/en/install.html)
-  - [x] Add and configure ESLint
-  - [x] Rethink the folder structure
-  - [x] Configure [Vite](https://vitejs.dev/) for building the project
-    - TS => JS => bundle/build/merge JS + Public folder => Dist
-  - [?] Make extension cross-browser compatible
-  - [?] Refactoring & Creation of Types 
+
+- [x] Rework UI & use ShadowParts (Shadow DOM CSS)
+- [x] Add proper error-handling
+- [x] Make extension [themable](https://sap.github.io/ui5-webcomponents/playground/advanced/configuration/#theme) (include in options)
+- [x] Learn more about .d.ts files and how to declare & add them into the project
+- [x] Make UI respect your latest change within the tab (if you selected 2 and reopen the extension it should also reflect speedValue 2)
+- [x] Configure formatting & linting with [oxfmt and oxlint](https://oxc.rs) (incl. complexity limits)
+- [x] Rethink the folder structure
+- [x] Configure [Vite](https://vitejs.dev/) for building the project
+  - TS => JS => bundle/build/merge JS + Public folder => Dist
+- [?] Make extension cross-browser compatible
+- [?] Refactoring & Creation of Types
 
 ## Architectural _Overview_ of an Extension
 
@@ -44,6 +44,7 @@ _Note:_ With Manifest V3 the "background page" is now using a [Service Worker](h
 ### High-Level Overview
 
 ![](./docs/img/ui-elements.png)
+
 ### Content scripts
 
 More details on content scripts can be found [here](https://developer.chrome.com/docs/extensions/mv3/content_scripts/).
@@ -53,6 +54,7 @@ More details on content scripts can be found [here](https://developer.chrome.com
 Communication between the content script and the parent extension is done either by using the [storage API](https://developer.chrome.com/docs/extensions/reference/storage/) or using [messages](https://developer.chrome.com/docs/extensions/mv3/messaging/).
 
 ![](./docs/img/content-scripts_2.png)
+
 ## Sources
 
 - [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Build_a_cross_browser_extension)

@@ -1,16 +1,16 @@
 {
   "compilerOptions": {
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
     "target": "ESNext",
     "module": "ESNext",
-    "rootDir": "./",
-    "outDir": "./dist/js/",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "sourceMap": false,
     "moduleResolution": "bundler",
-    "types": ["vite/client", "chrome"],
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["vite/client", "chrome", "node"],
     "paths": {
       "@src/*": ["./src/*"],
       "@tests/*": ["./src/__tests__/*"]
