@@ -114,9 +114,9 @@ export async function getTabId(page: Page): Promise<number> {
 }
 
 /**
- * Ensure the content script is loaded and initialized in every frame of the page.
- * Puppeteer may not reliably trigger tabs.onUpdated, so this imports the module itself: in the extension's
- * isolated world the import resolves once the (already or newly) loaded module has finished initializing.
+ * Wait until the content script has initialized in every frame, so a test can act right away.
+ * Importing the module in the extension's isolated world resolves once the (already or newly) loaded module has
+ * finished initializing. The automatic injection itself is covered by a test that doesn't use this helper.
  */
 export async function waitForContentScript(page: Page): Promise<void> {
 	const tabId = await getTabId(page);

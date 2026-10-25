@@ -9,7 +9,7 @@ This extension is primarily for _chrome_ and (so far) mostly based on the gettin
 Well ... quite simple:
 
 - I wanted to check out how a browser extension is made (a bit more hands-on)
-- Wanted to explore some new things (e.g. Typescript, Vite, Prettier, Linting, Workflows, GH-Hooks and so on...)
+- Wanted to explore some new things (e.g. Typescript, Vite, Formatting, Linting, Workflows, GH-Hooks and so on...)
 - Even though there are already extensions out there to increase the speed of a video, I wanted my own 🤪
 
 I'm just getting started with this and build it in public in order to hold myself accountable and actually pull through. 🪅 Progress will be slow due to lots of other thing going on in my life.
@@ -34,6 +34,31 @@ What else could I do with it?
   - TS => JS => bundle/build/merge JS + Public folder => Dist
 - [?] Make extension cross-browser compatible
 - [?] Refactoring & Creation of Types
+
+## Development
+
+Requires Node.js 24+.
+
+```sh
+npm ci                                # also installs the git hooks (lint + typecheck before each commit)
+npx puppeteer browsers install chrome # browser for the e2e tests, if npm skipped puppeteer's install script
+npm run build                         # builds the extension into dist/
+```
+
+Load `dist/` as an unpacked extension via `chrome://extensions` (developer mode). `npm run build:watch` rebuilds on changes.
+
+| Script                      | What it does                                                          |
+| --------------------------- | --------------------------------------------------------------------- |
+| `npm run lint` / `lint:fix` | oxlint (incl. complexity limits) and the oxfmt format check / autofix |
+| `npm run typecheck`         | TypeScript without emitting                                           |
+| `npm run test:unit`         | Unit tests (Vitest + jsdom); `test:watch` and `test:coverage` too     |
+| `npm run test:e2e`          | Builds, then runs the real extension in Chrome via Puppeteer          |
+| `npm test`                  | Builds, then runs both suites                                         |
+| `npm run zip`               | Packs `dist/` into `cbe-vpr_<version>.dist.zip`                       |
+
+**Releasing:** bump `version` in `package.json` (the manifest takes it from there), merge to `master` and push a matching tag (`1.2.3` or `v1.2.3`). The `create release` workflow checks that the tag is on `master` and matches the version, runs all checks, and attaches the zip to a GitHub release.
+
+`allowScripts` in `package.json` pins the puppeteer version whose install script was reviewed. After a puppeteer update, review it and run `npm approve-scripts puppeteer`.
 
 ## Architectural _Overview_ of an Extension
 
@@ -70,9 +95,6 @@ Communication between the content script and the parent extension is done either
 - [TS: Namespaces](https://medium.com/jspoint/typescript-namespaces-f43cd002c08c)
 - [TS: Udemy Course](https://www.udemy.com/course/understanding-typescript)
 - [Background Script M3](https://youtu.be/29dmxQ9QQ4o?t=416)
-- [Github Release Action](https://github.com/ncipollo/release-action)
-  - [GH Marketplace](https://github.com/marketplace/actions/create-release)
-  - [alternative1](https://github.com/softprops/action-gh-release)
-  - [alternative2](https://github.com/marketplace/actions/automatic-releases)
+- [GitHub CLI: gh release create](https://cli.github.com/manual/gh_release_create)
 
 <p align=center><a href="https://www.flaticon.com/premium-icon/fast-forward_5148595?term=fast%20forward&related_id=5148595">Icons by Flaticon</a></p>

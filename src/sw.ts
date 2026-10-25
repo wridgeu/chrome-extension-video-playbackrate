@@ -121,10 +121,12 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 	chrome.storage.local.remove(getPlaybackRateStorageKey(tabId));
 });
 
-// A main frame navigation needs a fresh injection (Chrome resets the tab's badge itself)
+// A main frame navigation needs a fresh injection, and the old page's rate no longer applies
+// (Chrome resets the tab's badge itself, but re-enabling the badge would restore the stored rate)
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
 	if (details.frameId === 0) {
 		injectedTabs.delete(details.tabId);
+		chrome.storage.local.remove(getPlaybackRateStorageKey(details.tabId));
 	}
 });
 

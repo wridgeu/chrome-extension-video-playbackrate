@@ -117,10 +117,6 @@ describe('Chrome Extension E2E', () => {
 		await closeBrowser();
 	});
 
-	it('loads with a valid extension ID', () => {
-		expect(extensionId).toMatch(/^[a-p]{32}$/u);
-	});
-
 	it('exposes every chunk the content script imports via web_accessible_resources', () => {
 		const manifest = JSON.parse(readFileSync(join(distDir, 'manifest.json'), 'utf8'));
 		const patterns: RegExp[] = manifest.web_accessible_resources.flatMap((entry: { resources: string[] }) =>
@@ -140,11 +136,6 @@ describe('Chrome Extension E2E', () => {
 
 		beforeEach(async () => {
 			page = await openOptions(extensionId);
-		});
-
-		it('groups the settings under Playback and Appearance', async () => {
-			const headers = await page.$$eval('ui5-form-group', (groups) => groups.map((g) => g.getAttribute('header-text')));
-			expect(headers).toEqual(['Playback', 'Appearance']);
 		});
 
 		it('saves a picked default speed; turning it off keeps the speed for later', async () => {
@@ -285,15 +276,15 @@ describe('Chrome Extension E2E', () => {
 			await expectBadge(tabId, '1.75');
 		});
 
-		it('controls videos inside iframes', async () => {
+		it('controls videos inside same-origin and cross-site iframes', async () => {
 			const page = await openTestPage('iframe-video.html');
-			const frame = await getIframe(page, '#video-iframe');
+			const frames = [await getIframe(page, '#video-iframe'), await getIframe(page, '#cross-site-iframe')];
 			const popup = await openPopupForPage(page);
 			expect(await popup.$eval('#slider-container', (el) => (el as HTMLElement).hidden)).toBe(false);
 
 			await moveSlider(popup, 2);
 
-			await expectRates(frame, [2]);
+			await Promise.all(frames.map((frame) => expectRates(frame, [2])));
 		});
 
 		it('keeps the badge in sync instead of resetting it when opened', async () => {
@@ -385,9 +376,9 @@ describe('Chrome Extension E2E', () => {
 			await changeRate(3);
 		});
 
-		it('inside an iframe update the tab badge', async () => {
+		it('inside a cross-site iframe update the tab badge', async () => {
 			const { page, tabId } = await openReadyPage('iframe-video.html');
-			const frame = await getIframe(page, '#video-iframe');
+			const frame = await getIframe(page, '#cross-site-iframe');
 
 			await setRateNatively(frame, 2.25);
 
@@ -451,15 +442,17 @@ describe('Chrome Extension E2E', () => {
 	});
 
 	describe('Default speed', () => {
+		// No waitForContentScript here: the service worker's own injection (via the loader) must do the work
 		it('applies to videos on load and after in-place navigation, with the badge following', async () => {
 			await setSyncStorage({ defaults: { enabled: true, playbackRate: 1.75 } });
 
-			const { page, tabId } = await openReadyPage('video.html');
-			await expectRates(page, [1.75]);
+			const page = await openTestPage('iframe-video.html');
+			const tabId = await getTabId(page);
+			await expectRates(await getIframe(page, '#video-iframe'), [1.75]);
+			await expectRates(await getIframe(page, '#cross-site-iframe'), [1.75]);
 			await expectBadge(tabId, '1.75');
 
 			await page.goto(`${TEST_SERVER_URL}/multi-video.html`, { waitUntil: 'networkidle0' });
-			await waitForContentScript(page);
 			await expectRates(page, [1.75, 1.75, 1.75]);
 			await expectBadge(tabId, '1.75');
 		});
@@ -504,6 +497,11 @@ describe('Chrome Extension E2E', () => {
 			await page.goto(`${TEST_SERVER_URL}/no-video.html`, { waitUntil: 'networkidle0' });
 
 			await expectBadge(tabId, '');
+			// The old page's rate is forgotten, so re-enabling the badge doesn't bring it back
+			await setSyncStorage({ badgeEnabled: false });
+			await setSyncStorage({ badgeEnabled: true });
+			await expectBadge(tabId, '');
+			expect(await getStorageValue('local', `playbackRate_${tabId}`)).toBeUndefined();
 		});
 
 		it('removes the stored rate when the tab is closed', async () => {

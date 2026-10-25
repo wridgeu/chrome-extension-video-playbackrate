@@ -40,7 +40,7 @@ function createChromeMockObject(syncStorage: Record<string, unknown>, localStora
 			sendMessage: resolved({}),
 			onMessage: createMockEvent(),
 			onInstalled: createMockEvent(),
-			lastError: null
+			lastError: null as chrome.runtime.LastError | null
 		},
 		storage: {
 			sync: createMockStorageArea(syncStorage),

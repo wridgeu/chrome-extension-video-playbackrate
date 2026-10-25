@@ -10,7 +10,6 @@ const inputFiles = Object.fromEntries(
 	])
 );
 
-// Shared path aliases
 const aliases = {
 	'@src': path.resolve(import.meta.dirname, 'src'),
 	'@tests': path.resolve(import.meta.dirname, 'src/__tests__')
@@ -28,13 +27,11 @@ export default defineConfig({
 	publicDir: false,
 
 	build: {
-		// Output directory for JS files
 		outDir: 'dist/js',
 
 		// Don't empty outDir since static files are copied separately
 		emptyOutDir: false,
 
-		// Target modern Chrome
 		target: 'esnext',
 
 		rolldownOptions: {
@@ -50,14 +47,11 @@ export default defineConfig({
 	plugins: [
 		viteStaticCopy({
 			targets: [
-				// Copy HTML files
 				{ src: 'public/popup.html', dest: '..', rename: { stripBase: true } },
 				{ src: 'public/options.html', dest: '..', rename: { stripBase: true } },
-				// Copy styles
 				{ src: 'public/styles/*', dest: '../styles', rename: { stripBase: true } },
-				// Copy icons
 				{ src: 'public/img/*', dest: '../img', rename: { stripBase: true } },
-				// Copy and transform manifest.json
+				// The version comes from package.json, so a release only bumps one file
 				{
 					src: 'public/manifest.json',
 					dest: '..',
@@ -73,7 +67,6 @@ export default defineConfig({
 		})
 	],
 
-	// Vitest configuration
 	test: {
 		coverage: {
 			provider: 'v8',

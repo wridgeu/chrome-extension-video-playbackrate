@@ -65,7 +65,16 @@ describe('ContentScript', () => {
 
 			await initContentScript();
 
-			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith(uiUpdate(1.5));
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledExactlyOnceWith(uiUpdate(1.5));
+		});
+
+		it('reports only the applied default rate when defaults are enabled', async () => {
+			mockStorage.defaults = { enabled: true, playbackRate: 2 };
+			addVideos();
+
+			await initContentScript();
+
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledExactlyOnceWith(uiUpdate(2));
 		});
 
 		it('sends nothing when the page has no videos', async () => {
@@ -85,10 +94,13 @@ describe('ContentScript', () => {
 			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledExactlyOnceWith(uiUpdate(1.75));
 		});
 
-		it('attaches listeners only once when initialized twice', async () => {
+		it('attaches listeners only once to a video that is removed and re-added', async () => {
 			const [video] = addVideos();
 			await initContentScript();
-			await initContentScript();
+			video!.remove();
+			document.body.append(video!);
+			// The observer has handled the re-added video once it looks up the default rate for it
+			await vi.waitFor(() => expect(chromeMock.storage.sync.get).toHaveBeenCalledTimes(2));
 			chromeMock.runtime.sendMessage.mockClear();
 
 			video!.dispatchEvent(new Event('ratechange'));

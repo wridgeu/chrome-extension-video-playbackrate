@@ -4,11 +4,10 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "description": "Some experiment with browser extensions.",
+  "description": "Chrome extension to adjust the playback speed of videos",
   "repository": {
     "type": "git",
-    "url": "https://github.com/wridgeu/chrome-extension-video-playbackrate.git",
-    "directory": "src"
+    "url": "https://github.com/wridgeu/chrome-extension-video-playbackrate.git"
   },
   "type": "module",
   "scripts": {
@@ -24,7 +23,9 @@
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --coverage --project unit",
     "test:e2e": "vitest run --project e2e",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build",
+    "pretest:e2e": "npm run build"
   },
   "keywords": [
     "Chrome Extension",

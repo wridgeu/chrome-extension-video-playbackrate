@@ -13,11 +13,11 @@ import '@ui5/webcomponents/dist/SegmentedButtonItem.js';
 import '@ui5/webcomponents/dist/Select.js';
 import '@ui5/webcomponents/dist/Switch.js';
 
-import type { Defaults } from '@src/types';
+import type { DefaultsStorage } from '@src/types';
 import { PLAYBACK_RATES, formatRate } from '@src/util/playback';
 import { ThemeSwitcher, type ThemeMode } from '@src/util/ThemeSwitcher';
 
-type OptionsStorage = Defaults & { badgeEnabled?: boolean };
+type OptionsStorage = DefaultsStorage & { badgeEnabled?: boolean };
 
 /** Speed select value for "leave the site's speed alone" (= defaults disabled). */
 const OFF = 'off';
