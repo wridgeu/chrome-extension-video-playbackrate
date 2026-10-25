@@ -1,110 +1,70 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { chromeMock, resetChromeMocks } from '@tests/unit/setup';
-import { getEventHandler } from '@tests/unit/utils/dom';
+import { callsOf, chromeMock } from '@tests/unit/setup';
 import { initPopup } from '@src/popup';
 import { MessagingAction } from '@src/types';
 import type Slider from '@ui5/webcomponents/dist/Slider.js';
 
-// Mock the ThemeSwitcher module
 vi.mock('@src/util/ThemeSwitcher.js', () => ({
 	ThemeSwitcher: class {
-		async init() {
-			return Promise.resolve();
+		init() {
+			return Promise.resolve(this);
 		}
 	}
 }));
 
+const TAB_ID = 123;
+
+/** Stand-in for ui5-slider: a real element with the Slider properties the popup uses and a shadow handle. */
+function createSlider(): Slider {
+	const slider = document.createElement('div') as unknown as Slider;
+	Object.assign(slider, { value: 1, min: 0, max: 4 });
+	const handle = document.createElement('div');
+	slider.attachShadow({ mode: 'open' }).append(handle);
+	handle.setAttribute('part', 'handle');
+	handle.getBoundingClientRect = () => ({ top: 10, left: 50, right: 100, height: 20 }) as DOMRect;
+	return slider;
+}
+
+/** Make the active tab report the given rate for its first video (null = no videos). */
+function mockTabVideoRate(rate: number | null) {
+	chromeMock.tabs.query.mockResolvedValue([{ id: TAB_ID }]);
+	chromeMock.scripting.executeScript.mockResolvedValue([{ result: null }, { result: rate }]);
+}
+
 describe('Popup', () => {
-	let slider: Partial<Slider>;
-	let tooltip: Partial<HTMLElement>;
-	let noVideosEl: Partial<HTMLElement>;
-	let sliderContainer: Partial<HTMLElement>;
+	let slider: Slider;
+	let tooltip: HTMLElement;
+	let noVideosEl: HTMLElement;
+	let sliderContainer: HTMLElement;
 
 	beforeEach(() => {
-		resetChromeMocks();
-
-		// Create mock slider element with UI5 Slider interface
-		slider = {
-			id: 'slider',
-			value: 1,
-			min: '0.25',
-			max: '4',
-			addEventListener: vi.fn(),
-			shadowRoot: {
-				querySelector: vi.fn().mockReturnValue({
-					getBoundingClientRect: () => ({
-						top: 10,
-						left: 50,
-						right: 100,
-						bottom: 30,
-						width: 50,
-						height: 20
-					})
-				})
-			} as unknown as ShadowRoot
-		} as unknown as Partial<Slider>;
-
-		// Create mock tooltip element
-		tooltip = {
-			id: 'tooltip',
-			textContent: '',
-			offsetWidth: 40,
-			style: {} as CSSStyleDeclaration,
-			getBoundingClientRect: () =>
-				({
-					width: 40,
-					height: 20,
-					top: 0,
-					left: 0,
-					right: 40,
-					bottom: 20
-				}) as DOMRect,
-			showPopover: vi.fn(),
-			hidePopover: vi.fn(),
-			matches: vi.fn().mockReturnValue(false)
-		};
-
-		// Create mock no-videos element
-		noVideosEl = {
-			id: 'no-videos',
-			hidden: false
-		};
-
-		// Create mock slider-container element
-		sliderContainer = {
-			id: 'slider-container',
-			hidden: false
-		};
-
-		// Mock getElementById using direct assignment (more reliable than spyOn after reset)
-		document.getElementById = vi.fn((id: string) => {
-			if (id === 'slider') return slider as any;
-			if (id === 'tooltip') return tooltip as any;
-			if (id === 'no-videos') return noVideosEl as any;
-			if (id === 'slider-container') return sliderContainer as any;
-			return null;
-		}) as any;
-
-		// Mock document.addEventListener
-		document.addEventListener = vi.fn() as any;
+		document.body.innerHTML = `
+			<span id="no-videos" hidden></span>
+			<div id="slider-container" hidden><div id="tooltip"></div></div>`;
+		noVideosEl = document.querySelector('#no-videos')!;
+		sliderContainer = document.querySelector('#slider-container')!;
+		tooltip = document.querySelector('#tooltip')!;
+		tooltip.showPopover = vi.fn<() => void>();
+		tooltip.hidePopover = vi.fn<() => void>();
+		tooltip.getBoundingClientRect = () => ({ width: 40, height: 20 }) as DOMRect;
+		slider = createSlider();
+		slider.id = 'slider';
+		sliderContainer.prepend(slider);
 	});
 
 	describe('initialization', () => {
-		it('queries for active tab on initialization', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: null }]);
+		it('shows the no-videos message when no frame has a video', async () => {
+			mockTabVideoRate(null);
 
 			await initPopup();
 
-			expect(chromeMock.tabs.query).toHaveBeenCalledWith({
-				active: true,
-				currentWindow: true
-			});
+			expect(noVideosEl.hidden).toBe(false);
+			expect(sliderContainer.hidden).toBe(true);
+			expect(chromeMock.runtime.sendMessage).not.toHaveBeenCalled();
 		});
 
-		it('shows no-videos message when no videos found', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: null }]);
+		it('shows the no-videos message when scripting is not allowed on the tab', async () => {
+			chromeMock.scripting.executeScript.mockRejectedValue(new Error('Cannot access a chrome:// URL'));
 
 			await initPopup();
 
@@ -112,185 +72,111 @@ describe('Popup', () => {
 			expect(sliderContainer.hidden).toBe(true);
 		});
 
-		it('shows slider when videos are found', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 1.5, videoCount: 1 } }]);
+		it('shows the slider at the rate of the first frame with a video and re-syncs the badge', async () => {
+			mockTabVideoRate(2);
 
 			await initPopup();
 
 			expect(noVideosEl.hidden).toBe(true);
 			expect(sliderContainer.hidden).toBe(false);
-		});
-
-		it('sets slider value to current playback rate', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 2, videoCount: 1 } }]);
-
-			await initPopup();
-
 			expect(slider.value).toBe(2);
-		});
-
-		it('defaults slider value to 1 when no videos found', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: null }]);
-
-			await initPopup();
-
-			expect(slider.value).toBe(1);
-		});
-
-		it('handles scripting errors gracefully', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockRejectedValue(new Error('Scripting not allowed'));
-
-			await initPopup();
-
-			expect(noVideosEl.hidden).toBe(false);
-			expect(sliderContainer.hidden).toBe(true);
-			expect(slider.value).toBe(1);
-		});
-	});
-
-	describe('event handlers', () => {
-		it('registers tooltip show/hide handlers', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: null }]);
-
-			await initPopup();
-
-			expect(slider.addEventListener).toHaveBeenCalledWith('mousedown', expect.any(Function));
-			expect(slider.addEventListener).toHaveBeenCalledWith('touchstart', expect.any(Function));
-			expect(document.addEventListener).toHaveBeenCalledWith('mouseup', expect.any(Function));
-			expect(document.addEventListener).toHaveBeenCalledWith('touchend', expect.any(Function));
-		});
-
-		it('registers input handler on slider', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: null }]);
-
-			await initPopup();
-
-			expect(slider.addEventListener).toHaveBeenCalledWith('input', expect.any(Function));
-		});
-	});
-
-	describe('slider change event', () => {
-		/** Simulates user completing slider interaction (change event) */
-		const simulateSliderChange = (
-			sliderEl: Partial<Slider>,
-			newValue: number,
-			changeHandler: ((e: Event) => void) | undefined
-		) => {
-			sliderEl.value = newValue;
-			const changeEvent = new Event('change', { bubbles: true });
-			Object.defineProperty(changeEvent, 'target', { value: sliderEl });
-			changeHandler?.(changeEvent);
-		};
-
-		it('executes script to update video playback rate', async () => {
-			const tabId = 123;
-			chromeMock.tabs.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
-
-			await initPopup();
-
-			const changeHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'change');
-			expect(changeHandler).toBeDefined();
-
-			simulateSliderChange(slider, 2, changeHandler);
-
-			expect(chromeMock.scripting.executeScript).toHaveBeenCalledWith({
-				target: { tabId, allFrames: true },
-				func: expect.any(Function),
-				args: [2]
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
+				action: MessagingAction.UPDATE_UI,
+				playbackRate: 2,
+				tabId: TAB_ID
 			});
 		});
 
-		it('sends UPDATE_UI message', async () => {
-			const tabId = 456;
-			chromeMock.tabs.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
+		it('reads the first video of each frame of the active tab', async () => {
+			mockTabVideoRate(1);
 
 			await initPopup();
 
-			const changeHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'change');
+			expect(chromeMock.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
+			const [injection] = callsOf<[{ func: () => unknown }]>(chromeMock.scripting.executeScript)[0]!;
+			document.body.innerHTML = '<video></video><video></video>';
+			document.querySelector('video')!.playbackRate = 1.5;
+			expect(injection.func()).toBe(1.5);
+		});
+	});
 
-			simulateSliderChange(slider, 1.75, changeHandler);
+	describe('slider change', () => {
+		it('sets the rate on all videos in all frames and syncs the badge', async () => {
+			mockTabVideoRate(1);
+			await initPopup();
+			chromeMock.runtime.sendMessage.mockClear();
+
+			slider.value = 2.5;
+			slider.dispatchEvent(new Event('change'));
+
+			const [injection] = callsOf<[{ target: unknown; func: (rate: number) => void; args: number[] }]>(
+				chromeMock.scripting.executeScript
+			)[1]!;
+			expect(injection.target).toEqual({ tabId: TAB_ID, allFrames: true });
+			expect(injection.args).toEqual([2.5]);
+			document.body.innerHTML = '<video></video><video></video>';
+			injection.func(2.5);
+			expect(Array.from(document.querySelectorAll('video'), (v) => v.playbackRate)).toEqual([2.5, 2.5]);
 
 			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
 				action: MessagingAction.UPDATE_UI,
-				playbackRate: 1.75,
-				tabId
+				playbackRate: 2.5,
+				tabId: TAB_ID
 			});
 		});
+	});
 
-		it('stores playback rate in local storage', async () => {
-			const tabId = 789;
-			chromeMock.tabs.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
-
+	describe('tooltip', () => {
+		beforeEach(async () => {
+			mockTabVideoRate(1);
 			await initPopup();
+		});
 
-			const changeHandler = getEventHandler(slider.addEventListener as ReturnType<typeof vi.fn>, 'change');
+		it('opens on mousedown, shows the rate right of the handle on the left half, and closes on mouseup', () => {
+			slider.value = 0.5;
+			slider.dispatchEvent(new Event('mousedown'));
 
-			simulateSliderChange(slider, 2.5, changeHandler);
+			expect(tooltip.showPopover).toHaveBeenCalled();
+			expect(tooltip.textContent).toBe('0.5x');
+			expect(tooltip.style.left).toBe('104px');
+			expect(tooltip.style.top).toBe('10px');
 
-			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
-				[`playbackRate_${tabId}`]: 2.5
-			});
+			document.dispatchEvent(new Event('mouseup'));
+			expect(tooltip.hidePopover).toHaveBeenCalled();
+		});
+
+		it('sits left of the handle on the right half', () => {
+			slider.value = 3;
+			slider.dispatchEvent(new Event('touchstart'));
+
+			expect(tooltip.style.left).toBe('6px');
+		});
+
+		it('follows the value while dragging only when open', () => {
+			const isOpen = vi.spyOn(tooltip, 'matches').mockReturnValue(false);
+			slider.value = 2;
+			slider.dispatchEvent(new Event('input'));
+			expect(tooltip.textContent).toBe('');
+
+			isOpen.mockReturnValue(true);
+			slider.dispatchEvent(new Event('input'));
+			expect(tooltip.textContent).toBe('2x');
 		});
 	});
 
 	describe('storage sync', () => {
-		it('registers storage change listener for current tab', async () => {
-			const tabId = 999;
-			chromeMock.tabs.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
-
+		it('moves the slider when the stored rate of this tab changes', async () => {
+			mockTabVideoRate(1);
 			await initPopup();
+			const [listener] = callsOf<[(changes: Record<string, chrome.storage.StorageChange>) => void]>(
+				chromeMock.storage.local.onChanged.addListener
+			)[0]!;
 
-			expect(chromeMock.storage.local.onChanged.addListener).toHaveBeenCalledWith(expect.any(Function));
-		});
+			listener({ playbackRate_999: { newValue: 4 } });
+			expect(slider.value).toBe(1);
 
-		it('updates slider value when storage changes', async () => {
-			const tabId = 111;
-			let storageListener: ((changes: any) => void) | undefined;
-
-			// Capture the storage listener when it's registered
-			(chromeMock.storage.local.onChanged.addListener as any) = vi.fn((callback: any) => {
-				storageListener = callback;
-			});
-
-			chromeMock.tabs.query.mockResolvedValue([{ id: tabId }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: { playbackRate: 1, videoCount: 1 } }]);
-
-			await initPopup();
-
-			expect(storageListener).toBeDefined();
-
-			// Simulate storage change
-			storageListener?.({
-				[`playbackRate_${tabId}`]: { newValue: 3 }
-			});
-
+			listener({ [`playbackRate_${TAB_ID}`]: { newValue: 3 } });
 			expect(slider.value).toBe(3);
-		});
-	});
-
-	describe('slider value range', () => {
-		it('accepts values from 0.25 to 4', async () => {
-			chromeMock.tabs.query.mockResolvedValue([{ id: 123 }] as chrome.tabs.Tab[]);
-			chromeMock.scripting.executeScript.mockResolvedValue([{ result: null }]);
-
-			await initPopup();
-
-			const validValues = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4];
-
-			for (const value of validValues) {
-				slider.value = value;
-				expect(slider.value).toBe(value);
-			}
 		});
 	});
 });

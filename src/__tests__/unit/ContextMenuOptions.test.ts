@@ -1,58 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import contextMenuOptions from '@src/ContextMenuOptions';
 
+// Invariants the service worker relies on (radio menu ids, a single checked default, closest-match lookup)
 describe('ContextMenuOptions', () => {
-	it('should export an array of options', () => {
-		expect(Array.isArray(contextMenuOptions)).toBe(true);
-	});
-
-	it('should have 12 playback rate options', () => {
-		expect(contextMenuOptions).toHaveLength(12);
-	});
-
-	it('should have unique ids for all options', () => {
+	it('has unique ids', () => {
 		const ids = contextMenuOptions.map((opt) => opt.id);
-		const uniqueIds = new Set(ids);
-		expect(uniqueIds.size).toBe(contextMenuOptions.length);
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	it('should have exactly one default option', () => {
-		const defaultOptions = contextMenuOptions.filter((opt) => opt.default === true);
-		expect(defaultOptions).toHaveLength(1);
+	it('has exactly one default option, at 1x', () => {
+		const defaults = contextMenuOptions.filter((opt) => opt.default);
+		expect(defaults.map((opt) => opt.playbackRate)).toEqual([1]);
 	});
 
-	it('should have Normal (1x) as the default option', () => {
-		const defaultOption = contextMenuOptions.find((opt) => opt.default === true);
-		expect(defaultOption).toBeDefined();
-		expect(defaultOption?.playbackRate).toBe(1);
-		expect(defaultOption?.title).toBe('Normal');
-	});
-
-	it('should have playback rates ranging from 0.25 to 4', () => {
-		const playbackRates = contextMenuOptions.map((opt) => opt.playbackRate);
-		expect(Math.min(...playbackRates)).toBe(0.25);
-		expect(Math.max(...playbackRates)).toBe(4);
-	});
-
-	it('should have all required properties for each option', () => {
-		contextMenuOptions.forEach((option) => {
-			expect(option).toHaveProperty('id');
-			expect(option).toHaveProperty('title');
-			expect(option).toHaveProperty('playbackRate');
-			expect(typeof option.id).toBe('string');
-			expect(typeof option.title).toBe('string');
-			expect(typeof option.playbackRate).toBe('number');
-			// default is optional - only the default option needs it
-			if ('default' in option) {
-				expect(typeof option.default).toBe('boolean');
-			}
-		});
-	});
-
-	it('should have playback rates in ascending order', () => {
-		const playbackRates = contextMenuOptions.map((opt) => opt.playbackRate);
-		for (let i = 1; i < playbackRates.length; i++) {
-			expect(playbackRates[i]).toBeGreaterThan(playbackRates[i - 1]);
-		}
+	it('lists playback rates in strictly ascending order', () => {
+		const rates = contextMenuOptions.map((opt) => opt.playbackRate);
+		expect(rates).toEqual(rates.toSorted((a, b) => a - b));
+		expect(new Set(rates).size).toBe(rates.length);
 	});
 });

@@ -1,227 +1,126 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { chromeMock, resetChromeMocks } from '@tests/unit/setup';
+import { chromeMock, mockStorage } from '@tests/unit/setup';
+import { initOptions } from '@src/options';
+
+const themeSwitcher = vi.hoisted(() => ({
+	init: vi.fn<() => Promise<unknown>>(() => Promise.resolve()),
+	isDarkModeActive: vi.fn<() => boolean>(),
+	toggle: vi.fn<() => Promise<void>>()
+}));
+vi.mock('@src/util/ThemeSwitcher.js', () => ({
+	ThemeSwitcher: class {
+		init = () => themeSwitcher.init().then(() => this);
+		isDarkModeActive = themeSwitcher.isDarkModeActive;
+		toggle = themeSwitcher.toggle;
+	}
+}));
+
+type Control = HTMLElement & { checked: boolean; disabled: boolean; value: string };
 
 describe('Options Page', () => {
-	// Mock DOM elements
-	let mockDefaultsCheckbox: {
-		checked: boolean;
-		addEventListener: ReturnType<typeof vi.fn>;
-	};
-	let mockDefaultSpeedSelector: {
-		disabled: boolean;
-		addEventListener: ReturnType<typeof vi.fn>;
-		selectedOption: { innerText: string };
-	};
-	let mockBadgeCheckbox: {
-		checked: boolean;
-		addEventListener: ReturnType<typeof vi.fn>;
-	};
-	let mockThemeToggle: {
-		checked: boolean;
-		addEventListener: ReturnType<typeof vi.fn>;
+	let defaultsCheckbox: Control;
+	let speedSelector: Control;
+	let badgeCheckbox: Control;
+	let themeToggle: Control;
+
+	/** Toggle a checkbox/switch like a user click would, then let async handlers settle. */
+	const toggle = (control: Control) => {
+		control.checked = !control.checked;
+		control.dispatchEvent(new Event('change'));
 	};
 
 	beforeEach(() => {
-		vi.resetModules();
-		resetChromeMocks();
+		document.body.innerHTML = `
+			<div id="defaultsEnabledCheckbox"></div>
+			<div id="defaultSpeedSelector"></div>
+			<div id="badgeEnabledCheckbox"></div>
+			<div id="themeToggle"></div>`;
+		[defaultsCheckbox, speedSelector, badgeCheckbox, themeToggle] = Array.from(document.body.children) as [
+			Control,
+			Control,
+			Control,
+			Control
+		];
+		speedSelector.value = '1';
+	});
 
-		// Create fresh mock elements
-		mockDefaultsCheckbox = {
-			checked: false,
-			addEventListener: vi.fn()
-		};
-		mockDefaultSpeedSelector = {
-			disabled: true,
-			addEventListener: vi.fn(),
-			selectedOption: { innerText: '1.5' }
-		};
-		mockBadgeCheckbox = {
-			checked: true,
-			addEventListener: vi.fn()
-		};
-		mockThemeToggle = {
-			checked: false,
-			addEventListener: vi.fn()
-		};
+	describe('initialization', () => {
+		it('restores enabled defaults, the chosen speed and the badge setting', async () => {
+			Object.assign(mockStorage, { defaults: { enabled: true, playbackRate: 2 }, badgeEnabled: false });
 
-		// Mock document.getElementById
-		vi.spyOn(document, 'getElementById').mockImplementation((id: string) => {
-			const elements: Record<string, unknown> = {
-				defaultsEnabledCheckbox: mockDefaultsCheckbox,
-				defaultSpeedSelector: mockDefaultSpeedSelector,
-				badgeEnabledCheckbox: mockBadgeCheckbox,
-				themeToggle: mockThemeToggle
-			};
-			return elements[id] as HTMLElement;
+			await initOptions();
+
+			expect(defaultsCheckbox.checked).toBe(true);
+			expect(speedSelector.disabled).toBe(false);
+			expect(speedSelector.value).toBe('2');
+			expect(badgeCheckbox.checked).toBe(false);
+		});
+
+		it('starts with defaults off, selector disabled at 1x and badge on when nothing is stored', async () => {
+			await initOptions();
+
+			expect(defaultsCheckbox.checked).toBe(false);
+			expect(speedSelector.disabled).toBe(true);
+			expect(speedSelector.value).toBe('1');
+			expect(badgeCheckbox.checked).toBe(true);
+		});
+
+		it('reflects the active theme in the dark mode switch', async () => {
+			themeSwitcher.isDarkModeActive.mockReturnValue(true);
+
+			await initOptions();
+
+			expect(themeToggle.checked).toBe(true);
 		});
 	});
 
-	describe('initOptions', () => {
-		it('initializes all UI controls from storage', async () => {
-			// Set up storage with existing values
-			await chromeMock.storage.sync.set({
-				defaults: { enabled: true, playbackRate: 2 },
-				badgeEnabled: true
-			});
-
-			const { initOptions } = await import('@src/options');
+	describe('saving', () => {
+		beforeEach(async () => {
 			await initOptions();
-
-			// Verify defaults checkbox was initialized
-			expect(mockDefaultsCheckbox.checked).toBe(true);
-			expect(mockDefaultSpeedSelector.disabled).toBe(false);
-
-			// Verify badge checkbox was initialized
-			expect(mockBadgeCheckbox.checked).toBe(true);
-
-			// Verify event listeners were attached
-			expect(mockDefaultsCheckbox.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
-			expect(mockDefaultSpeedSelector.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
-			expect(mockBadgeCheckbox.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
-		});
-
-		it('defaults badge checkbox to enabled when not set in storage', async () => {
-			// No badgeEnabled in storage
-			await chromeMock.storage.sync.set({ defaults: { enabled: false } });
-
-			const { initOptions } = await import('@src/options');
-			await initOptions();
-
-			// Badge should default to enabled
-			expect(mockBadgeCheckbox.checked).toBe(true);
-		});
-
-		it('disables speed selector when defaults checkbox is unchecked', async () => {
-			await chromeMock.storage.sync.set({
-				defaults: { enabled: false }
-			});
-
-			const { initOptions } = await import('@src/options');
-			await initOptions();
-
-			expect(mockDefaultsCheckbox.checked).toBe(false);
-			expect(mockDefaultSpeedSelector.disabled).toBe(true);
-		});
-	});
-
-	describe('defaults checkbox change handler', () => {
-		it('enables speed selector when checked', async () => {
-			await chromeMock.storage.sync.set({ defaults: { enabled: false } });
-
-			const { initOptions } = await import('@src/options');
-			await initOptions();
-
-			// Get the change handler
-			const changeHandler = mockDefaultsCheckbox.addEventListener.mock.calls.find(
-				(call) => call[0] === 'change'
-			)?.[1];
-
-			// Simulate checking the checkbox
-			await changeHandler({ target: { checked: true } });
-
-			expect(mockDefaultSpeedSelector.disabled).toBe(false);
-		});
-
-		it('disables speed selector when unchecked', async () => {
-			await chromeMock.storage.sync.set({ defaults: { enabled: true } });
-
-			const { initOptions } = await import('@src/options');
-			await initOptions();
-
-			// Get the change handler
-			const changeHandler = mockDefaultsCheckbox.addEventListener.mock.calls.find(
-				(call) => call[0] === 'change'
-			)?.[1];
-
-			// Simulate unchecking the checkbox
-			await changeHandler({ target: { checked: false } });
-
-			expect(mockDefaultSpeedSelector.disabled).toBe(true);
-		});
-
-		it('saves defaults to storage when checkbox changes', async () => {
 			chromeMock.storage.sync.set.mockClear();
-
-			const { initOptions } = await import('@src/options');
-			await initOptions();
-
-			// Get the change handler
-			const changeHandler = mockDefaultsCheckbox.addEventListener.mock.calls.find(
-				(call) => call[0] === 'change'
-			)?.[1];
-
-			// Simulate checking the checkbox
-			await changeHandler({ target: { checked: true } });
-
-			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({
-				defaults: { enabled: true, playbackRate: 1.5 }
-			});
-		});
-	});
-
-	describe('speed selector change handler', () => {
-		it('saves selected speed to storage', async () => {
-			// Initialize with defaults enabled
-			await chromeMock.storage.sync.set({
-				defaults: { enabled: true, playbackRate: 1.5 }
-			});
-
-			const { initOptions } = await import('@src/options');
-			await initOptions();
-
-			// Clear storage set calls from initialization
-			chromeMock.storage.sync.set.mockClear();
-
-			// Get the change handler
-			const changeHandler = mockDefaultSpeedSelector.addEventListener.mock.calls.find(
-				(call) => call[0] === 'change'
-			)?.[1];
-
-			// Change selected option
-			mockDefaultSpeedSelector.selectedOption = { innerText: '2' };
-
-			// Trigger change
-			await changeHandler();
-
-			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({
-				defaults: { enabled: true, playbackRate: 2 }
-			});
-		});
-	});
-
-	describe('badge checkbox change handler', () => {
-		it('saves badge preference to storage when enabled', async () => {
-			chromeMock.storage.sync.set.mockClear();
-
-			const { initOptions } = await import('@src/options');
-			await initOptions();
-
-			// Get the change handler
-			const changeHandler = mockBadgeCheckbox.addEventListener.mock.calls.find(
-				(call) => call[0] === 'change'
-			)?.[1];
-
-			// Simulate enabling badge
-			await changeHandler({ target: { checked: true } });
-
-			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ badgeEnabled: true });
 		});
 
-		it('saves badge preference to storage when disabled', async () => {
-			chromeMock.storage.sync.set.mockClear();
+		it('enables the selector and saves defaults with the selected speed when defaults get enabled', () => {
+			speedSelector.value = '1.5';
+			toggle(defaultsCheckbox);
 
-			const { initOptions } = await import('@src/options');
-			await initOptions();
+			expect(speedSelector.disabled).toBe(false);
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ defaults: { enabled: true, playbackRate: 1.5 } });
+		});
 
-			// Get the change handler
-			const changeHandler = mockBadgeCheckbox.addEventListener.mock.calls.find(
-				(call) => call[0] === 'change'
-			)?.[1];
+		it('disables the selector again when defaults get disabled', () => {
+			toggle(defaultsCheckbox);
+			toggle(defaultsCheckbox);
 
-			// Simulate disabling badge
-			await changeHandler({ target: { checked: false } });
+			expect(speedSelector.disabled).toBe(true);
+			expect(chromeMock.storage.sync.set).toHaveBeenLastCalledWith({ defaults: { enabled: false, playbackRate: 1 } });
+		});
+
+		it('saves a newly selected speed', () => {
+			speedSelector.value = '2.5';
+			speedSelector.dispatchEvent(new Event('change'));
+
+			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ defaults: { enabled: false, playbackRate: 2.5 } });
+		});
+
+		it('saves the badge preference', () => {
+			toggle(badgeCheckbox);
 
 			expect(chromeMock.storage.sync.set).toHaveBeenCalledWith({ badgeEnabled: false });
 		});
+
+		it('toggles the theme from the dark mode switch', () => {
+			toggle(themeToggle);
+
+			expect(themeSwitcher.toggle).toHaveBeenCalledOnce();
+		});
+	});
+
+	it('does nothing when the page is missing a control', async () => {
+		themeToggle.remove();
+
+		await initOptions();
+
+		expect(chromeMock.storage.sync.get).not.toHaveBeenCalled();
 	});
 });

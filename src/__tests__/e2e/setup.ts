@@ -1,389 +1,191 @@
-import puppeteer, { Browser, Page, Target } from 'puppeteer';
+import { launch, type Browser, type Frame, type Page, type WebWorker } from 'puppeteer';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { TEST_SERVER_URL } from '@tests/e2e/server';
-import { MessagingAction } from '@src/types';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Path to the built extension
-const EXTENSION_PATH = path.resolve(__dirname, '../../../dist');
+const EXTENSION_PATH = path.resolve(import.meta.dirname, '../../../dist');
 
 let browser: Browser | null = null;
+/** Pages opened by the helpers, closed by closeTestPages() */
+const openedPages = new Set<Page>();
+
+function getBrowser(): Browser {
+	if (!browser) throw new Error('Browser not launched');
+	return browser;
+}
 
 /** Launch a browser instance with the extension loaded. */
 export async function launchBrowserWithExtension(): Promise<Browser> {
-	if (browser) {
-		return browser;
-	}
-
-	browser = await puppeteer.launch({
-		headless: process.env.CI ? true : false, // Extensions work in modern headless mode (headless: true)
-		args: [
-			`--disable-extensions-except=${EXTENSION_PATH}`,
-			`--load-extension=${EXTENSION_PATH}`,
-			'--no-sandbox',
-			'--disable-setuid-sandbox',
-			'--disable-dev-shm-usage'
-		]
+	browser ??= await launch({
+		// Extensions work in modern headless mode; headed locally for debugging
+		headless: Boolean(process.env.CI),
+		// Loads the unpacked build via CDP; the legacy --load-extension flag is ignored by newer Chrome builds
+		enableExtensions: [EXTENSION_PATH],
+		args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
 	});
-
 	return browser;
 }
 
 /** Close the browser instance. */
 export async function closeBrowser(): Promise<void> {
-	if (browser) {
-		await browser.close();
-		browser = null;
-	}
+	await browser?.close();
+	browser = null;
 }
 
-async function waitForServiceWorker(maxAttempts = 20, delayMs = 500): Promise<string> {
-	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-		const targets = browser!.targets();
-		const extensionTarget = targets.find(
-			(target) => target.type() === 'service_worker' && target.url().includes('chrome-extension://')
-		);
+/** The extension's service worker, waiting for it to start if needed. */
+async function getWorker(): Promise<WebWorker> {
+	const target = await getBrowser().waitForTarget(
+		(t) => t.type() === 'service_worker' && t.url().startsWith('chrome-extension://'),
+		{ timeout: 10000 }
+	);
+	const worker = await target.worker();
+	if (!worker) throw new Error('Could not get service worker');
+	return worker;
+}
 
-		if (extensionTarget) {
-			return extensionTarget.url().split('/')[2];
-		}
+/** Close every page the helpers opened, so tabs (and their per-tab state) don't leak between tests. */
+export async function closeTestPages(): Promise<void> {
+	await Promise.all(Array.from(openedPages, (page) => (page.isClosed() ? undefined : page.close())));
+	openedPages.clear();
+}
 
-		if (attempt < maxAttempts) {
-			await new Promise((resolve) => setTimeout(resolve, delayMs));
-		}
-	}
-
-	throw new Error(`Extension service worker not found after ${maxAttempts} attempts`);
+/** Restore default settings (defaults off, badge on, system theme). */
+export async function resetSettings(): Promise<void> {
+	await (await getWorker()).evaluate(() => chrome.storage.sync.clear());
 }
 
 /** Get the extension ID from the running browser instance. */
 export async function getExtensionId(): Promise<string> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	return waitForServiceWorker();
+	return new URL((await getWorker()).url()).host;
 }
 
-/** Open the extension popup page using chrome.action.openPopup() per Puppeteer docs. */
-export async function openExtensionPopup(): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
+/** Name and version of the extension whose service worker is running. */
+export async function getLoadedManifest(): Promise<{ name: string; version: string }> {
+	return (await getWorker()).evaluate(() => {
+		const { name, version } = chrome.runtime.getManifest();
+		return { name, version };
+	});
+}
 
-	// Get the service worker
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	// Trigger the popup to open via Chrome API
-	await worker.evaluate(() => chrome.action.openPopup());
-
-	// Wait for and access the popup page
-	const popupTarget = await browser.waitForTarget(
-		(target) => target.type() === 'page' && target.url().endsWith('popup.html'),
-		{ timeout: 10000 }
-	);
-
-	const popupPage = await popupTarget.asPage();
-	await popupPage.waitForSelector('body', { timeout: 10000 });
-
-	return popupPage;
+/** Open a page of the local test server, e.g. `video.html`. */
+export async function openTestPage(file: string): Promise<Page> {
+	const page = await getBrowser().newPage();
+	openedPages.add(page);
+	await page.goto(`${TEST_SERVER_URL}/${file}`, { waitUntil: 'networkidle0' });
+	return page;
 }
 
 /** Open the extension options page. */
 export async function openExtensionOptions(extensionId: string): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	const optionsUrl = `chrome-extension://${extensionId}/options.html`;
-	const page = await browser.newPage();
-	await page.goto(optionsUrl, { waitUntil: 'networkidle0' });
-
+	const page = await getBrowser().newPage();
+	openedPages.add(page);
+	await page.goto(`chrome-extension://${extensionId}/options.html`, { waitUntil: 'networkidle0' });
 	return page;
 }
 
-/** Create a test page with a video element using HTTP URL (enables content script injection). */
-export async function createPageWithVideo(): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	const page = await browser.newPage();
-	await page.goto(`${TEST_SERVER_URL}/video.html`, { waitUntil: 'networkidle0' });
-	return page;
-}
-
-/** Create a test page without any video elements using HTTP URL. */
-export async function createPageWithoutVideo(): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	const page = await browser.newPage();
-	await page.goto(`${TEST_SERVER_URL}/no-video.html`, { waitUntil: 'networkidle0' });
-	return page;
-}
-
-/** Create a test page with multiple video elements using HTTP URL (always 3 videos). */
-export async function createPageWithMultipleVideos(): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	const page = await browser.newPage();
-	await page.goto(`${TEST_SERVER_URL}/multi-video.html`, { waitUntil: 'networkidle0' });
-	return page;
-}
-
-/** Get the test server URL for use in tests */
-export function getTestServerURL(): string {
-	return TEST_SERVER_URL;
-}
-
-/** Get the service worker target for the extension. */
-export async function getServiceWorkerTarget(): Promise<Target> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	const targets = browser.targets();
-	const swTarget = targets.find(
-		(target) => target.type() === 'service_worker' && target.url().includes('chrome-extension://')
+/** Open the extension popup for `page` (made the active tab first), like clicking the toolbar icon. */
+export async function openPopupForPage(page: Page): Promise<Page> {
+	await page.bringToFront();
+	await (await getWorker()).evaluate(() => chrome.action.openPopup());
+	const popupTarget = await getBrowser().waitForTarget(
+		(target) => target.type() === 'page' && target.url().endsWith('popup.html'),
+		{ timeout: 10000 }
 	);
-
-	if (!swTarget) {
-		throw new Error('Service worker target not found');
-	}
-
-	return swTarget;
-}
-
-/** Send a message to a tab via the extension's service worker. */
-export async function sendMessageToTab(tabId: number, message: object): Promise<unknown> {
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	return worker.evaluate(
-		async (tid: number, msg: object) => {
-			return chrome.tabs.sendMessage(tid, msg);
-		},
-		tabId,
-		message
-	);
+	const popupPage = await popupTarget.asPage();
+	openedPages.add(popupPage);
+	await popupPage.waitForSelector('ui5-text, ui5-slider', { timeout: 10000 });
+	return popupPage;
 }
 
 /** Get the tab ID for a page. */
 export async function getTabId(page: Page): Promise<number> {
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	const pageUrl = page.url();
-
-	const tabId = await worker.evaluate(async (url: string) => {
-		const tabs = await chrome.tabs.query({ url });
-		return tabs[0]?.id;
-	}, pageUrl);
-
-	if (tabId === undefined) {
-		throw new Error(`Could not find tab for URL: ${pageUrl}`);
-	}
-
+	const url = page.url();
+	const tabId = await (
+		await getWorker()
+	).evaluate(async (u: string) => (await chrome.tabs.query({ url: u }))[0]?.id, url);
+	if (tabId === undefined) throw new Error(`Could not find tab for URL: ${url}`);
 	return tabId;
 }
 
 /**
- * Manually inject the content script into a tab.
- * Puppeteer/headless Chrome may not reliably trigger tabs.onUpdated events.
+ * Ensure the content script is loaded and initialized in every frame of the page.
+ * Puppeteer may not reliably trigger tabs.onUpdated, so this imports the module itself: in the extension's
+ * isolated world the import resolves once the (already or newly) loaded module has finished initializing.
  */
-async function injectContentScript(tabId: number): Promise<void> {
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	await worker.evaluate(async (tid: number) => {
+export async function waitForContentScript(page: Page): Promise<void> {
+	const tabId = await getTabId(page);
+	await (
+		await getWorker()
+	).evaluate(async (tid: number) => {
 		await chrome.scripting.executeScript({
 			target: { tabId: tid, allFrames: true },
-			files: ['/js/contentscript-loader.js']
+			func: async () => {
+				await import(chrome.runtime.getURL('js/contentscript.js'));
+				return true;
+			}
 		});
 	}, tabId);
 }
 
-/**
- * Wait for content script to be injected and ready.
- * First manually injects the content script, then verifies it's responding.
- */
-export async function waitForContentScript(page: Page, timeout = 5000): Promise<void> {
-	const tabId = await getTabId(page);
+/** The content frame of the iframe matching `selector`. */
+export async function getIframe(page: Page, selector: string): Promise<Frame> {
+	const frame = await (await page.waitForSelector(selector))?.contentFrame();
+	if (!frame) throw new Error(`No iframe content for ${selector}`);
+	await frame.waitForSelector('video');
+	return frame;
+}
 
-	// Manually inject content script (Puppeteer may not trigger tabs.onUpdated reliably)
-	try {
-		await injectContentScript(tabId);
-	} catch {
-		// Injection might fail if already injected, continue to check
-	}
+/** Change the rate of matching videos from the page itself, like the browser's native controls do. */
+export async function setRateNatively(frame: Page | Frame, rate: number, selector = 'video'): Promise<void> {
+	await frame.evaluate(
+		(sel: string, r: number) => {
+			document.querySelectorAll<HTMLVideoElement>(sel).forEach((video) => {
+				video.playbackRate = r;
+			});
+		},
+		selector,
+		rate
+	);
+}
 
-	const start = Date.now();
-
-	while (Date.now() - start < timeout) {
-		try {
-			const response = await sendMessageToTab(tabId, { action: MessagingAction.RETRIEVE });
-			if (response !== undefined) return;
-		} catch {
-			// Content script not ready yet
-		}
-		await new Promise((r) => setTimeout(r, 200));
-	}
-
-	throw new Error('Content script injection timeout');
+/** Playback rates of all videos in the frame, in document order. */
+export function getVideoRates(frame: Page | Frame): Promise<number[]> {
+	return frame.evaluate(() => Array.from(document.querySelectorAll('video'), (video) => video.playbackRate));
 }
 
 /** Get the badge text for a specific tab. */
 export async function getBadgeText(tabId: number): Promise<string> {
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	return worker.evaluate(async (tid: number) => {
-		return chrome.action.getBadgeText({ tabId: tid });
-	}, tabId);
+	return (await getWorker()).evaluate((tid: number) => chrome.action.getBadgeText({ tabId: tid }), tabId);
 }
 
-/** Bring a page to the foreground (make it the active tab). */
-export async function bringToFront(page: Page): Promise<void> {
-	await page.bringToFront();
+/** Read one key from extension storage. */
+export async function getStorageValue(area: 'local' | 'sync', key: string): Promise<unknown> {
+	return (await getWorker()).evaluate(
+		async (a: 'local' | 'sync', k: string) => (await chrome.storage[a].get(k))[k],
+		area,
+		key
+	);
 }
 
-/** Set default playback rate settings directly via storage (bypasses UI). */
-export async function setDefaultPlaybackRate(enabled: boolean, playbackRate: number): Promise<void> {
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
+/** Write extension settings directly to sync storage (bypasses the options UI). */
+export async function setSyncStorage(items: Record<string, unknown>): Promise<void> {
+	await (await getWorker()).evaluate((i: Record<string, unknown>) => chrome.storage.sync.set(i), items);
+}
 
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
+/** Current value of the popup slider. */
+export function getSliderValue(popupPage: Page): Promise<number> {
+	return popupPage.$eval('ui5-slider', (slider) => (slider as Element & { value: number }).value);
+}
 
-	await worker.evaluate(
-		async (en: boolean, rate: number) => {
-			await chrome.storage.sync.set({
-				defaults: {
-					enabled: en,
-					playbackRate: rate
-				}
-			});
+/** Set the popup slider value and fire `eventName`, like a user drag (`input`) or release (`change`). */
+export async function moveSlider(popupPage: Page, value: number, eventName = 'change'): Promise<void> {
+	await popupPage.$eval(
+		'ui5-slider',
+		(slider, v: number, name: string) => {
+			(slider as Element & { value: number }).value = v;
+			slider.dispatchEvent(new Event(name, { bubbles: true }));
 		},
-		enabled,
-		playbackRate
+		value,
+		eventName
 	);
 }
-
-/**
- * Open popup for a specific page (ensures the page is the active tab first).
- * This is the recommended way to test popup interaction with a specific page.
- */
-export async function openPopupForPage(page: Page): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	// Bring the page to front so it's the active tab
-	await page.bringToFront();
-
-	// Small delay to ensure tab activation is processed
-	await new Promise((r) => setTimeout(r, 100));
-
-	// Get the service worker
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	// Trigger the popup to open via Chrome API
-	await worker.evaluate(() => chrome.action.openPopup());
-
-	// Wait for and access the popup page
-	const popupTarget = await browser.waitForTarget(
-		(target) => target.type() === 'page' && target.url().endsWith('popup.html'),
-		{ timeout: 10000 }
-	);
-
-	const popupPage = await popupTarget.asPage();
-	await popupPage.waitForSelector('body', { timeout: 10000 });
-
-	return popupPage;
-}
-
-/** Create a test page with video in an iframe using HTTP URL. */
-export async function createPageWithIframeVideo(): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	const page = await browser.newPage();
-	await page.goto(`${TEST_SERVER_URL}/iframe-video.html`, { waitUntil: 'networkidle0' });
-	return page;
-}
-
-/** Create a test page for SPA navigation simulation. */
-export async function createSpaVideoPage(): Promise<Page> {
-	if (!browser) {
-		throw new Error('Browser not launched');
-	}
-
-	const page = await browser.newPage();
-	await page.goto(`${TEST_SERVER_URL}/spa-video.html`, { waitUntil: 'networkidle0' });
-	return page;
-}
-
-/** Set badge enabled state directly via storage. */
-export async function setBadgeEnabled(enabled: boolean): Promise<void> {
-	const swTarget = await getServiceWorkerTarget();
-	const worker = await swTarget.worker();
-
-	if (!worker) {
-		throw new Error('Could not get service worker');
-	}
-
-	await worker.evaluate(async (en: boolean) => {
-		await chrome.storage.sync.set({ badgeEnabled: en });
-	}, enabled);
-}
-
-/** Wait for a condition to be true, with timeout. */
-export async function waitForCondition(
-	conditionFn: () => Promise<boolean>,
-	timeout = 5000,
-	interval = 100
-): Promise<void> {
-	const start = Date.now();
-	while (Date.now() - start < timeout) {
-		if (await conditionFn()) return;
-		await new Promise((r) => setTimeout(r, interval));
-	}
-	throw new Error('Condition not met within timeout');
-}
-
-export { browser };
