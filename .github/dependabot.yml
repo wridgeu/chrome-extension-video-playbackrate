@@ -1,8 +1,25 @@
-# version: 2
-# updates:
-# - package-ecosystem: npm
-#   directory: "/"
-#   schedule:
-#     interval: monthly
-#     time: "04:00"
-#   open-pull-requests-limit: 10
+version: 2
+updates:
+  # One grouped PR per ecosystem and month instead of one PR per dependency
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      npm:
+        patterns: ['*']
+    # Wait before proposing fresh releases (supply-chain hardening)
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 2
+
+  # Keeps the SHA-pinned actions in .github/workflows up to date
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']
+    cooldown:
+      default-days: 7
