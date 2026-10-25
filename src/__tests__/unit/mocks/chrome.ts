@@ -1,55 +1,45 @@
 import { vi } from 'vitest';
 
+/** Loose signature for chrome API mocks; Chrome's overloaded (callback/promise) signatures don't map onto vi.fn generics. */
+type MockFn = (...args: never) => unknown;
+
 /** Creates a mock Chrome event with standard listener methods */
 function createMockEvent() {
 	return {
-		addListener: vi.fn(),
-		removeListener: vi.fn(),
-		hasListener: vi.fn()
+		addListener: vi.fn<MockFn>(),
+		removeListener: vi.fn<MockFn>()
 	};
 }
 
-/** Creates mock storage area with working get/set */
-function createMockStorageArea(store: Record<string, unknown> = {}) {
+/** Creates mock storage area backed by a plain object, mirroring chrome.storage get/set/remove semantics */
+function createMockStorageArea(store: Record<string, unknown>) {
 	return {
-		get: vi.fn((key?: string | string[]) => {
+		get: vi.fn<MockFn>((key?: string | string[]) => {
 			if (!key) return Promise.resolve({ ...store });
-			if (typeof key === 'string') {
-				return Promise.resolve({ [key]: store[key] });
-			}
-			const result: Record<string, unknown> = {};
-			key.forEach((k) => {
-				if (store[k] !== undefined) {
-					result[k] = store[k];
-				}
-			});
-			return Promise.resolve(result);
+			const keys = typeof key === 'string' ? [key] : key;
+			return Promise.resolve(Object.fromEntries(keys.filter((k) => k in store).map((k) => [k, store[k]])));
 		}),
-		set: vi.fn((items: Record<string, unknown>) => {
+		set: vi.fn<MockFn>((items: Record<string, unknown>) => {
 			Object.assign(store, items);
 			return Promise.resolve();
 		}),
-		remove: vi.fn((key: string | string[]) => {
+		remove: vi.fn<MockFn>((key: string | string[]) => {
 			const keys = typeof key === 'string' ? [key] : key;
 			keys.forEach((k) => delete store[k]);
-			return Promise.resolve();
-		}),
-		clear: vi.fn(() => {
-			Object.keys(store).forEach((k) => delete store[k]);
 			return Promise.resolve();
 		}),
 		onChanged: createMockEvent()
 	};
 }
 
-/** Creates the chrome mock object structure */
+/** Creates the chrome mock object structure (only the APIs the extension uses) */
 function createChromeMockObject(syncStorage: Record<string, unknown>, localStorage: Record<string, unknown>) {
+	const resolved = (value?: unknown) => vi.fn<MockFn>(() => Promise.resolve(value));
 	return {
 		runtime: {
-			sendMessage: vi.fn().mockResolvedValue({}),
+			sendMessage: resolved({}),
 			onMessage: createMockEvent(),
 			onInstalled: createMockEvent(),
-			id: 'test-extension-id',
 			lastError: null
 		},
 		storage: {
@@ -58,37 +48,24 @@ function createChromeMockObject(syncStorage: Record<string, unknown>, localStora
 			onChanged: createMockEvent()
 		},
 		tabs: {
-			query: vi.fn().mockResolvedValue([{ id: 1 }]),
-			get: vi.fn().mockResolvedValue({ id: 1 }),
-			update: vi.fn().mockResolvedValue(undefined),
-			sendMessage: vi.fn().mockResolvedValue(undefined),
-			onActivated: createMockEvent(),
+			query: resolved([{ id: 1 }]),
 			onUpdated: createMockEvent(),
 			onRemoved: createMockEvent()
 		},
 		scripting: {
-			executeScript: vi.fn().mockResolvedValue([]),
-			registerContentScripts: vi.fn().mockResolvedValue(undefined),
-			unregisterContentScripts: vi.fn().mockResolvedValue(undefined),
-			getRegisteredContentScripts: vi.fn().mockResolvedValue([])
+			executeScript: resolved([])
 		},
 		action: {
-			setBadgeText: vi.fn().mockResolvedValue(undefined),
-			setBadgeBackgroundColor: vi.fn().mockResolvedValue(undefined),
-			setBadgeTextColor: vi.fn().mockResolvedValue(undefined),
-			setIcon: vi.fn().mockResolvedValue(undefined),
-			setTitle: vi.fn().mockResolvedValue(undefined)
+			setBadgeText: resolved(),
+			setBadgeBackgroundColor: resolved(),
+			setBadgeTextColor: resolved()
 		},
 		contextMenus: {
-			create: vi.fn(),
-			update: vi.fn().mockResolvedValue(undefined),
-			remove: vi.fn().mockResolvedValue(undefined),
-			removeAll: vi.fn().mockResolvedValue(undefined),
+			create: vi.fn<MockFn>(),
+			update: resolved(),
 			onClicked: createMockEvent()
 		},
 		webNavigation: {
-			onCommitted: createMockEvent(),
-			onCompleted: createMockEvent(),
 			onBeforeNavigate: createMockEvent()
 		}
 	};
@@ -96,38 +73,18 @@ function createChromeMockObject(syncStorage: Record<string, unknown>, localStora
 
 export type ChromeMock = ReturnType<typeof createChromeMockObject>;
 
-export interface ChromeMockContext {
-	chrome: ChromeMock;
-	syncStorage: Record<string, unknown>;
-	localStorage: Record<string, unknown>;
-	reset: () => void;
-}
-
 /** Creates a fresh Chrome mock with its own state */
-export function createChromeMock(): ChromeMockContext {
+export function createChromeMock() {
 	const syncStorage: Record<string, unknown> = {};
 	const localStorage: Record<string, unknown> = {};
-
 	const chromeMock = createChromeMockObject(syncStorage, localStorage);
 
+	/** Clear stored data and restore every mock's original implementation, so per-test overrides don't leak. */
 	const reset = () => {
-		// Clear storage objects
 		Object.keys(syncStorage).forEach((k) => delete syncStorage[k]);
 		Object.keys(localStorage).forEach((k) => delete localStorage[k]);
-
-		// Clear all mocks
-		vi.clearAllMocks();
-
-		// Reset default return values
-		chromeMock.runtime.sendMessage.mockResolvedValue({});
-		chromeMock.tabs.query.mockResolvedValue([{ id: 1 }] as chrome.tabs.Tab[]);
-		chromeMock.storage.local.get.mockResolvedValue({});
+		vi.resetAllMocks();
 	};
 
-	return {
-		chrome: chromeMock,
-		syncStorage,
-		localStorage,
-		reset
-	};
+	return { chrome: chromeMock, syncStorage, localStorage, reset };
 }
