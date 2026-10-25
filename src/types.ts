@@ -1,64 +1,33 @@
 /**
- * Shared types and enums for messaging between extension components.
+ * Shared types and enums for messaging from the popup and content script to the service worker.
  * This file is kept separate to avoid importing content script code into the service worker.
  */
 
 // Using const object instead of const enum for better bundler compatibility
-// See: https://biomejs.dev/linter/rules/no-const-enum/
 export const MessagingAction = {
-	SET: 0,
-	SETSPECIFIC: 1,
-	RETRIEVE: 2,
-	UPDATE_CONTEXT_MENU: 3,
-	GET_TAB_ID: 4,
-	UPDATE_UI: 5
+	UPDATE_CONTEXT_MENU: 0,
+	UPDATE_UI: 1
 } as const;
-
-export type MessagingAction = (typeof MessagingAction)[keyof typeof MessagingAction];
-
-type RetrieveActionPayload = {
-	action: typeof MessagingAction.RETRIEVE;
-};
-
-type SetActionPayload = {
-	action: typeof MessagingAction.SET;
-	playbackRate: number;
-};
-
-type SetSpecificActionPayload = {
-	action: typeof MessagingAction.SETSPECIFIC;
-	playbackRate: number;
-	videoElementSrcAttributeValue: string;
-};
 
 type UpdateContextMenuPayload = {
 	action: typeof MessagingAction.UPDATE_CONTEXT_MENU;
 	playbackRate: number;
 };
 
-type GetTabIdPayload = {
-	action: typeof MessagingAction.GET_TAB_ID;
-};
-
 type UpdateUiPayload = {
 	action: typeof MessagingAction.UPDATE_UI;
 	playbackRate: number;
+	/** Only set by the popup; content script messages carry the tab in `sender.tab`. */
 	tabId?: number;
 };
 
 /** User's default playback rate configuration stored in sync storage. */
 export type Defaults = {
-	defaults: {
+	defaults?: {
 		enabled?: boolean;
 		playbackRate?: number;
 	};
 };
 
-/** Discriminated union for messaging between popup/service worker and content script. */
-export type MessagingRequestPayload =
-	| RetrieveActionPayload
-	| SetActionPayload
-	| SetSpecificActionPayload
-	| UpdateContextMenuPayload
-	| GetTabIdPayload
-	| UpdateUiPayload;
+/** Discriminated union of messages handled by the service worker. */
+export type MessagingRequestPayload = UpdateContextMenuPayload | UpdateUiPayload;

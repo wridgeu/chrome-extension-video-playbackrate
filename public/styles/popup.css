@@ -1,40 +1,41 @@
 body {
-    width: 450px;
-    margin-left: 3vw;
-    margin-right: 3vw;
+	width: 450px;
+	background-color: var(--sapBackgroundColor);
+	margin-left: 3vw;
+	margin-right: 3vw;
 }
 
 [hidden] {
-    display: none !important;
+	display: none !important;
 }
 
 .no-videos {
-    padding: 16px 8px;
-    text-align: center;
-    color: var(--sapTextColor, #32363a);
-    font-size: var(--sapFontSize, 14px);
-    font-family: var(--sapFontFamily, sans-serif);
+	padding: 16px 8px;
+	text-align: center;
+	color: var(--sapTextColor, #32363a);
+	font-size: var(--sapFontSize, 14px);
+	font-family: var(--sapFontFamily, sans-serif);
 }
 
 .slider-container {
-    position: relative;
+	position: relative;
 }
 
 #tooltip {
-    position: fixed;
-    margin: 0;
-    padding: 2px 6px;
-    border: none;
-    border-radius: 2px;
-    background: var(--sapBackgroundColor, #1d232a);
-    color: var(--sapTextColor, #fff);
-    font-size: var(--sapFontSmallSize, 11px);
-    font-family: var(--sapFontFamily, sans-serif);
-    box-shadow: var(--sapContent_Shadow1, 0 1px 4px rgba(0,0,0,0.3));
-    white-space: nowrap;
-    pointer-events: none;
+	position: fixed;
+	margin: 0;
+	padding: 2px 6px;
+	border: none;
+	border-radius: 2px;
+	background: var(--sapBackgroundColor, #1d232a);
+	color: var(--sapTextColor, #fff);
+	font-size: var(--sapFontSmallSize, 11px);
+	font-family: var(--sapFontFamily, sans-serif);
+	box-shadow: var(--sapContent_Shadow1, 0 1px 4px rgba(0, 0, 0, 0.3));
+	white-space: nowrap;
+	pointer-events: none;
 }
 
 #tooltip:popover-open {
-    display: block;
+	display: block;
 }
