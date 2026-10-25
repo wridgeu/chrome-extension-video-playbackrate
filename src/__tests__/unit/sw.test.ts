@@ -215,12 +215,12 @@ describe('Service Worker', () => {
 			expect(chromeMock.storage.local.remove).toHaveBeenCalledWith('playbackRate_123');
 		});
 
-		it('clears the badge on main frame navigation only', () => {
-			onBeforeNavigate({ tabId: 456, frameId: 1 });
-			expect(chromeMock.action.setBadgeText).not.toHaveBeenCalled();
+		it('does not re-inject after a subframe navigation', () => {
+			onUpdated(502, { status: 'complete' });
+			onBeforeNavigate({ tabId: 502, frameId: 1 });
+			onUpdated(502, { status: 'complete' });
 
-			onBeforeNavigate({ tabId: 456, frameId: 0 });
-			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '', tabId: 456 });
+			expect(chromeMock.scripting.executeScript).toHaveBeenCalledOnce();
 		});
 	});
 });

@@ -21,7 +21,9 @@ import {
 	getStorageValue,
 	setSyncStorage,
 	getSliderValue,
-	moveSlider
+	moveSlider,
+	chooseContextMenuItem,
+	recordCheckedMenuItems
 } from '@tests/e2e/setup';
 import { TEST_SERVER_URL } from '@tests/e2e/server';
 
@@ -40,6 +42,18 @@ async function openReadyPage(file: string): Promise<{ page: Page; tabId: number 
 	const page = await openTestPage(file);
 	await waitForContentScript(page);
 	return { page, tabId: await getTabId(page) };
+}
+
+/** video.html (video with a <source> child) plus a second video with its own src. */
+async function openTwoVideoPage() {
+	const ready = await openReadyPage('video.html');
+	await ready.page.evaluate(() => {
+		const other = document.createElement('video');
+		other.src = '/test-video.mp4?other';
+		document.body.append(other);
+	});
+	await ready.page.waitForFunction(() => Array.from(document.querySelectorAll('video')).every((v) => v.currentSrc));
+	return ready;
 }
 
 /** Convert a web_accessible_resources glob to a regex (supports * and ? wildcards) */
@@ -267,6 +281,37 @@ describe('Chrome Extension E2E', () => {
 			await setRateNatively(frame, 2.25);
 
 			await expectBadge(tabId, '2.25');
+		});
+	});
+
+	describe('Context menu', () => {
+		it('right-clicking a video checks the menu item matching its rate', async () => {
+			const { page } = await openTwoVideoPage();
+			await setRateNatively(page, 2.5, '#test-video');
+			const checkedItems = await recordCheckedMenuItems();
+
+			await page.click('#test-video', { button: 'right' });
+			await page.keyboard.press('Escape');
+
+			// Item '8' is "Ludicrous Speed (2.5x)"
+			await vi.waitFor(async () => expect(await checkedItems()).toContain('8'), WAIT);
+		});
+
+		it('choosing a speed changes only the right-clicked video and updates the badge', async () => {
+			const { page, tabId } = await openTwoVideoPage();
+			const [sourceChildSrc, srcAttrSrc] = await page.$$eval('video', (videos) =>
+				videos.map((v) => (v as HTMLVideoElement).currentSrc)
+			);
+
+			// Video with a src attribute; item '6' is "Ludicrous Speed (2x)"
+			await chooseContextMenuItem(tabId, '6', srcAttrSrc!);
+			await expectRates(page, [1, 2]);
+			await expectBadge(tabId, '2');
+
+			// Video with a <source> child (matched via currentSrc); item '5' is "High Speed (1.5x)"
+			await chooseContextMenuItem(tabId, '5', sourceChildSrc!);
+			await expectRates(page, [1.5, 2]);
+			await expectBadge(tabId, '1.5');
 		});
 	});
 

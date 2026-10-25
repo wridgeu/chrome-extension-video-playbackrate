@@ -117,11 +117,10 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 	chrome.storage.local.remove(getPlaybackRateStorageKey(tabId));
 });
 
+// A main frame navigation needs a fresh injection (Chrome resets the tab's badge itself)
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-	// Only clear for main frame navigations
 	if (details.frameId === 0) {
 		injectedTabs.delete(details.tabId);
-		chrome.action.setBadgeText({ text: '', tabId: details.tabId });
 	}
 });
 

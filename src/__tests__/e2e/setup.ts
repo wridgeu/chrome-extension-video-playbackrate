@@ -172,6 +172,44 @@ export async function setSyncStorage(items: Record<string, unknown>): Promise<vo
 	await (await getWorker()).evaluate((i: Record<string, unknown>) => chrome.storage.sync.set(i), items);
 }
 
+/**
+ * Fire the extension's real context menu click handler for a video, as Chrome does after a menu item is chosen.
+ * CDP can't click native menu entries, so this uses the event's dispatch(); only Chrome's menu rendering is skipped.
+ */
+export async function chooseContextMenuItem(tabId: number, menuItemId: string, srcUrl: string): Promise<void> {
+	await (
+		await getWorker()
+	).evaluate(
+		async (tid: number, id: string, src: string) => {
+			const tab = await chrome.tabs.get(tid);
+			const { onClicked } = chrome.contextMenus as unknown as {
+				onClicked: { dispatch: (info: chrome.contextMenus.OnClickData, t: chrome.tabs.Tab) => void };
+			};
+			onClicked.dispatch({ menuItemId: id, srcUrl: src, mediaType: 'video', editable: false, pageUrl: tab.url }, tab);
+		},
+		tabId,
+		menuItemId,
+		srcUrl
+	);
+}
+
+/** Start recording which context menu items the service worker checks; returns a reader for the recorded ids. */
+export async function recordCheckedMenuItems(): Promise<() => Promise<string[]>> {
+	const worker = await getWorker();
+	await worker.evaluate(() => {
+		const scope = globalThis as unknown as { checkedMenuItems?: string[] };
+		if (!scope.checkedMenuItems) {
+			const update = chrome.contextMenus.update.bind(chrome.contextMenus) as (...args: unknown[]) => unknown;
+			chrome.contextMenus.update = ((...args: [string, { checked?: boolean }, ...unknown[]]) => {
+				if (args[1].checked) scope.checkedMenuItems?.push(args[0]);
+				return update(...args);
+			}) as unknown as typeof chrome.contextMenus.update;
+		}
+		scope.checkedMenuItems = [];
+	});
+	return () => worker.evaluate(() => (globalThis as unknown as { checkedMenuItems: string[] }).checkedMenuItems);
+}
+
 /** Current value of the popup slider. */
 export function getSliderValue(popupPage: Page): Promise<number> {
 	return popupPage.$eval('ui5-slider', (slider) => (slider as Element & { value: number }).value);
