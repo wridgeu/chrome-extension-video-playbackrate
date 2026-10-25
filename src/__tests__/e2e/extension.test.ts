@@ -62,6 +62,19 @@ async function pickDefaultSpeed(optionsPage: Page, label: string): Promise<void>
 	await optionsPage.locator(`ui5-option::-p-text(${label})`).click();
 }
 
+/** Open the options page with a light OS theme and wait until initOptions() has finished (theme mode is set last). */
+async function openOptions(extensionId: string): Promise<Page> {
+	const page = await openExtensionOptions(extensionId);
+	await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+	await page.waitForFunction(
+		() => document.querySelector<HTMLElement & { selected: boolean }>('[data-mode="system"]')?.selected,
+		{
+			timeout: 10000
+		}
+	);
+	return page;
+}
+
 /** Click like a user who first switches to that tab (background tabs don't render, so clicks would stall). */
 async function clickIn(page: Page, selector: string): Promise<void> {
 	await page.bringToFront();
@@ -126,9 +139,7 @@ describe('Chrome Extension E2E', () => {
 		let page: Page;
 
 		beforeEach(async () => {
-			page = await openExtensionOptions(extensionId);
-			await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
-			await page.waitForSelector('#defaultSpeed ui5-option', { timeout: 10000 });
+			page = await openOptions(extensionId);
 		});
 
 		it('groups the settings under Playback and Appearance', async () => {
@@ -181,8 +192,7 @@ describe('Chrome Extension E2E', () => {
 		let options: Page;
 
 		beforeEach(async () => {
-			options = await openExtensionOptions(extensionId);
-			await options.waitForSelector('#defaultSpeed ui5-option', { timeout: 10000 });
+			options = await openOptions(extensionId);
 		});
 
 		it('a default speed picked in the options applies to videos opened afterwards; turning it off stops it', async () => {
@@ -220,19 +230,25 @@ describe('Chrome Extension E2E', () => {
 		});
 
 		it('the theme picked in the options is used by the popup', async () => {
-			await clickIn(options, '[data-mode="dark"]');
-			await vi.waitFor(async () => expect(await getStorageValue('sync', 'theme')).toBe('sap_horizon_dark'), WAIT);
-			const dark = await backgroundOf(options);
 			const videoPage = await openTestPage('video.html');
+			const light = await backgroundOf(options);
+			// Theme changes repaint asynchronously, so wait for the background instead of reading it once
+			const backgroundBecomes = (page: Page, matches: (bg: string) => boolean) =>
+				vi.waitFor(async () => {
+					const bg = await backgroundOf(page);
+					expect(matches(bg)).toBe(true);
+					return bg;
+				}, WAIT);
+
+			await clickIn(options, '[data-mode="dark"]');
+			const dark = await backgroundBecomes(options, (bg) => bg !== light);
 			const darkPopup = await openPopupForPage(videoPage);
-			expect(await backgroundOf(darkPopup)).toBe(dark);
+			await backgroundBecomes(darkPopup, (bg) => bg === dark);
 			await darkPopup.close();
 
 			await clickIn(options, '[data-mode="light"]');
-			await vi.waitFor(async () => expect(await getStorageValue('sync', 'theme')).toBe('sap_horizon'), WAIT);
-			const light = await backgroundOf(options);
-			expect(await backgroundOf(await openPopupForPage(videoPage))).toBe(light);
-			expect(light).not.toBe(dark);
+			await backgroundBecomes(options, (bg) => bg === light);
+			await backgroundBecomes(await openPopupForPage(videoPage), (bg) => bg === light);
 		});
 	});
 
