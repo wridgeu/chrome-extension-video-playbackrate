@@ -1,78 +1,28 @@
 import '@ui5/webcomponents/dist/Assets.js';
 import { setTheme, getTheme } from '@ui5/webcomponents-base/dist/config/Theme.js';
 
-enum Theme {
-	dark = 'sap_horizon_dark',
-	light = 'sap_horizon'
-}
+const DARK_THEME = 'sap_horizon_dark';
+const LIGHT_THEME = 'sap_horizon';
 
-enum ThemeBackgroundColor {
-	dark = '#1d232a',
-	light = '#fff'
-}
-
-type ThemeId =
-	| 'sap_fiori_3'
-	| 'sap_fiori_3_dark'
-	| 'sap_fiori_3_hcb'
-	| 'sap_fiori_3_hcw'
-	| 'sap_horizon_dark'
-	| 'sap_horizon'
-	| string;
-
-/** Handles theme switching between light/dark modes with UI5 and body background sync. */
+/** Switches UI5 between light and dark. An explicit toggle is persisted; otherwise the system preference is used. */
 export class ThemeSwitcher {
-	/** Initialize theme from storage or system preference. Returns this for chaining. */
+	/** Apply the stored theme, or the system preference if the user never toggled. Returns this for chaining. */
 	public async init(): Promise<ThemeSwitcher> {
-		const storedTheme = await this.getLatestTheme();
-		const isDark = storedTheme
-			? storedTheme === Theme.dark
-			: window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-		const theme = isDark ? Theme.dark : Theme.light;
-		const backgroundColor = isDark ? ThemeBackgroundColor.dark : ThemeBackgroundColor.light;
-		this.setTheme(theme, backgroundColor);
+		const { theme } = (await chrome.storage.sync.get('theme')) as { theme?: string };
+		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		setTheme(theme ?? (prefersDark ? DARK_THEME : LIGHT_THEME));
 		return this;
 	}
 
-	/** Toggle between light and dark themes. */
-	public async toggle(): Promise<void> {
-		if (await this.isDarkModeActive()) {
-			this.setTheme(Theme.light, ThemeBackgroundColor.light);
-		} else {
-			this.setTheme(Theme.dark, ThemeBackgroundColor.dark);
-		}
-	}
-
 	/** Check if dark mode is currently active. */
-	public async isDarkModeActive(): Promise<boolean> {
-		const currentActiveTheme = (await this.getLatestTheme()) || getTheme();
-		return currentActiveTheme === Theme.dark;
+	public isDarkModeActive(): boolean {
+		return getTheme() === DARK_THEME;
 	}
 
-	/** Retrieve last set theme from storage. */
-	private async getLatestTheme(): Promise<string> {
-		const { theme } = (await chrome.storage.sync.get('theme')) as { theme?: string };
-		return theme ?? '';
-	}
-
-	/** Save current theme to storage. */
-	private async setLatestTheme(currentTheme: ThemeId): Promise<void> {
-		await chrome.storage.sync.set({
-			theme: currentTheme
-		});
-	}
-
-	/** Set body background color (not handled by UI5 theming). */
-	private setBackgroundColor(color: string): void {
-		const currentHtmlBody = document.querySelector('body') as HTMLBodyElement;
-		currentHtmlBody.style.backgroundColor = color;
-	}
-
-	/** Apply theme to UI5 and sync body background color. */
-	private setTheme(themeName: ThemeId, backgroundColor: string): void {
-		setTheme(themeName);
-		this.setBackgroundColor(backgroundColor);
-		this.setLatestTheme(themeName);
+	/** Toggle between light and dark themes and remember the choice. */
+	public async toggle(): Promise<void> {
+		const theme = this.isDarkModeActive() ? LIGHT_THEME : DARK_THEME;
+		setTheme(theme);
+		await chrome.storage.sync.set({ theme });
 	}
 }

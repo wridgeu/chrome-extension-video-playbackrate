@@ -1,4 +1,6 @@
-export default [
+import type { PlaybackOption } from '@src/util/playback';
+
+const contextMenuOptions: PlaybackOption[] = [
 	{
 		id: '1',
 		title: 'Slo-mo (0.25x)',
@@ -61,3 +63,5 @@ export default [
 		playbackRate: 4
 	}
 ];
+
+export default contextMenuOptions;

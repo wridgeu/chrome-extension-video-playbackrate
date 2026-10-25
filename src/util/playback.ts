@@ -17,18 +17,7 @@ export function findClosestOption(playbackRate: number, options: PlaybackOption[
 	});
 }
 
-/**
- * Formats the playback rate for display in the badge.
- * Shows the exact value chosen without unnecessary trailing zeros.
- */
-export function formatBadgeText(rate: number): string {
-	return rate.toString();
-}
-
-/**
- * Generates the storage key for per-tab playback rate.
- * Centralizes the key pattern to avoid duplication across files.
- */
+/** Storage key for the per-tab playback rate, shared by the service worker and popup. */
 export function getPlaybackRateStorageKey(tabId: number): string {
 	return `playbackRate_${tabId}`;
 }

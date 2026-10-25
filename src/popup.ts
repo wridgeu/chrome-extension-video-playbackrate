@@ -10,172 +10,120 @@ import { getPlaybackRateStorageKey } from '@src/util/playback';
  * Positions tooltip relative to slider handle.
  * Appears to the right when handle is on left half, and vice versa.
  */
-function positionTooltip(slider: Slider, tooltip: HTMLElement) {
-	const value = slider.value;
-	const min = Number(slider.min);
-	const max = Number(slider.max);
-	const percent = (value - min) / (max - min);
+function positionTooltip(slider: Slider, tooltip: HTMLElement): void {
+	const percent = (slider.value - slider.min) / (slider.max - slider.min);
 
-	tooltip.textContent = `${value}x`;
-
-	// Force reflow to ensure dimensions are computed after content change
-	void tooltip.offsetWidth;
-
-	const tooltipRect = tooltip.getBoundingClientRect();
+	tooltip.textContent = `${slider.value}x`;
 
 	// Get the actual handle element from shadow DOM for precise positioning
-	const handle = slider.shadowRoot?.querySelector('.ui5-slider-handle') as HTMLElement | null;
+	const handle = slider.shadowRoot?.querySelector<HTMLElement>('[part="handle"]');
 	if (!handle) return;
 
+	// Reading the rect forces layout, so it reflects the new text content
+	const tooltipRect = tooltip.getBoundingClientRect();
 	const handleRect = handle.getBoundingClientRect();
 
 	// Vertically center with handle
-	const handleCenterY = handleRect.top + handleRect.height / 2;
-	tooltip.style.top = `${handleCenterY - tooltipRect.height / 2}px`;
+	tooltip.style.top = `${handleRect.top + handleRect.height / 2 - tooltipRect.height / 2}px`;
 
-	// Position left or right of handle with gap
 	const gap = 4;
-	if (percent <= 0.5) {
-		// Handle on left half - tooltip to the right
-		tooltip.style.left = `${handleRect.right + gap}px`;
-	} else {
-		// Handle on right half - tooltip to the left
-		tooltip.style.left = `${handleRect.left - tooltipRect.width - gap}px`;
-	}
+	tooltip.style.left =
+		percent <= 0.5 ? `${handleRect.right + gap}px` : `${handleRect.left - tooltipRect.width - gap}px`;
 }
 
-/** Shows or hides elements based on whether videos are present on the page. */
-function updateVisibility(hasVideos: boolean, noVideosEl: HTMLElement | null, sliderContainer: HTMLElement | null) {
-	if (noVideosEl) noVideosEl.hidden = hasVideos;
-	if (sliderContainer) sliderContainer.hidden = !hasVideos;
-}
-
-/** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
-export async function initPopup() {
-	await new ThemeSwitcher().init();
-	const slider = document.getElementById('slider') as Slider | null;
-	const tooltip = document.getElementById('tooltip');
-	const noVideosEl = document.getElementById('no-videos');
-	const sliderContainer = document.getElementById('slider-container');
-
-	// Early return if required elements don't exist
-	if (!slider || !tooltip || !noVideosEl || !sliderContainer) {
-		return;
-	}
-	const [{ id: currentActiveTabId }] = await chrome.tabs.query({
-		active: true,
-		currentWindow: true
-	});
-
-	let playbackRate: number | undefined;
-	let hasVideos = false;
-	try {
-		if (currentActiveTabId) {
-			// Use executeScript to query videos across all frames (including iframes)
-			const results = await chrome.scripting.executeScript({
-				target: { tabId: currentActiveTabId, allFrames: true },
-				func: () => {
-					const videos = document.querySelectorAll('video');
-					if (videos.length === 0) return null;
-					return { playbackRate: videos[0].playbackRate, videoCount: videos.length };
-				}
-			});
-
-			// Aggregate results from all frames - find first frame with videos
-			const frameWithVideo = results.find((r) => r.result && r.result.videoCount > 0);
-			if (frameWithVideo?.result) {
-				playbackRate = frameWithVideo.result.playbackRate;
-				hasVideos = true;
-			}
-		}
-	} catch {
-		// Scripting not available on this tab (e.g., chrome:// pages)
-	}
-
-	updateVisibility(hasVideos, noVideosEl, sliderContainer);
-	let currentRate = playbackRate ?? 1;
-	slider.value = currentRate;
-
-	// Ensure UI shows correct rate when popup opens (fixes any stale badge/context menu values)
-	if (hasVideos && currentActiveTabId) {
-		chrome.runtime.sendMessage({
-			action: MessagingAction.UPDATE_UI,
-			playbackRate: currentRate,
-			tabId: currentActiveTabId
-		});
-	}
-
-	/** Shows the tooltip and positions it relative to the slider handle */
+/** Show the rate tooltip while the slider is being dragged. */
+function setupTooltip(slider: Slider, tooltip: HTMLElement): void {
 	const showTooltip = () => {
 		tooltip.showPopover();
 		positionTooltip(slider, tooltip);
 	};
-
-	/** Hides the tooltip popover */
-	const hideTooltip = () => {
-		tooltip.hidePopover();
-	};
+	const hideTooltip = () => tooltip.hidePopover();
 
 	slider.addEventListener('mousedown', showTooltip);
 	slider.addEventListener('touchstart', showTooltip);
 	document.addEventListener('mouseup', hideTooltip);
 	document.addEventListener('touchend', hideTooltip);
-
-	// Update tooltip position during drag
 	slider.addEventListener('input', () => {
 		if (tooltip.matches(':popover-open')) {
 			positionTooltip(slider, tooltip);
 		}
 	});
+}
 
-	// 'change' event only fires when user finishes interacting (not on programmatic changes)
-	slider.addEventListener('change', (event: Event) => {
-		const newRate = (event.target as Slider).value;
-		currentRate = newRate;
-
-		if (currentActiveTabId) {
-			chrome.scripting.executeScript({
-				target: { tabId: currentActiveTabId, allFrames: true },
-				func: (rate: number) => {
-					document.querySelectorAll('video').forEach((v) => {
-						v.playbackRate = rate;
-					});
-				},
-				args: [newRate]
-			});
-			chrome.runtime.sendMessage({
-				action: MessagingAction.UPDATE_UI,
-				playbackRate: newRate,
-				tabId: currentActiveTabId
-			});
-			chrome.storage.local.set({ [getPlaybackRateStorageKey(currentActiveTabId)]: newRate });
-		}
-	});
-
-	// Sync slider when video rate changes via native controls or context menu
-	if (currentActiveTabId) {
-		const storageKey = getPlaybackRateStorageKey(currentActiveTabId);
-		chrome.storage.local.onChanged.addListener((changes) => {
-			const newRate = changes[storageKey]?.newValue as number | undefined;
-			if (newRate !== undefined && newRate !== currentRate) {
-				currentRate = newRate;
-				slider.value = newRate;
-			}
+/** Playback rate of the first video in any frame of the tab (including iframes), or null if there is none. */
+async function getTabPlaybackRate(tabId: number): Promise<number | null> {
+	try {
+		const results = await chrome.scripting.executeScript({
+			target: { tabId, allFrames: true },
+			func: () => document.querySelector('video')?.playbackRate ?? null
 		});
+		const rate = results.find((frame) => typeof frame.result === 'number')?.result;
+		return rate ?? null;
+	} catch {
+		// Scripting not available on this tab (e.g., chrome:// pages)
+		return null;
 	}
 }
 
-// Auto-initialize when DOM is ready (not in test environment)
-if (
-	typeof document !== 'undefined' &&
-	typeof import.meta !== 'undefined' &&
-	// @ts-expect-error - import.meta.vitest is added by vitest
-	!import.meta.vitest
-) {
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', initPopup);
-	} else {
-		// DOM already ready, execute immediately
-		initPopup();
-	}
+/** Set the rate on all videos of the tab, in all frames. */
+function setTabPlaybackRate(tabId: number, playbackRate: number): void {
+	chrome.scripting.executeScript({
+		target: { tabId, allFrames: true },
+		func: (rate: number) => {
+			document.querySelectorAll('video').forEach((video) => {
+				video.playbackRate = rate;
+			});
+		},
+		args: [playbackRate]
+	});
+}
+
+/** Ask the service worker to sync badge, context menu and stored rate for the tab. */
+function sendUiUpdate(playbackRate: number, tabId: number): void {
+	chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_UI, playbackRate, tabId });
+}
+
+/** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
+export async function initPopup(): Promise<void> {
+	await new ThemeSwitcher().init();
+	const slider = document.querySelector<Slider>('#slider');
+	const tooltip = document.querySelector<HTMLElement>('#tooltip');
+	const noVideosEl = document.querySelector<HTMLElement>('#no-videos');
+	const sliderContainer = document.querySelector<HTMLElement>('#slider-container');
+	if (!slider || !tooltip || !noVideosEl || !sliderContainer) return;
+
+	const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+	const tabId = activeTab?.id;
+	const playbackRate = tabId === undefined ? null : await getTabPlaybackRate(tabId);
+
+	noVideosEl.hidden = playbackRate !== null;
+	sliderContainer.hidden = playbackRate === null;
+	if (tabId === undefined || playbackRate === null) return;
+
+	let currentRate = playbackRate;
+	slider.value = currentRate;
+	// Ensure UI shows correct rate when popup opens (fixes any stale badge/context menu values)
+	sendUiUpdate(currentRate, tabId);
+	setupTooltip(slider, tooltip);
+
+	// 'change' event only fires when user finishes interacting (not on programmatic changes)
+	slider.addEventListener('change', () => {
+		currentRate = slider.value;
+		setTabPlaybackRate(tabId, currentRate);
+		sendUiUpdate(currentRate, tabId);
+	});
+
+	// Sync slider when video rate changes via native controls or context menu
+	const storageKey = getPlaybackRateStorageKey(tabId);
+	chrome.storage.local.onChanged.addListener((changes) => {
+		const newRate = changes[storageKey]?.newValue;
+		if (typeof newRate === 'number' && newRate !== currentRate) {
+			currentRate = newRate;
+			slider.value = newRate;
+		}
+	});
+}
+
+if (import.meta.env.MODE !== 'test') {
+	await initPopup();
 }

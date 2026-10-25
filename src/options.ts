@@ -11,91 +11,40 @@ import '@ui5/webcomponents/dist/Title.js';
 import type { Defaults } from '@src/types';
 import { ThemeSwitcher } from '@src/util/ThemeSwitcher';
 
-/** Save default playback settings to sync storage. */
-async function saveDefaults(checkBoxState: boolean, playbackRate: string) {
-	await chrome.storage.sync.set({
-		defaults: {
-			enabled: checkBoxState,
-			playbackRate: Number.parseFloat(playbackRate) // parseFloat to support fractional rates
-		}
-	});
-}
-
-/** Save badge visibility preference to sync storage. */
-async function saveBadgePreference(enabled: boolean) {
-	await chrome.storage.sync.set({ badgeEnabled: enabled });
-}
-
-/** Initialize badge checkbox from storage. Defaults to enabled if not set. */
-async function initBadgePreference(badgeCheckbox: CheckBox): Promise<void> {
-	const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
-	// Default to true if not set
-	badgeCheckbox.checked = badgeEnabled !== false;
-}
-
-/** Initialize default settings UI from storage. */
-async function initDefaults(defaultsCheckbox: CheckBox, defaultSpeedSelector: Select): Promise<void> {
-	const { defaults } = (await chrome.storage.sync.get('defaults')) as Defaults;
-	defaultsCheckbox.checked = defaults?.enabled || false;
-	if (defaultsCheckbox.checked) {
-		defaultSpeedSelector.disabled = false;
-	}
-	if (defaults?.playbackRate) {
-		document.getElementById(`option-${defaults.playbackRate}`)?.setAttribute('selected', '');
-	}
-}
-
-/** Initialize theme toggle switch from storage and system preference. */
-async function initThemeToggle() {
-	const themeSwitcher = await new ThemeSwitcher().init();
-	const themeToggleCheckbox = document.getElementById('themeToggle') as Switch;
-	themeToggleCheckbox.checked = await themeSwitcher.isDarkModeActive();
-	themeToggleCheckbox.addEventListener('change', async () => {
-		try {
-			await themeSwitcher.toggle();
-		} catch (error) {
-			if (import.meta.env?.DEV) {
-				console.error('Theme toggle failed:', error);
-			}
-		}
-	});
-}
+type OptionsStorage = Defaults & { badgeEnabled?: boolean };
 
 /** Initialize options page. Exported for testing. */
 export async function initOptions(): Promise<void> {
-	const defaultsCheckbox = document.getElementById('defaultsEnabledCheckbox') as CheckBox | null;
-	const defaultSpeedSelector = document.getElementById('defaultSpeedSelector') as Select | null;
-	const badgeCheckbox = document.getElementById('badgeEnabledCheckbox') as CheckBox | null;
+	const defaultsCheckbox = document.querySelector<CheckBox>('#defaultsEnabledCheckbox');
+	const defaultSpeedSelector = document.querySelector<Select>('#defaultSpeedSelector');
+	const badgeCheckbox = document.querySelector<CheckBox>('#badgeEnabledCheckbox');
+	const themeToggle = document.querySelector<Switch>('#themeToggle');
+	if (!defaultsCheckbox || !defaultSpeedSelector || !badgeCheckbox || !themeToggle) return;
 
-	if (!defaultsCheckbox || !defaultSpeedSelector || !badgeCheckbox) {
-		return;
-	}
+	const { defaults, badgeEnabled } = (await chrome.storage.sync.get(['defaults', 'badgeEnabled'])) as OptionsStorage;
+	defaultsCheckbox.checked = defaults?.enabled ?? false;
+	defaultSpeedSelector.disabled = !defaultsCheckbox.checked;
+	defaultSpeedSelector.value = String(defaults?.playbackRate ?? 1);
+	// Badge is enabled unless explicitly turned off
+	badgeCheckbox.checked = badgeEnabled !== false;
 
-	await initDefaults(defaultsCheckbox, defaultSpeedSelector);
-	await initBadgePreference(badgeCheckbox);
-	await initThemeToggle();
+	const themeSwitcher = await new ThemeSwitcher().init();
+	themeToggle.checked = themeSwitcher.isDarkModeActive();
+	themeToggle.addEventListener('change', () => themeSwitcher.toggle());
 
-	defaultsCheckbox.addEventListener('change', async (event: Event) => {
-		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
-		defaultSpeedSelector.disabled = !checkboxIsChecked;
+	const saveDefaults = () =>
+		chrome.storage.sync.set({
+			defaults: { enabled: defaultsCheckbox.checked, playbackRate: Number(defaultSpeedSelector.value) }
+		});
 
-		const selectedText = defaultSpeedSelector.selectedOption?.innerText ?? '1';
-		await saveDefaults(checkboxIsChecked, selectedText);
+	defaultsCheckbox.addEventListener('change', () => {
+		defaultSpeedSelector.disabled = !defaultsCheckbox.checked;
+		saveDefaults();
 	});
-
-	defaultSpeedSelector.addEventListener('change', async () => {
-		const selectedText = defaultSpeedSelector.selectedOption?.innerText ?? '1';
-		await saveDefaults(defaultsCheckbox.checked, selectedText);
-	});
-
-	badgeCheckbox.addEventListener('change', async (event: Event) => {
-		const checkboxIsChecked = (event.target as HTMLInputElement)?.checked;
-		await saveBadgePreference(checkboxIsChecked);
-	});
+	defaultSpeedSelector.addEventListener('change', saveDefaults);
+	badgeCheckbox.addEventListener('change', () => chrome.storage.sync.set({ badgeEnabled: badgeCheckbox.checked }));
 }
 
-// Auto-initialize when loaded (not in test environment)
-// @ts-expect-error - import.meta.vitest is added by vitest
-if (typeof document !== 'undefined' && typeof chrome !== 'undefined' && !import.meta.vitest) {
-	initOptions();
+if (import.meta.env.MODE !== 'test') {
+	await initOptions();
 }
