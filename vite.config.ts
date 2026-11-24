@@ -14,22 +14,24 @@ const aliases = {
 	'@tests': path.resolve(import.meta.dirname, 'src/__tests__')
 };
 
-/**
- * MV3 declarative content_scripts run as classic scripts (not ES modules).
- * Build src/contentscript.ts as a self-contained IIFE and register it in Vite's watch graph
- * so both `npm run build` and `npm run build:watch` rebuild it automatically.
- */
+/** Bundle src/contentscript.ts as a classic IIFE (required by MV3 content_scripts) and include it in watch mode. */
 function buildContentScript(): Plugin {
 	const entry = path.resolve(import.meta.dirname, 'src/contentscript.ts');
+	let mode: string | undefined;
 	return {
 		name: 'build-content-script',
 		apply: 'build',
+		configResolved(config) {
+			mode = config.mode;
+		},
 		buildStart() {
 			this.addWatchFile(entry);
 		},
-		async closeBundle() {
+		async closeBundle(error) {
+			if (error) return;
 			await build({
 				configFile: false,
+				mode,
 				base: './',
 				publicDir: false,
 				resolve: { alias: aliases },
