@@ -47,10 +47,13 @@ npm run build                         # builds the extension into dist/
 
 Load `dist/` as an unpacked extension via `chrome://extensions` (developer mode). `npm run build:watch` rebuilds on changes.
 
+The build runs in two steps: `vite.config.ts` bundles the ES module entries (`sw`, `popup`, `options`) and copies `public/` (injecting `version` from `package.json` into `dist/manifest.json`), while `vite.contentscript.config.ts` bundles `src/contentscript.ts` as a self-contained classic IIFE so Chrome can inject it declaratively via `content_scripts` without `web_accessible_resources`.
+
 | Script                      | What it does                                                          |
 | --------------------------- | --------------------------------------------------------------------- |
 | `npm run lint` / `lint:fix` | oxlint (incl. complexity limits) and the oxfmt format check / autofix |
 | `npm run typecheck`         | TypeScript without emitting                                           |
+| `npm run build`             | Cleans `dist/` and builds both ESM entries and the content script     |
 | `npm run test:unit`         | Unit tests (Vitest + jsdom); `test:watch` and `test:coverage` too     |
 | `npm run test:e2e`          | Builds, then runs the real extension in Chrome via Puppeteer          |
 | `npm test`                  | Builds, then runs both suites                                         |
@@ -77,6 +80,10 @@ More details on content scripts can be found [here](https://developer.chrome.com
 ![](./docs/img/content-scripts_1.png)
 
 Communication between the content script and the parent extension is done either by using the [storage API](https://developer.chrome.com/docs/extensions/reference/storage/) or using [messages](https://developer.chrome.com/docs/extensions/mv3/messaging/).
+
+- **Injection:** `dist/js/contentscript.js` is declared in `manifest.json` (`all_frames: true`, `run_at: "document_idle"`) so Chrome injects it into main frames and dynamically added iframes automatically; `sw.ts` also injects it into already-open tabs on `onInstalled`.
+- **Storage:** User preferences (`defaults`, `badgeEnabled`, `theme`) live in `chrome.storage.sync`; ephemeral per-tab playback rates (`playbackRate_<tabId>`) live in `chrome.storage.session` so they clear automatically when the browser closes.
+- **UI & theming:** `popup.html` and `options.html` use UI5 Web Components with targeted loaders for `sap_horizon`, `sap_horizon_dark`, and English i18n only (`src/util/ThemeSwitcher.ts`).
 
 ![](./docs/img/content-scripts_2.png)
 
