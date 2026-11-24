@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLAYBACK_RATES, findClosestRate, formatRate } from '@src/util/playback';
+import { PLAYBACK_RATES, clampRate, findClosestRate, formatBadgeRate, formatRate } from '@src/util/playback';
 
 describe('PLAYBACK_RATES', () => {
 	it('covers 0.25× to 4× in 0.25 steps, ascending', () => {
@@ -24,5 +24,27 @@ describe('findClosestRate', () => {
 describe('formatRate', () => {
 	it('marks 1× as normal and shows other rates with a × sign', () => {
 		expect([formatRate(1), formatRate(0.25), formatRate(2.5)]).toEqual(['1× (Normal)', '0.25×', '2.5×']);
+	});
+});
+
+describe('formatBadgeRate', () => {
+	it.each([
+		[1, '1'],
+		[1.5, '1.5'],
+		[1.75, '1.75'],
+		[1.3333333, '1.33'],
+		[2.001, '2']
+	])('formats %d as %s', (rate, expected) => {
+		expect(formatBadgeRate(rate)).toBe(expected);
+	});
+});
+
+describe('clampRate', () => {
+	it.each([
+		[0.1, 0.25],
+		[1.5, 1.5],
+		[5, 4]
+	])('clamps %d to %d', (rate, expected) => {
+		expect(clampRate(rate)).toBe(expected);
 	});
 });

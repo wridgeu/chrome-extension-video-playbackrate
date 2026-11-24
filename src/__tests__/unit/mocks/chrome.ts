@@ -33,7 +33,7 @@ function createMockStorageArea(store: Record<string, unknown>) {
 }
 
 /** Creates the chrome mock object structure (only the APIs the extension uses) */
-function createChromeMockObject(syncStorage: Record<string, unknown>, localStorage: Record<string, unknown>) {
+function createChromeMockObject(syncStorage: Record<string, unknown>, sessionStorage: Record<string, unknown>) {
 	const resolved = (value?: unknown) => vi.fn<MockFn>(() => Promise.resolve(value));
 	return {
 		runtime: {
@@ -44,12 +44,11 @@ function createChromeMockObject(syncStorage: Record<string, unknown>, localStora
 		},
 		storage: {
 			sync: createMockStorageArea(syncStorage),
-			local: createMockStorageArea(localStorage),
+			session: createMockStorageArea(sessionStorage),
 			onChanged: createMockEvent()
 		},
 		tabs: {
 			query: resolved([{ id: 1 }]),
-			onUpdated: createMockEvent(),
 			onRemoved: createMockEvent()
 		},
 		scripting: {
@@ -67,7 +66,7 @@ function createChromeMockObject(syncStorage: Record<string, unknown>, localStora
 			onClicked: createMockEvent()
 		},
 		webNavigation: {
-			onBeforeNavigate: createMockEvent()
+			onCommitted: createMockEvent()
 		}
 	};
 }
@@ -77,15 +76,15 @@ export type ChromeMock = ReturnType<typeof createChromeMockObject>;
 /** Creates a fresh Chrome mock with its own state */
 export function createChromeMock() {
 	const syncStorage: Record<string, unknown> = {};
-	const localStorage: Record<string, unknown> = {};
-	const chromeMock = createChromeMockObject(syncStorage, localStorage);
+	const sessionStorage: Record<string, unknown> = {};
+	const chromeMock = createChromeMockObject(syncStorage, sessionStorage);
 
 	/** Clear stored data and restore every mock's original implementation, so per-test overrides don't leak. */
 	const reset = () => {
 		Object.keys(syncStorage).forEach((k) => delete syncStorage[k]);
-		Object.keys(localStorage).forEach((k) => delete localStorage[k]);
+		Object.keys(sessionStorage).forEach((k) => delete sessionStorage[k]);
 		vi.resetAllMocks();
 	};
 
-	return { chrome: chromeMock, syncStorage, localStorage, reset };
+	return { chrome: chromeMock, syncStorage, sessionStorage, reset };
 }

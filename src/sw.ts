@@ -1,43 +1,49 @@
 import { MessagingAction, type MessagingRequestPayload } from '@src/types';
-import { PLAYBACK_RATES, findClosestRate, formatRate, getPlaybackRateStorageKey } from '@src/util/playback';
+import {
+	PLAYBACK_RATES,
+	findClosestRate,
+	formatBadgeRate,
+	formatRate,
+	getPlaybackRateStorageKey
+} from '@src/util/playback';
 
 /** Badge background color - matches the icon's golden yellow */
 const BADGE_BACKGROUND_COLOR = '#F7B731';
 /** Badge text color - black for contrast */
 const BADGE_TEXT_COLOR = '#000000';
 
-// Track tabs where content script has been injected to prevent duplicates
-const injectedTabs = new Set<number>();
-
-/** Inject content script into a tab and track injection status. */
-function injectContentScript(tabId: number): void {
-	// Add to set immediately to prevent race condition with onUpdated
-	injectedTabs.add(tabId);
-	chrome.scripting.executeScript(
-		{
-			target: { tabId, allFrames: true },
-			files: ['/js/contentscript-loader.js']
-		},
-		() => {
-			if (chrome.runtime.lastError) {
-				// Remove from set on failure so retry is possible
-				injectedTabs.delete(tabId);
-				if (import.meta.env.DEV) {
-					console.warn('Content script injection failed:', chrome.runtime.lastError.message);
-				}
-			}
-		}
-	);
+/** Log expected Chrome API failures (e.g. a tab closing mid-call) in dev only. */
+function warnInDev(context: string, error: unknown): void {
+	if (import.meta.env.DEV) {
+		console.warn(`${context}:`, error);
+	}
 }
 
 /** Check the context menu entry (id = the rate) closest to the given playback rate. */
 function updateContextMenu(playbackRate: number): void {
 	// Callback handles case where menu item doesn't exist after service worker restart
 	chrome.contextMenus.update(String(findClosestRate(playbackRate)), { checked: true }, () => {
-		if (chrome.runtime.lastError && import.meta.env.DEV) {
-			console.warn('Context menu update skipped:', chrome.runtime.lastError.message);
+		if (chrome.runtime.lastError) {
+			warnInDev('Context menu update skipped', chrome.runtime.lastError.message);
 		}
 	});
+}
+
+/** Show `playbackRate` on the tab's badge, or clear the badge when it is undefined. */
+async function setBadge(playbackRate: number | undefined, tabId: number): Promise<void> {
+	try {
+		if (playbackRate === undefined) {
+			await chrome.action.setBadgeText({ text: '', tabId });
+			return;
+		}
+		await Promise.all([
+			chrome.action.setBadgeText({ text: formatBadgeRate(playbackRate), tabId }),
+			chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId }),
+			chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId })
+		]);
+	} catch (error) {
+		warnInDev('Badge update skipped', error);
+	}
 }
 
 /** Sync the badge (unless disabled), the context menu and the per-tab rate the popup listens to. */
@@ -45,21 +51,10 @@ async function handleRateUpdate(playbackRate: number, tabId: number | undefined)
 	updateContextMenu(playbackRate);
 	if (tabId === undefined) return;
 
-	chrome.storage.local.set({ [getPlaybackRateStorageKey(tabId)]: playbackRate });
+	await chrome.storage.session.set({ [getPlaybackRateStorageKey(tabId)]: playbackRate });
 
 	const { badgeEnabled } = await chrome.storage.sync.get('badgeEnabled');
-	setBadge(badgeEnabled === false ? undefined : playbackRate, tabId);
-}
-
-/** Show `playbackRate` on the tab's badge, or clear the badge when it is undefined. */
-function setBadge(playbackRate: number | undefined, tabId: number): void {
-	if (playbackRate === undefined) {
-		chrome.action.setBadgeText({ text: '', tabId });
-		return;
-	}
-	chrome.action.setBadgeText({ text: String(playbackRate), tabId });
-	chrome.action.setBadgeBackgroundColor({ color: BADGE_BACKGROUND_COLOR, tabId });
-	chrome.action.setBadgeTextColor({ color: BADGE_TEXT_COLOR, tabId });
+	await setBadge(badgeEnabled === false ? undefined : playbackRate, tabId);
 }
 
 /**
@@ -71,7 +66,7 @@ export function setRateOfVideoWithSrc(srcUrl: string, rate: number): void {
 	if (video) video.playbackRate = rate;
 }
 
-/** Initialize context menu with playback rate options and inject content script into existing tabs. */
+/** Initialize context menu with playback rate options and inject content script into already-open tabs. */
 chrome.runtime.onInstalled.addListener(async () => {
 	// Menu items survive extension updates; start fresh so renamed or removed entries don't linger
 	await chrome.contextMenus.removeAll();
@@ -85,13 +80,17 @@ chrome.runtime.onInstalled.addListener(async () => {
 		});
 	});
 
-	// Inject content script into all existing tabs so extension works without requiring a page refresh
+	// New pages get the content script declaratively via manifest.json; inject into already-open tabs on install/update
 	const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
-	for (const tab of tabs) {
-		if (tab.id) {
-			injectContentScript(tab.id);
-		}
-	}
+	await Promise.all(
+		tabs
+			.filter((tab): tab is chrome.tabs.Tab & { id: number } => tab.id !== undefined)
+			.map((tab) =>
+				chrome.scripting
+					.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ['/js/contentscript.js'] })
+					.catch((error) => warnInDev('Content script injection failed', error))
+			)
+	);
 });
 
 /** Set playback rate when context menu item is clicked. */
@@ -100,33 +99,25 @@ chrome.contextMenus.onClicked.addListener(async (itemData, tab) => {
 	if (!tab?.id || !PLAYBACK_RATES.includes(rate) || !itemData.srcUrl) return;
 
 	// Use executeScript to set playback rate directly, avoiding content script dependency
-	chrome.scripting.executeScript({
-		target: { tabId: tab.id, allFrames: true },
-		func: setRateOfVideoWithSrc,
-		args: [itemData.srcUrl, rate]
-	});
+	await chrome.scripting
+		.executeScript({
+			target: { tabId: tab.id, allFrames: true },
+			func: setRateOfVideoWithSrc,
+			args: [itemData.srcUrl, rate]
+		})
+		.catch((error) => warnInDev('Context menu rate update failed', error));
 	await handleRateUpdate(rate, tab.id);
 });
 
-/** Inject content script when a tab finishes loading. */
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-	if (changeInfo.status === 'complete' && !injectedTabs.has(tabId)) {
-		injectContentScript(tabId);
-	}
-});
-
-// Clean up tracking and storage when tab is closed
+// Clean up per-tab session state when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
-	injectedTabs.delete(tabId);
-	chrome.storage.local.remove(getPlaybackRateStorageKey(tabId));
+	void chrome.storage.session.remove(getPlaybackRateStorageKey(tabId));
 });
 
-// A main frame navigation needs a fresh injection, and the old page's rate no longer applies
-// (Chrome resets the tab's badge itself, but re-enabling the badge would restore the stored rate)
-chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+// Forget the old page's rate once a main-frame navigation actually commits (aborted navigations / downloads don't commit)
+chrome.webNavigation.onCommitted.addListener((details) => {
 	if (details.frameId === 0) {
-		injectedTabs.delete(details.tabId);
-		chrome.storage.local.remove(getPlaybackRateStorageKey(details.tabId));
+		void chrome.storage.session.remove(getPlaybackRateStorageKey(details.tabId));
 	}
 });
 
@@ -138,7 +129,9 @@ chrome.runtime.onMessage.addListener((request: MessagingRequestPayload, sender) 
 		updateContextMenu(request.playbackRate);
 	} else if (request.action === MessagingAction.UPDATE_UI) {
 		// Prefer the browser-provided sender tab; only the popup (which has no sender tab) names a tab itself
-		handleRateUpdate(request.playbackRate, sender.tab?.id ?? request.tabId);
+		void handleRateUpdate(request.playbackRate, sender.tab?.id ?? request.tabId).catch((error) =>
+			warnInDev('Rate update failed', error)
+		);
 	}
 });
 
@@ -148,9 +141,11 @@ chrome.storage.onChanged.addListener(async (changes, areaName) => {
 
 	const enabled = changes.badgeEnabled.newValue !== false;
 	const tabIds = (await chrome.tabs.query({})).flatMap((tab) => (tab.id ? [tab.id] : []));
-	const storedRates = await chrome.storage.local.get(tabIds.map((tabId) => getPlaybackRateStorageKey(tabId)));
-	for (const tabId of tabIds) {
-		const rate = storedRates[getPlaybackRateStorageKey(tabId)];
-		setBadge(enabled && typeof rate === 'number' ? rate : undefined, tabId);
-	}
+	const storedRates = await chrome.storage.session.get(tabIds.map((tabId) => getPlaybackRateStorageKey(tabId)));
+	await Promise.all(
+		tabIds.map((tabId) => {
+			const rate = storedRates[getPlaybackRateStorageKey(tabId)];
+			return setBadge(enabled && typeof rate === 'number' ? rate : undefined, tabId);
+		})
+	);
 });

@@ -4,7 +4,7 @@ import '@ui5/webcomponents/dist/Text.js';
 
 import { ThemeSwitcher } from '@src/util/ThemeSwitcher';
 import { MessagingAction } from '@src/types';
-import { MAX_RATE, MIN_RATE, RATE_STEP, getPlaybackRateStorageKey } from '@src/util/playback';
+import { MAX_RATE, MIN_RATE, RATE_STEP, clampRate, getPlaybackRateStorageKey } from '@src/util/playback';
 
 /** Labelled positions on the slider scale */
 const SLIDER_LABELS = [MIN_RATE, 1, 2, 3, MAX_RATE];
@@ -34,7 +34,7 @@ function positionTooltip(slider: Slider, tooltip: HTMLElement): void {
 		percent <= 0.5 ? `${handleRect.right + gap}px` : `${handleRect.left - tooltipRect.width - gap}px`;
 }
 
-/** Show the rate tooltip while the slider is being dragged. */
+/** Show the rate tooltip while the slider is dragged or focused via keyboard. */
 function setupTooltip(slider: Slider, tooltip: HTMLElement): void {
 	const showTooltip = () => {
 		tooltip.showPopover();
@@ -44,6 +44,8 @@ function setupTooltip(slider: Slider, tooltip: HTMLElement): void {
 
 	slider.addEventListener('mousedown', showTooltip);
 	slider.addEventListener('touchstart', showTooltip);
+	slider.addEventListener('focus', showTooltip);
+	slider.addEventListener('blur', hideTooltip);
 	document.addEventListener('mouseup', hideTooltip);
 	document.addEventListener('touchend', hideTooltip);
 	slider.addEventListener('input', () => {
@@ -70,20 +72,26 @@ async function getTabPlaybackRate(tabId: number): Promise<number | null> {
 
 /** Set the rate on all videos of the tab, in all frames. */
 function setTabPlaybackRate(tabId: number, playbackRate: number): void {
-	chrome.scripting.executeScript({
-		target: { tabId, allFrames: true },
-		func: (rate: number) => {
-			document.querySelectorAll('video').forEach((video) => {
-				video.playbackRate = rate;
-			});
-		},
-		args: [playbackRate]
-	});
+	chrome.scripting
+		.executeScript({
+			target: { tabId, allFrames: true },
+			func: (rate: number) => {
+				document.querySelectorAll('video').forEach((video) => {
+					video.playbackRate = rate;
+				});
+			},
+			args: [playbackRate]
+		})
+		.catch(() => {
+			// Tab may have closed or navigated to a restricted URL while the popup was open
+		});
 }
 
 /** Ask the service worker to sync badge, context menu and stored rate for the tab. */
 function sendUiUpdate(playbackRate: number, tabId: number): void {
-	chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_UI, playbackRate, tabId });
+	chrome.runtime.sendMessage({ action: MessagingAction.UPDATE_UI, playbackRate, tabId }).catch(() => {
+		// Service worker or receiver unavailable
+	});
 }
 
 /** Initialize popup UI, sync slider with current video playback rate, and set up event handlers. */
@@ -109,7 +117,7 @@ export async function initPopup(): Promise<void> {
 	sliderContainer.hidden = playbackRate === null;
 	if (tabId === undefined || playbackRate === null) return;
 
-	slider.value = playbackRate;
+	slider.value = clampRate(playbackRate);
 	// Ensure UI shows correct rate when popup opens (fixes any stale badge/context menu values)
 	sendUiUpdate(playbackRate, tabId);
 	setupTooltip(slider, tooltip);
@@ -122,9 +130,9 @@ export async function initPopup(): Promise<void> {
 
 	// Sync slider when video rate changes via native controls or context menu
 	const storageKey = getPlaybackRateStorageKey(tabId);
-	chrome.storage.local.onChanged.addListener((changes) => {
+	chrome.storage.session.onChanged.addListener((changes) => {
 		const newRate = changes[storageKey]?.newValue;
-		if (typeof newRate === 'number') slider.value = newRate;
+		if (typeof newRate === 'number') slider.value = clampRate(newRate);
 	});
 }
 

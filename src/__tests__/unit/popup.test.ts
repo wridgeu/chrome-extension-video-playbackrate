@@ -89,6 +89,14 @@ describe('Popup', () => {
 			});
 		});
 
+		it('clamps out-of-range page video rates to the slider bounds', async () => {
+			mockTabVideoRate(6);
+
+			await initPopup();
+
+			expect(slider.value).toBe(4);
+		});
+
 		it('reads the first video of each frame of the active tab', async () => {
 			mockTabVideoRate(1);
 
@@ -126,6 +134,16 @@ describe('Popup', () => {
 				tabId: TAB_ID
 			});
 		});
+
+		it('swallows executeScript and sendMessage rejections if the tab closes mid-interaction', async () => {
+			mockTabVideoRate(1);
+			await initPopup();
+			chromeMock.scripting.executeScript.mockRejectedValueOnce(new Error('No tab with id'));
+			chromeMock.runtime.sendMessage.mockRejectedValueOnce(new Error('Receiver unavailable'));
+
+			slider.value = 2;
+			expect(() => slider.dispatchEvent(new Event('change'))).not.toThrow();
+		});
 	});
 
 	describe('tooltip', () => {
@@ -144,6 +162,17 @@ describe('Popup', () => {
 			expect(tooltip.style.top).toBe('10px');
 
 			document.dispatchEvent(new Event('mouseup'));
+			expect(tooltip.hidePopover).toHaveBeenCalled();
+		});
+
+		it('opens on focus and closes on blur for keyboard users', () => {
+			slider.value = 1.5;
+			slider.dispatchEvent(new Event('focus'));
+
+			expect(tooltip.showPopover).toHaveBeenCalled();
+			expect(tooltip.textContent).toBe('1.5×');
+
+			slider.dispatchEvent(new Event('blur'));
 			expect(tooltip.hidePopover).toHaveBeenCalled();
 		});
 
@@ -167,11 +196,11 @@ describe('Popup', () => {
 	});
 
 	describe('storage sync', () => {
-		it('moves the slider when the stored rate of this tab changes', async () => {
+		it('moves the slider (clamped) when the stored session rate of this tab changes', async () => {
 			mockTabVideoRate(1);
 			await initPopup();
 			const [listener] = callsOf<[(changes: Record<string, chrome.storage.StorageChange>) => void]>(
-				chromeMock.storage.local.onChanged.addListener
+				chromeMock.storage.session.onChanged.addListener
 			)[0]!;
 
 			listener({ playbackRate_999: { newValue: 4 } });
@@ -179,6 +208,9 @@ describe('Popup', () => {
 
 			listener({ [`playbackRate_${TAB_ID}`]: { newValue: 3 } });
 			expect(slider.value).toBe(3);
+
+			listener({ [`playbackRate_${TAB_ID}`]: { newValue: 8 } });
+			expect(slider.value).toBe(4);
 		});
 	});
 });

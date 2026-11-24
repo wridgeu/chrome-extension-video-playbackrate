@@ -1,13 +1,11 @@
 import { defineConfig } from 'vitest/config';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
+import pkg from './package.json' with { type: 'json' };
 
-// Extension entry points; shared code is split into js/chunks/ (exposed to pages via web_accessible_resources)
+// Extension ES module entry points (contentscript is built separately as a self-contained classic script)
 const inputFiles = Object.fromEntries(
-	['sw', 'popup', 'options', 'contentscript', 'contentscript-loader'].map((name) => [
-		name,
-		path.resolve(import.meta.dirname, `src/${name}.ts`)
-	])
+	['sw', 'popup', 'options'].map((name) => [name, path.resolve(import.meta.dirname, `src/${name}.ts`)])
 );
 
 const aliases = {
@@ -29,7 +27,7 @@ export default defineConfig({
 	build: {
 		outDir: 'dist/js',
 
-		// Don't empty outDir since static files are copied separately
+		// Don't empty outDir since static files and contentscript are built separately
 		emptyOutDir: false,
 
 		target: 'esnext',
@@ -58,7 +56,7 @@ export default defineConfig({
 					rename: { stripBase: true },
 					transform: (content) => {
 						const manifest = JSON.parse(content);
-						manifest.version = process.env.npm_package_version;
+						manifest.version = pkg.version;
 						delete manifest.$schema;
 						return JSON.stringify(manifest, null, 2);
 					}
