@@ -1,9 +1,10 @@
 import { defineConfig } from 'vitest/config';
+import { build, type Plugin } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
 import pkg from './package.json' with { type: 'json' };
 
-// Extension ES module entry points (contentscript is built separately as a self-contained classic script)
+// Extension ES module entry points (contentscript is bundled as a classic IIFE via buildContentScript)
 const inputFiles = Object.fromEntries(
 	['sw', 'popup', 'options'].map((name) => [name, path.resolve(import.meta.dirname, `src/${name}.ts`)])
 );
@@ -12,6 +13,42 @@ const aliases = {
 	'@src': path.resolve(import.meta.dirname, 'src'),
 	'@tests': path.resolve(import.meta.dirname, 'src/__tests__')
 };
+
+/**
+ * MV3 declarative content_scripts run as classic scripts (not ES modules).
+ * Build src/contentscript.ts as a self-contained IIFE and register it in Vite's watch graph
+ * so both `npm run build` and `npm run build:watch` rebuild it automatically.
+ */
+function buildContentScript(): Plugin {
+	const entry = path.resolve(import.meta.dirname, 'src/contentscript.ts');
+	return {
+		name: 'build-content-script',
+		apply: 'build',
+		buildStart() {
+			this.addWatchFile(entry);
+		},
+		async closeBundle() {
+			await build({
+				configFile: false,
+				base: './',
+				publicDir: false,
+				resolve: { alias: aliases },
+				build: {
+					outDir: 'dist/js',
+					emptyOutDir: false,
+					target: 'esnext',
+					rolldownOptions: {
+						input: entry,
+						output: {
+							format: 'iife',
+							entryFileNames: 'contentscript.js'
+						}
+					}
+				}
+			});
+		}
+	};
+}
 
 export default defineConfig({
 	// Required for Chrome extensions - use relative paths
@@ -27,7 +64,7 @@ export default defineConfig({
 	build: {
 		outDir: 'dist/js',
 
-		// Don't empty outDir since static files and contentscript are built separately
+		// Don't empty outDir since static files are copied separately
 		emptyOutDir: false,
 
 		target: 'esnext',
@@ -62,7 +99,8 @@ export default defineConfig({
 					}
 				}
 			]
-		})
+		}),
+		buildContentScript()
 	],
 
 	test: {

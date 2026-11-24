@@ -61,7 +61,7 @@
       }
     },
     {
-      "files": ["vite.config.ts", "vite.contentscript.config.ts"],
+      "files": ["vite.config.ts"],
       "env": { "node": true }
     }
   ]

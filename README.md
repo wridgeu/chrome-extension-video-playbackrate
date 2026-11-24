@@ -45,9 +45,9 @@ npx puppeteer browsers install chrome # browser for the e2e tests, if npm skippe
 npm run build                         # builds the extension into dist/
 ```
 
-Load `dist/` as an unpacked extension via `chrome://extensions` (developer mode). `npm run build:watch` rebuilds on changes.
+Load `dist/` as an unpacked extension via `chrome://extensions` (developer mode). `npm run build:watch` rebuilds on changes (including `src/contentscript.ts`).
 
-The build runs in two steps: `vite.config.ts` bundles the ES module entries (`sw`, `popup`, `options`) and copies `public/` (injecting `version` from `package.json` into `dist/manifest.json`), while `vite.contentscript.config.ts` bundles `src/contentscript.ts` as a self-contained classic IIFE so Chrome can inject it declaratively via `content_scripts` without `web_accessible_resources`.
+`vite.config.ts` bundles the ES module entries (`sw`, `popup`, `options`), copies `public/` (injecting `version` from `package.json` into `dist/manifest.json`), and builds `src/contentscript.ts` as a self-contained classic IIFE so Chrome can inject it declaratively via `content_scripts` without `web_accessible_resources`.
 
 | Script                      | What it does                                                          |
 | --------------------------- | --------------------------------------------------------------------- |
