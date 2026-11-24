@@ -56,6 +56,13 @@ describe('ContentScript', () => {
 			expect(chromeMock.storage.sync.get).not.toHaveBeenCalled();
 			expect(chromeMock.runtime.sendMessage).not.toHaveBeenCalled();
 		});
+
+		it('returns false gracefully if extension storage context is invalidated', async () => {
+			chromeMock.storage.sync.get.mockRejectedValueOnce(new Error('Extension context invalidated.'));
+			addVideos();
+
+			await expect(applyDefaultPlaybackRate()).resolves.toBe(false);
+		});
 	});
 
 	describe('initContentScript', () => {
@@ -123,6 +130,29 @@ describe('ContentScript', () => {
 			});
 		});
 
+		it('reports the rate of a dynamically added video even when defaults are disabled', async () => {
+			await initContentScript();
+			chromeMock.runtime.sendMessage.mockClear();
+
+			document.body.append(document.createElement('video'));
+
+			await vi.waitFor(() => {
+				expect(chromeMock.runtime.sendMessage).toHaveBeenCalledExactlyOnceWith(uiUpdate(1));
+			});
+		});
+
+		it('ignores non-video DOM mutations without hitting storage', async () => {
+			await initContentScript();
+			chromeMock.storage.sync.get.mockClear();
+
+			const div = document.createElement('div');
+			div.textContent = 'not a video';
+			document.body.append(div);
+			await Promise.resolve();
+
+			expect(chromeMock.storage.sync.get).not.toHaveBeenCalled();
+		});
+
 		it('re-applies the default rate when a video loads a new source', async () => {
 			mockStorage.defaults = { enabled: true, playbackRate: 2 };
 			const [video] = addVideos();
@@ -134,14 +164,16 @@ describe('ContentScript', () => {
 			await vi.waitFor(() => expect(video!.playbackRate).toBe(2));
 		});
 
-		it('syncs the context menu with the right-clicked video', async () => {
+		it('syncs the context menu with the right-clicked video once even if initialized multiple times', async () => {
 			const [video] = addVideos();
 			video!.playbackRate = 2.5;
 			await initContentScript();
+			await initContentScript();
+			chromeMock.runtime.sendMessage.mockClear();
 
 			video!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
-			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledWith({
+			expect(chromeMock.runtime.sendMessage).toHaveBeenCalledExactlyOnceWith({
 				action: MessagingAction.UPDATE_CONTEXT_MENU,
 				playbackRate: 2.5
 			});

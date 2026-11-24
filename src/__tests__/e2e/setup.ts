@@ -114,9 +114,8 @@ export async function getTabId(page: Page): Promise<number> {
 }
 
 /**
- * Wait until the content script has initialized in every frame, so a test can act right away.
- * Importing the module in the extension's isolated world resolves once the (already or newly) loaded module has
- * finished initializing. The automatic injection itself is covered by a test that doesn't use this helper.
+ * Wait until the declaratively injected content script has finished initializing in every frame.
+ * `contentscript.ts` exposes its init promise on `Symbol.for('vpr.ready')` in the isolated world.
  */
 export async function waitForContentScript(page: Page): Promise<void> {
 	const tabId = await getTabId(page);
@@ -126,7 +125,8 @@ export async function waitForContentScript(page: Page): Promise<void> {
 		await chrome.scripting.executeScript({
 			target: { tabId: tid, allFrames: true },
 			func: async () => {
-				await import(chrome.runtime.getURL('js/contentscript.js'));
+				const ready = (globalThis as Record<symbol, Promise<void> | undefined>)[Symbol.for('vpr.ready')];
+				await ready;
 				return true;
 			}
 		});
@@ -165,9 +165,9 @@ export async function getBadgeText(tabId: number): Promise<string> {
 }
 
 /** Read one key from extension storage. */
-export async function getStorageValue(area: 'local' | 'sync', key: string): Promise<unknown> {
+export async function getStorageValue(area: 'local' | 'session' | 'sync', key: string): Promise<unknown> {
 	return (await getWorker()).evaluate(
-		async (a: 'local' | 'sync', k: string) => (await chrome.storage[a].get(k))[k],
+		async (a: 'local' | 'session' | 'sync', k: string) => (await chrome.storage[a].get(k))[k],
 		area,
 		key
 	);

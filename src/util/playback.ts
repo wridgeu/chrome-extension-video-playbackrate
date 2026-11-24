@@ -16,6 +16,16 @@ export function formatRate(rate: number): string {
 	return rate === 1 ? '1× (Normal)' : `${rate}×`;
 }
 
+/** Compact badge label (up to 4 chars, e.g. "1.75" or "1.33" for non-step rates). */
+export function formatBadgeRate(rate: number): string {
+	return String(Number(rate.toFixed(2)));
+}
+
+/** Clamp a playback rate to the slider's selectable range [MIN_RATE, MAX_RATE]. */
+export function clampRate(rate: number): number {
+	return Math.min(MAX_RATE, Math.max(MIN_RATE, rate));
+}
+
 /** The selectable rate closest to `playbackRate` (first match wins on a tie). */
 export function findClosestRate(playbackRate: number): number {
 	return PLAYBACK_RATES.reduce((closest, current) =>

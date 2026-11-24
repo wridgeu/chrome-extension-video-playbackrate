@@ -84,15 +84,6 @@ async function clickIn(page: Page, selector: string): Promise<void> {
 /** Computed page background, which follows the active UI5 theme. */
 const backgroundOf = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 
-/** Convert a web_accessible_resources glob to a regex (supports * and ? wildcards) */
-function globToRegex(pattern: string): RegExp {
-	const escaped = pattern
-		.replaceAll(/[.+^${}()|[\]\\]/gu, String.raw`\$&`)
-		.replaceAll('*', '[^/]*')
-		.replaceAll('?', '[^/]');
-	return new RegExp(`^${escaped}$`, 'u');
-}
-
 describe('Chrome Extension E2E', () => {
 	const distDir = join(import.meta.dirname, '../../../dist');
 	let extensionId: string;
@@ -117,18 +108,21 @@ describe('Chrome Extension E2E', () => {
 		await closeBrowser();
 	});
 
-	it('exposes every chunk the content script imports via web_accessible_resources', () => {
+	it('declares a self-contained content script without exposing web_accessible_resources', () => {
 		const manifest = JSON.parse(readFileSync(join(distDir, 'manifest.json'), 'utf8'));
-		const patterns: RegExp[] = manifest.web_accessible_resources.flatMap((entry: { resources: string[] }) =>
-			entry.resources.map(globToRegex)
-		);
-
 		const contentScript = readFileSync(join(distDir, 'js/contentscript.js'), 'utf8');
-		const imports = Array.from(contentScript.matchAll(/from\s*["']\.\/([^"']+\.js)["']/gu), (m) => `js/${m[1]}`);
-		const uncovered = imports.filter((file) => !patterns.some((p) => p.test(file)));
 
-		expect(imports.length).toBeGreaterThan(0);
-		expect(uncovered, 'add patterns to public/manifest.json').toEqual([]);
+		expect(manifest.web_accessible_resources).toBeUndefined();
+		expect(manifest.content_scripts).toEqual([
+			{
+				matches: ['http://*/*', 'https://*/*'],
+				js: ['js/contentscript.js'],
+				all_frames: true,
+				run_at: 'document_idle'
+			}
+		]);
+		// Classic content scripts cannot contain static ES imports
+		expect(contentScript).not.toMatch(/^\s*import\b/mu);
 	});
 
 	describe('Options page', () => {
@@ -343,6 +337,16 @@ describe('Chrome Extension E2E', () => {
 			expect((await readTooltip()).open).toBe(false);
 		});
 
+		it('opens on keyboard focus and closes on blur', async () => {
+			expect((await readTooltip()).open).toBe(false);
+
+			await popup.$eval('ui5-slider', (s) => s.dispatchEvent(new Event('focus')));
+			expect(await readTooltip()).toMatchObject({ open: true, text: '1×' });
+
+			await popup.$eval('ui5-slider', (s) => s.dispatchEvent(new Event('blur')));
+			expect((await readTooltip()).open).toBe(false);
+		});
+
 		it('follows the value while dragging', async () => {
 			await press();
 			await moveSlider(popup, 2, 'input');
@@ -369,11 +373,20 @@ describe('Chrome Extension E2E', () => {
 			const changeRate = async (rate: number) => {
 				await setRateNatively(page, rate);
 				await expectBadge(tabId, String(rate));
-				expect(await getStorageValue('local', `playbackRate_${tabId}`)).toBe(rate);
+				expect(await getStorageValue('session', `playbackRate_${tabId}`)).toBe(rate);
 			};
 			await changeRate(0.5);
 			await changeRate(1.75);
 			await changeRate(3);
+		});
+
+		it('updates the badge when a video is added dynamically with defaults disabled', async () => {
+			const { page, tabId } = await openReadyPage('no-video.html');
+			expect(await getBadgeText(tabId)).toBe('');
+
+			await page.evaluate(() => document.body.append(document.createElement('video')));
+
+			await expectBadge(tabId, '1');
 		});
 
 		it('inside a cross-site iframe update the tab badge', async () => {
@@ -433,7 +446,7 @@ describe('Chrome Extension E2E', () => {
 			const { page, tabId } = await openReadyPage('video.html');
 
 			await setRateNatively(page, 1.5);
-			await vi.waitFor(async () => expect(await getStorageValue('local', `playbackRate_${tabId}`)).toBe(1.5), WAIT);
+			await vi.waitFor(async () => expect(await getStorageValue('session', `playbackRate_${tabId}`)).toBe(1.5), WAIT);
 			expect(await getBadgeText(tabId)).toBe('');
 
 			await setSyncStorage({ badgeEnabled: true });
@@ -464,6 +477,21 @@ describe('Chrome Extension E2E', () => {
 			await page.evaluate(() => document.body.append(document.createElement('video')));
 
 			await expectRates(page, [2.5]);
+		});
+
+		it('applies to videos inside an iframe inserted after page load', async () => {
+			await setSyncStorage({ defaults: { enabled: true, playbackRate: 2.25 } });
+			const { page, tabId } = await openReadyPage('no-video.html');
+
+			await page.evaluate(() => {
+				const iframe = document.createElement('iframe');
+				iframe.id = 'late-iframe';
+				iframe.src = '/video.html';
+				document.body.append(iframe);
+			});
+
+			await expectRates(await getIframe(page, '#late-iframe'), [2.25]);
+			await expectBadge(tabId, '2.25');
 		});
 
 		it('is re-applied when the video source changes (SPA navigation)', async () => {
@@ -501,18 +529,18 @@ describe('Chrome Extension E2E', () => {
 			await setSyncStorage({ badgeEnabled: false });
 			await setSyncStorage({ badgeEnabled: true });
 			await expectBadge(tabId, '');
-			expect(await getStorageValue('local', `playbackRate_${tabId}`)).toBeUndefined();
+			expect(await getStorageValue('session', `playbackRate_${tabId}`)).toBeUndefined();
 		});
 
 		it('removes the stored rate when the tab is closed', async () => {
 			const { page, tabId } = await openReadyPage('video.html');
 			await setRateNatively(page, 2);
 			const key = `playbackRate_${tabId}`;
-			await vi.waitFor(async () => expect(await getStorageValue('local', key)).toBe(2), WAIT);
+			await vi.waitFor(async () => expect(await getStorageValue('session', key)).toBe(2), WAIT);
 
 			await page.close();
 
-			await vi.waitFor(async () => expect(await getStorageValue('local', key)).toBeUndefined(), WAIT);
+			await vi.waitFor(async () => expect(await getStorageValue('session', key)).toBeUndefined(), WAIT);
 		});
 	});
 });

@@ -3,7 +3,12 @@ import { mockColorScheme, mockStorage } from '@tests/unit/setup';
 
 // Stateful stand-in for UI5's theme config
 const ui5 = vi.hoisted(() => ({ theme: '' }));
-vi.mock('@ui5/webcomponents/dist/Assets.js', () => ({}));
+vi.mock('@ui5/webcomponents-base/dist/asset-registries/Themes.js', () => ({
+	registerThemePropertiesLoader: vi.fn<() => void>()
+}));
+vi.mock('@ui5/webcomponents-base/dist/asset-registries/i18n.js', () => ({
+	registerI18nLoader: vi.fn<() => void>()
+}));
 vi.mock('@ui5/webcomponents-base/dist/config/Theme.js', () => ({
 	setTheme: (theme: string) => {
 		ui5.theme = theme;

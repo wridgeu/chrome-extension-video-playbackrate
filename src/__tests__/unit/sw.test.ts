@@ -16,11 +16,10 @@ describe('Service Worker', () => {
 	let setRateOfVideoWithSrc: (srcUrl: string, rate: number) => void;
 	let onInstalled: Listener<[]>;
 	let onClicked: Listener<[{ menuItemId: string; srcUrl?: string }, { id?: number } | undefined]>;
-	let onUpdated: Listener<[number, { status?: string }]>;
 	let onMessage: Listener<[MessagingRequestPayload | Record<string, unknown>, { tab?: { id: number } }]>;
 	let onStorageChanged: Listener<[Record<string, { newValue?: unknown }>, string]>;
 	let onRemoved: Listener<[number]>;
-	let onBeforeNavigate: Listener<[{ tabId: number; frameId: number }]>;
+	let onCommitted: Listener<[{ tabId: number; frameId: number }]>;
 
 	beforeAll(async () => {
 		vi.resetModules();
@@ -29,11 +28,10 @@ describe('Service Worker', () => {
 		// Capture listeners once; the per-test mock reset clears the registration calls
 		onInstalled = listenerOf(chromeMock.runtime.onInstalled);
 		onClicked = listenerOf(chromeMock.contextMenus.onClicked);
-		onUpdated = listenerOf(chromeMock.tabs.onUpdated);
 		onMessage = listenerOf(chromeMock.runtime.onMessage);
 		onStorageChanged = listenerOf(chromeMock.storage.onChanged);
 		onRemoved = listenerOf(chromeMock.tabs.onRemoved);
-		onBeforeNavigate = listenerOf(chromeMock.webNavigation.onBeforeNavigate);
+		onCommitted = listenerOf(chromeMock.webNavigation.onCommitted);
 	});
 
 	describe('onInstalled', () => {
@@ -54,23 +52,35 @@ describe('Service Worker', () => {
 			);
 		});
 
-		it('injects the content script into existing http(s) tabs that have an id', async () => {
+		it('injects the self-contained content script into existing http(s) tabs that have an id', async () => {
 			chromeMock.tabs.query.mockResolvedValue([{ id: 1 }, { id: undefined }, { id: 3 }]);
 
 			await onInstalled();
 
 			expect(chromeMock.tabs.query).toHaveBeenCalledWith({ url: ['http://*/*', 'https://*/*'] });
-			const injectedTabIds = callsOf<[{ target: { tabId: number } }]>(chromeMock.scripting.executeScript).map(
-				([details]) => details.target.tabId
-			);
-			expect(injectedTabIds).toEqual([1, 3]);
+			expect(
+				callsOf<[{ target: { tabId: number; allFrames: boolean }; files: string[] }]>(
+					chromeMock.scripting.executeScript
+				)
+			).toEqual([
+				[{ target: { tabId: 1, allFrames: true }, files: ['/js/contentscript.js'] }],
+				[{ target: { tabId: 3, allFrames: true }, files: ['/js/contentscript.js'] }]
+			]);
+		});
+
+		it('continues injecting remaining tabs when one tab rejects executeScript', async () => {
+			chromeMock.tabs.query.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+			chromeMock.scripting.executeScript.mockRejectedValueOnce(new Error('Cannot access page'));
+
+			await expect(onInstalled()).resolves.toBeUndefined();
+			expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2);
 		});
 	});
 
 	describe('context menu click', () => {
 		const srcUrl = 'https://example.com/video.mp4';
 
-		it('sets the rate on the clicked video and syncs badge and storage', async () => {
+		it('sets the rate on the clicked video and syncs badge and session storage', async () => {
 			await onClicked({ menuItemId: '2', srcUrl }, { id: 123 });
 
 			expect(chromeMock.scripting.executeScript).toHaveBeenCalledWith({
@@ -79,7 +89,13 @@ describe('Service Worker', () => {
 				args: [srcUrl, 2]
 			});
 			expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '2', tabId: 123 });
-			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({ playbackRate_123: 2 });
+			expect(chromeMock.storage.session.set).toHaveBeenCalledWith({ playbackRate_123: 2 });
+		});
+
+		it('handles executeScript rejection without throwing', async () => {
+			chromeMock.scripting.executeScript.mockRejectedValueOnce(new Error('No tab with id'));
+
+			await expect(onClicked({ menuItemId: '2', srcUrl }, { id: 123 })).resolves.toBeUndefined();
 		});
 
 		it.each([
@@ -114,42 +130,8 @@ describe('Service Worker', () => {
 		});
 	});
 
-	describe('content script injection on tab load', () => {
-		it('injects once a tab completes loading, and only once per tab', () => {
-			onUpdated(500, { status: 'loading' });
-			onUpdated(500, { status: 'complete' });
-			onUpdated(500, { status: 'complete' });
-
-			expect(chromeMock.scripting.executeScript).toHaveBeenCalledExactlyOnceWith(
-				{ target: { tabId: 500, allFrames: true }, files: ['/js/contentscript-loader.js'] },
-				expect.any(Function)
-			);
-		});
-
-		it('re-injects after a main frame navigation and forgets the old page rate', () => {
-			onUpdated(501, { status: 'complete' });
-			onBeforeNavigate({ tabId: 501, frameId: 0 });
-			onUpdated(501, { status: 'complete' });
-
-			expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2);
-			expect(chromeMock.storage.local.remove).toHaveBeenCalledExactlyOnceWith('playbackRate_501');
-		});
-
-		it('retries on the next load when an injection failed', () => {
-			chromeMock.scripting.executeScript.mockImplementationOnce((_details: unknown, callback: () => void) => {
-				chromeMock.runtime.lastError = { message: 'Cannot access this page' };
-				callback();
-				chromeMock.runtime.lastError = null;
-			});
-			onUpdated(503, { status: 'complete' });
-			onUpdated(503, { status: 'complete' });
-
-			expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2);
-		});
-	});
-
 	describe('UPDATE_UI message', () => {
-		it('shows the rate on the sender tab badge, checks the closest menu item and stores the rate', async () => {
+		it('shows the rate on the sender tab badge, checks the closest menu item and stores the rate in session', async () => {
 			onMessage({ action: MessagingAction.UPDATE_UI, playbackRate: 2 }, { tab: { id: 456 } });
 
 			await vi.waitFor(() => {
@@ -157,7 +139,15 @@ describe('Service Worker', () => {
 			});
 			expect(chromeMock.action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#F7B731', tabId: 456 });
 			expect(chromeMock.contextMenus.update).toHaveBeenCalledWith('2', { checked: true }, expect.any(Function));
-			expect(chromeMock.storage.local.set).toHaveBeenCalledWith({ playbackRate_456: 2 });
+			expect(chromeMock.storage.session.set).toHaveBeenCalledWith({ playbackRate_456: 2 });
+		});
+
+		it('rounds non-step rates cleanly on the badge', async () => {
+			onMessage({ action: MessagingAction.UPDATE_UI, playbackRate: 1.3333333 }, { tab: { id: 456 } });
+
+			await vi.waitFor(() => {
+				expect(chromeMock.action.setBadgeText).toHaveBeenCalledWith({ text: '1.33', tabId: 456 });
+			});
 		});
 
 		it('uses the tabId from the popup, which has no sender tab', async () => {
@@ -189,7 +179,7 @@ describe('Service Worker', () => {
 			onMessage({ action: MessagingAction.UPDATE_UI, playbackRate: '2' }, { tab: { id: 1 } });
 
 			expect(chromeMock.contextMenus.update).not.toHaveBeenCalled();
-			expect(chromeMock.storage.local.set).not.toHaveBeenCalled();
+			expect(chromeMock.storage.session.set).not.toHaveBeenCalled();
 		});
 	});
 
@@ -211,8 +201,8 @@ describe('Service Worker', () => {
 			expect(chromeMock.action.setBadgeText.mock.calls).toEqual([[{ text: '', tabId: 1 }], [{ text: '', tabId: 2 }]]);
 		});
 
-		it('restores the badge from the stored rates right away when the badge gets re-enabled', async () => {
-			chromeMock.storage.local.get.mockResolvedValue({ playbackRate_1: 1.75 });
+		it('restores the badge from the stored session rates right away when the badge gets re-enabled', async () => {
+			chromeMock.storage.session.get.mockResolvedValue({ playbackRate_1: 1.75 });
 
 			await onStorageChanged({ badgeEnabled: { newValue: true } }, 'sync');
 
@@ -222,9 +212,16 @@ describe('Service Worker', () => {
 			]);
 		});
 
+		it('continues updating remaining tabs if a tab closes mid-update', async () => {
+			chromeMock.action.setBadgeText.mockRejectedValueOnce(new Error('No tab with id: 1'));
+
+			await expect(onStorageChanged({ badgeEnabled: { newValue: false } }, 'sync')).resolves.toBeUndefined();
+			expect(chromeMock.action.setBadgeText).toHaveBeenCalledTimes(2);
+		});
+
 		it.each([
 			['another sync setting changes', { theme: { newValue: 'sap_horizon' } }, 'sync'],
-			['the change is in local storage', { badgeEnabled: { newValue: false } }, 'local']
+			['the change is in session storage', { badgeEnabled: { newValue: false } }, 'session']
 		])('leaves badges alone when %s', async (_, changes, area) => {
 			await onStorageChanged(changes, area);
 
@@ -236,16 +233,19 @@ describe('Service Worker', () => {
 		it('removes the stored rate when a tab is closed', () => {
 			onRemoved(123);
 
-			expect(chromeMock.storage.local.remove).toHaveBeenCalledWith('playbackRate_123');
+			expect(chromeMock.storage.session.remove).toHaveBeenCalledWith('playbackRate_123');
 		});
 
-		it('does not re-inject or forget the rate after a subframe navigation', () => {
-			onUpdated(502, { status: 'complete' });
-			onBeforeNavigate({ tabId: 502, frameId: 1 });
-			onUpdated(502, { status: 'complete' });
+		it('forgets the old page rate when a main-frame navigation commits', () => {
+			onCommitted({ tabId: 501, frameId: 0 });
 
-			expect(chromeMock.scripting.executeScript).toHaveBeenCalledOnce();
-			expect(chromeMock.storage.local.remove).not.toHaveBeenCalled();
+			expect(chromeMock.storage.session.remove).toHaveBeenCalledExactlyOnceWith('playbackRate_501');
+		});
+
+		it('does not forget the rate after a subframe navigation commits', () => {
+			onCommitted({ tabId: 502, frameId: 1 });
+
+			expect(chromeMock.storage.session.remove).not.toHaveBeenCalled();
 		});
 	});
 });

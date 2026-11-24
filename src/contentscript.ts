@@ -1,12 +1,16 @@
 import { MessagingAction, type MessagingRequestPayload, type DefaultsStorage } from '@src/types';
 
-/** Symbol to mark video elements that already have listeners attached */
-const LISTENER_ATTACHED = Symbol('listenerAttached');
+/** Shared Symbol so re-injection into the same frame never attaches duplicate listeners. */
+const LISTENER_ATTACHED = Symbol.for('vpr.listenerAttached');
+/** Shared Symbol exposing the init promise in the isolated world (also guards against double auto-init). */
+const READY_PROMISE = Symbol.for('vpr.ready');
 
 type TrackedVideo = HTMLVideoElement & { [LISTENER_ATTACHED]?: true };
+type IsolatedGlobal = typeof globalThis & { [READY_PROMISE]?: Promise<void> };
 
-/** Reference to active MutationObserver for cleanup */
+/** References to active observer and contextmenu listener for cleanup */
 let videoObserver: MutationObserver | null = null;
+let contextMenuListener: ((event: MouseEvent) => void) | null = null;
 
 /** Send a message to the service worker, logging errors in development mode only. */
 function sendMessageSafe(message: MessagingRequestPayload): void {
@@ -17,11 +21,16 @@ function sendMessageSafe(message: MessagingRequestPayload): void {
 	});
 }
 
-/** Load default playback rate from storage, or null if defaults are disabled. */
+/** Load default playback rate from storage, or null if defaults are disabled or context was invalidated. */
 async function getDefaultPlaybackRate(): Promise<number | null> {
-	const { defaults } = (await chrome.storage.sync.get('defaults')) as DefaultsStorage;
-	if (!defaults?.enabled) return null;
-	return defaults.playbackRate ?? 1;
+	try {
+		const { defaults } = (await chrome.storage.sync.get('defaults')) as DefaultsStorage;
+		if (!defaults?.enabled) return null;
+		return defaults.playbackRate ?? 1;
+	} catch {
+		// Extension context invalidated after an extension reload/update
+		return null;
+	}
 }
 
 /** Apply the default playback rate (if enabled) to the given videos and report it; resolves whether it was applied. */
@@ -44,7 +53,7 @@ export async function applyDefaultPlaybackRate(
  * - ratechange: Syncs rate to storage/badge/context menu (via the service worker)
  * - loadstart: Re-applies default speed when video source changes (SPA navigation like YouTube resets the rate)
  *
- * Uses a Symbol marker to prevent duplicate listeners when a video is re-added to the DOM.
+ * Uses a shared Symbol marker to prevent duplicate listeners when a video is re-added to the DOM.
  */
 function setupVideoListeners(video: TrackedVideo): void {
 	if (video[LISTENER_ATTACHED]) return;
@@ -53,52 +62,69 @@ function setupVideoListeners(video: TrackedVideo): void {
 	video.addEventListener('ratechange', () => {
 		sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate: video.playbackRate });
 	});
-	video.addEventListener('loadstart', () => applyDefaultPlaybackRate([video]));
+	video.addEventListener('loadstart', () => {
+		void applyDefaultPlaybackRate([video]);
+	});
 }
 
-/** Track videos inside a node added to the DOM and apply the default rate to them. */
-function handleAddedNode(node: Node): void {
-	let videos: HTMLVideoElement[] = [];
-	if (node instanceof HTMLVideoElement) {
-		videos = [node];
-	} else if (node instanceof Element) {
-		videos = Array.from(node.querySelectorAll('video'));
+/** Attach listeners, apply default speed, or report the first video's current rate if defaults are off. */
+async function registerVideos(videos: ArrayLike<HTMLVideoElement>): Promise<void> {
+	const list = Array.from(videos);
+	if (list.length === 0) return;
+
+	list.forEach((video) => setupVideoListeners(video));
+	const appliedDefault = await applyDefaultPlaybackRate(list);
+	const [firstVideo] = list;
+	if (firstVideo && !appliedDefault) {
+		sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate: firstVideo.playbackRate });
 	}
-	videos.forEach((video) => setupVideoListeners(video));
-	applyDefaultPlaybackRate(videos);
+}
+
+/** Collect any video elements inside a newly added DOM node. */
+function collectVideos(node: Node, target: HTMLVideoElement[]): void {
+	if (node instanceof HTMLVideoElement) {
+		target.push(node);
+	} else if (node instanceof Element) {
+		target.push(...node.querySelectorAll('video'));
+	}
+}
+
+/** Handle a batch of MutationObserver records, skipping work when no videos were added. */
+function handleMutations(mutations: MutationRecord[]): void {
+	const addedVideos: HTMLVideoElement[] = [];
+	for (const mutation of mutations) {
+		mutation.addedNodes.forEach((node) => collectVideos(node, addedVideos));
+	}
+	if (addedVideos.length > 0) {
+		void registerVideos(addedVideos);
+	}
 }
 
 /** Initialize content script functionality. */
 export async function initContentScript(): Promise<void> {
 	// Defensive cleanup in case initContentScript is called multiple times
 	videoObserver?.disconnect();
-
-	const existingVideos = document.querySelectorAll('video');
-	existingVideos.forEach((video) => setupVideoListeners(video));
-	const appliedDefault = await applyDefaultPlaybackRate(existingVideos);
-
-	// Without a default, report the current rate so the badge and context menu still match the page
-	const [firstVideo] = existingVideos;
-	if (firstVideo && !appliedDefault) {
-		sendMessageSafe({ action: MessagingAction.UPDATE_UI, playbackRate: firstVideo.playbackRate });
+	if (contextMenuListener) {
+		document.removeEventListener('contextmenu', contextMenuListener);
 	}
 
-	videoObserver = new MutationObserver((mutations) => {
-		for (const mutation of mutations) {
-			mutation.addedNodes.forEach((node) => handleAddedNode(node));
-		}
-	});
+	await registerVideos(document.querySelectorAll('video'));
+
+	videoObserver = new MutationObserver(handleMutations);
 	videoObserver.observe(document.documentElement, { childList: true, subtree: true });
 
 	// Keep the context menu radio in sync with the video that was right-clicked
-	document.addEventListener('contextmenu', (event) => {
+	contextMenuListener = (event) => {
 		const video = event.target instanceof Element ? event.target.closest('video') : null;
 		if (video) {
 			sendMessageSafe({ action: MessagingAction.UPDATE_CONTEXT_MENU, playbackRate: video.playbackRate });
 		}
-	});
+	};
+	document.addEventListener('contextmenu', contextMenuListener);
 }
 
 if (import.meta.env.MODE !== 'test') {
-	await initContentScript();
+	const isolatedGlobal = globalThis as IsolatedGlobal;
+	// oxlint-disable-next-line unicorn/prefer-top-level-await -- bundled as a classic IIFE content script
+	isolatedGlobal[READY_PROMISE] ??= initContentScript();
 }
