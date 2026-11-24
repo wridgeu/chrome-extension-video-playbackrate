@@ -11,8 +11,8 @@
   },
   "type": "module",
   "scripts": {
-    "build": "npm run cleanup && vite build && vite build --config vite.contentscript.config.ts",
-    "build:watch": "npm run cleanup && vite build --config vite.contentscript.config.ts && vite build --watch",
+    "build": "npm run cleanup && vite build",
+    "build:watch": "npm run cleanup && vite build --watch",
     "cleanup": "rimraf --glob dist *.dist.zip",
     "lint": "oxlint --deny-warnings && oxfmt --check",
     "lint:fix": "oxlint --fix && oxfmt",
